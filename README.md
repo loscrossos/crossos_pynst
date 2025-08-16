@@ -41,68 +41,37 @@ One command of your power glove and the tool will fully iron-clad your existing 
 Clone this repo and run:
 
 ```bash
-python crossos_pynst.py install [options]
+python crossos_pynst.py -a [install | repair] --input [inputfile] --basedir [path where project should be installed]
 ```
 
+example on Linux/Mac
+
+```bash
+python crossos_pynst.py      -a install --input comfy.cropy.txt --basedir /Users/Shared/aii/myco
 ```
-python crossos_pynst.py      -a install --cropi comfy.cropy.txt --basedir /Users/Shared/aii/myco
+
+example on Windows
+
+```bash
+python crossos_pynst.py      -a install --input comfy.cropy.txt --basedir c:\temp
 ```
+
+
+
+**Commands**
+
+* `--a [install | repair]`: 
+  - install: will perform an installation (deleting the current installation!)
+  - repair: will repair an existing installation safely 
+
+* `--basedir [path]`: Target install directory  
+* `--input [file]`: file containing install instructions
 
 **Options**
 
-* `--dir [path]`: Target install directory (default: current directory)
-* `--installname [name]`: Name for the ComfyUI installation folder (default: `comfyui`)
-* `--dry-run`: Simulate actions without making changes
+* `--dry-run`: Simulate actions without making changes. Output will show which commands would normally run
 
-**Example:**
-
-```bash
-python crossos_comfyx.py install --dir c:\temp --installname mycomfyui
-```
-
-**What happens on `install`**
-
-1. Checks system Python version & Git availability
-2. Clones **ComfyUI** and **ComfyUI-Manager**
-3. Creates a **venv** (`.env_windows`, `.env_linux`, `.env_macos`, or `python_embedded`)
-4. Installs:
-
-   * Accelerator requirements from
-     `https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_lite_python312torch271cu129.txt`
-   * ComfyUI's `requirements.txt`
-   * All `requirements.txt` from `custom_nodes`
-
----
-
-### 2. Rebuild Existing Environment
-
-Run in the **home directory of an existing ComfyUI install**:
-
-```bash
-python comfyui_setup.py rebuildvenv [options]
-```
-
-**Modes:**
-
-* **Portable:** Uses `python_embedded` inside the installation
-* **Manual:** Uses system Python (e.g. `py -3.12` on Windows, `python3.12` on Linux/macOS)
-
-**Process:**
-
-1. Detects install mode (portable/manual)
-2. Removes all installed packages from venv
-3. Reinstalls accelerator requirements, ComfyUI requirements, and custom node requirements
-4. Aborts on **any requirement install failure**, showing the problematic folder
-
----
-
-### 3. Notes
-
-* **No auto-installation** of Python or Git — if missing, the script aborts
-* Existing installation directories are never overwritten (will abort if found)
-* Portable installs keep Python inside `python_embedded`
-* Safe **`.bak` renaming** of existing venvs (non-portable mode)
-
+  
 
 
 # ROADMAP

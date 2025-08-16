@@ -749,19 +749,38 @@ def crossos_make_icon(word, fg_hex, bg_hex, placement='sbs', size=256, path='log
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # -*- coding: utf-8 -*-
 
 """
-cropi_runner.py
+ 
 A single-file, cross-platform (Windows/Linux/macOS) installer/repairer for Python repositories
-driven by a .cropi.txt instruction file.
+driven by a .txt instruction file.
 
 - No external packages required (stdlib only).
 - Modes:
   * install
   * repair (with --repairportable for embedded/portable distributions)
 
-Implements commands (case-insensitive) from the .cropi.txt, in order:
+Implements commands (case-insensitive) from the .txt, in order:
   - PYTHON <version>
   - RFILTER <pkg1> <pkg2> ...
   - REQFILE <path-or-URL>
@@ -1162,17 +1181,17 @@ def backup_embedded_folder(embedded_dir: Path):
     log_subtask(f"Creating backup of embedded Python at: {bak}")
     shutil.copytree(embedded_dir, bak)
 
-# ========= Parsing .cropi.txt =========
-def parse_cropi(cropi_path: Path) -> list[tuple[str, list[str]]]:
+# ========= Parsing ifile =========
+def parse_inputfile(inputfile_path: Path) -> list[tuple[str, list[str]]]:
     """
     Returns a list of (COMMAND_UPPER, [params...]) preserving order.
     Supports quoted labels/params with spaces.
     Ignores blank lines and lines starting with '#'.
     """
-    ensure_utf8(cropi_path)
+    ensure_utf8(inputfile_path)
     commands: list[tuple[str, list[str]]] = []
     token_re = re.compile(r'"[^"]*"|\S+')
-    for raw in cropi_path.read_text(encoding="utf-8", errors="replace").splitlines():
+    for raw in inputfile_path.read_text(encoding="utf-8", errors="replace").splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
@@ -1222,7 +1241,7 @@ def do_install(commands: list[tuple[str, list[str]]], basedir: Path):
         elif cmd == CMD_REQSCAN:
             continue
         else:
-            abort(f"Unknown command in .cropi.txt: {cmd}")
+            abort(f"Unknown command in inputfile: {cmd}")
     do_repair(commands, basedir,False, True)    
     log_task("Install completed successfully.")
 
@@ -1373,7 +1392,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
         elif cmd in (CMD_GITCLONE, CMD_GITCLONE_ALIAS1):
             continue
         else:
-            abort(f"Unknown command in .cropi.txt: {cmd}")
+            abort(f"Unknown command in inputfile: {cmd}")
     log_task("Virtual environment setup was finished successfully.")
 
 
@@ -1390,11 +1409,11 @@ def main():
     global STARTER_NO_DESKTOP, DRYRUN, VERBOSE, BACKUP
 
     parser = argparse.ArgumentParser(
-        description="Install or repair a Python project based on a .cropi.txt instruction file."
+        description="Install or repair a Python project based on a instruction file."
     )
     parser.add_argument("-a", dest="mode", choices=["install", "repair"], required=True,
                         help="Main mode: install or repair")
-    parser.add_argument("--cropi", required=True, help="Path to .cropi.txt (will be coerced to UTF-8 if needed)")
+    parser.add_argument("--input", required=True, help="Path to inputfile (will be coerced to UTF-8 if needed)")
     parser.add_argument("--basedir", required=True, help="Base directory for install/repair")
     parser.add_argument("--repairportable", action="store_true",
                         help="(repair only) Treat installation as portable with 'python_embedded' folder")
@@ -1413,12 +1432,12 @@ def main():
     VERBOSE = args.verbose
     BACKUP = args.backup
 
-    cropi_path = Path(args.cropi).expanduser().resolve()
+    inputfile_path = Path(args.input).expanduser().resolve()
     basedir = Path(args.basedir).expanduser().resolve()
 
     # Basic validations
-    if not cropi_path.is_file():
-        abort(f"cropi file not found: {cropi_path}")
+    if not inputfile_path.is_file():
+        abort(f"inputfile file not found: {inputfile_path}")
 
     log_task("=== STARTING CROSSOS PYNST ===")
     if not basedir.exists():
@@ -1429,9 +1448,9 @@ def main():
             basedir.mkdir(parents=True, exist_ok=True)
 
     # Parse instructions
-    commands = parse_cropi(cropi_path)
+    commands = parse_inputfile(inputfile_path)
     if not commands:
-        abort("No commands found in .cropi.txt.")
+        abort("No commands found in inputfile.")
 
     # Confirm git availability early (install requires, repair may ignore clones but still good to check)
     require_tool("git", "Install Git from https://git-scm.com/ and ensure it's on PATH.")

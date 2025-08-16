@@ -1,0 +1,147 @@
+Initial base prompt for Crossos_Pynst
+
+i want a single python file that installs a python repository project or manages the virtual environment (venv) for an existing python repository. No packages shall be needed. All code is to use standard python. The code runs on windows, linux and macOS. All commands are case-insensitive.
+
+-Arguments-
+
+The code accepts 3 mandatory mandatory arguments
+
+Mandatory arguments:
+
+-a main mode: The main mode can be "install" or "repair".
+
+"install", which installs a python repository.
+"repair", which rebuilds and repairs a python repository.
+
+-an input file --cropi [file.cropi.txt] with the ending ".cropi.txt"
+
+The input file is a text file(ensure conversion to utf-8 if needed), where each line contains: a command in upper case and parameters following it  in this format:
+
+---
+[COMAND] [PARAMETERS]
+---
+
+The following commands exist unless stated explicitly they all can exist multiple times. Commands can have aliases (GITCLON is an alias to GITCLONE) These commands must be executed in the order they appear in the file:
+
+PYTHON: 1 Parameter: [a version number e.g. "3.12"]. This command can only occur once. This is the version of python to be used. This is the first parameter. if the version is not available abort with an error message. On Windows, is the expected way to launch a specific Python version via e.g. "py -3.12". On Linux/macOS "python3.12".
+RFILTER: multiple words.  it applies also to cloned repos. A list of packages that will be filtered out from all requirements files found from this line on (installations before this line are not affected). once RFILTER is set it applies to all requirement files in the order processed. yes, the filter is case-insensitive. Example: if the parameters are "torch torch vision" then from this point on all requirements.txt files found will be copied into a temp file before importing them and all lined containing the word "torch" or "torchvision" will not be copied. Only filter out if the word is alone or followed by a whitespace or non alphabetic symbol (A-Z a-z and - or _) symbol. "torchaudio" should not be filtered.
+REQFILE: 1 Parameter: [a file path or URL]. a requirements file to be installed into the virtual environment. This can be a local file or a file on the internet that will then be downloaded into a temporary local file and installed from there.
+GITCLONE or GITCLON: 2 Parameters: [an URL] [a path suffix]. The URL is the git repository to clone and install. The path suffix is used to set the target location of the clone operation. This is added to the base directory. e.g. base directory is /temp and suffix is "test" then the repository is cloned under /temp/test/. After the clone the code checks if a "requirements.txt" is present and if it's present it is installed in the virtual environment.
+STARTER: a label consisting of one word or several in quotes(labels in  quotes are treated as one argument), followed by multiple parameters: line is intended as the start command to be used to make a start shortcut file. This shortcut file will be written as a .sh file or a .bat file (use bat for windows and sh for linux/macos) named after the label and  where the command that follows is added to the created venv. Example: if the base install is /temp/test and parameters are 'STARTER "Comfy CPU" comfyUI/main.py --cpu' then the starter on linux is the venv python and the starter is called "Comfy CPU.sh" with the contents "/temp/test/.env_linux/bin/python /temp/test/ComfyUI/main.py --cpu". 
+REQSCAN: 1 Parameters: [a path suffix]. Path under the base directory to be searched in repair mode for directories that contain "requirements.txt" files (only 1 level deep) to install into the venv in case of repair mode. in REQSCAN we only scan one level below the given suffix (RFILTER applies here too).  e.g. base directory is /temp and suffix is "test" then the code searches all directories under /temp/test/ and checks if these contain a "requirements.txt" and installs it. Match could be /temp/test/repo2/requirements.txt and /temp/test/repox/requirements.txt.  if install fails we abort and output the name of the path of the file that failed
+
+
+Example: 
+---
+PYTHON 3.12
+REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_lite_python312torch271cu129.txt
+RFILTER torch torchvision torchaudio 
+GITCLON https://github.com/comfyanonymous/ComfyUI .
+GITCLON https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
+REQSCAN ComfyUI
+REQSCAN ComfyUI/custom_nodes
+
+DESTART CPU_Mode comfyUI/main.py --cpu
+COSTART "ComfyUI GPU Mode" comfyUI/main.py --gpu --use-sage-attention
+
+
+
+
+---
+
+
+-a target directory: The target directory --basedir [path]: the path to be used as base directory to install the repositories or where the location of the existing installation is. 
+
+Optional Arguments:
+
+The code accepts the following optional arguments:
+
+--repairportable : (only for repair mode) this attempts to repair an embedded python installation. As described further below.
+--nodesktop : this sets a variable called STARTER_NO_DESKTOP as True in the code
+--dryrun : this causes all runs to happen in simulated mode only with no changes to data for test purposes. The code prints all actions but never actually change the filesystem or install anything.
+--verbose: by default command output are suppressed (by setting "capture=True" or similar. This option enables command outputs.
+--backup: is a venv is already existent it will be renamed to [originalname].bak. else it is deleted first.
+
+
+
+
+-Code Behavior-
+
+
+
+Upon running the script checks the following:
+-that python in is installed in the version defined in the default variable and the variable defined in the input file if that variable exists
+-that git is installed in the system
+-if the optional path is provided: that the path exists. The path is created if it does not exist.
+
+The code provides colorized output with defined colors for main tasks and other color for progress of subtasks while per default surpassing other output.
+
+
+if the main command is "install" then:
+
+The code creates a virtual environment under the base directory using the version defined in the PYTHON command or the default version: If no PYTHON command is present the code uses 3.12 as default. This version is defined at the top of the code as a global variable.
+
+Then it reads sequentially the other commands and performs the associated tasks.
+
+In "install" mode these commands are only used: PYTHON, RFILTER, REQFILE, GITCLONE/GITCLON, STARTER.
+
+
+End of main command "install"
+
+
+
+if the main command is "repair" then:
+
+We assume the code runs in the provided base directory of an installation.
+
+In "repair" mode these commands are only used: PYTHON, RFILTER, REQFILE, STARTER, REQSCAN.
+
+If the argument --repairportable is provided and the code detects the folder python_embedded then we have a portable installation and the following apply:
+-the python executable python from that folder is used.
+-the comfyUI-requirements file is under the folder ComfyUI
+- the custom_nodes folder is in the folder ComfyUI
+
+If the argument --repairportable is not set and the  folder python_embedded  is not there then:
+-the executable will be the python executable from the system (e.g. on windows "py -3.12" or on linux or macos "python3.12")
+-the comfyUI-requirements file and the custom_nodes folder are in the current folder
+
+Check that the above apply. Else abort with the message "this is not a portable or manual installation".
+
+End of main command "repair"
+
+
+In "repair", Use only python_embedded if "--repairportable" is given and that folder exists. When detecting portable (python_embedded present), we assume the folder structure is:
+
+[base dir]/python_embedded/
+
+
+For example GITCLON target . :
+[base dir]/projectx/requirements.txt
+For target "mytest" :
+[basedir]/mytest/projecty/requirements.txt
+
+
+
+The code will build a virtual environment in the following way:
+in install mode the venv is always created under the base directory.
+If the folder python_embedded does not exist the name of the venv is according to the OS and a new venv will be created:
+for windows: .env_windows
+for linux: .env_linux
+for macOS: .env_macos
+
+If the argument --backup is provided and a venv is not python_embedded and the venv directory already exists it will be renamed by adding the suffix ".bak" so its not lost.
+If the argument --backup is provided and a venv is python_embeded then a copy will be created called "python_embeded.bak".
+
+If the venv is python_embedded then all packages will be removed by extracting them with pip freeze and unsinstalling them. 
+
+then the venv will be rebuilt like this:
+
+1. the venv is checked to be empty by running pip freeze. if not abort and show a error message.
+2. requirements files defined in REQFILE will be installed with pip in the venv by downloading them to a temp file and performing pip install -r temp.txt
+3. In repair mode: requirements files from all folders under the defined REQSCAN folders will be searched and installed with pip in the venv. 
+4. In install mode: requirement filed from all GITCLON folders are installed
+5. If any file gives an error abort with a message displaying which custom node is the cause of error.
+
+
+before coding: do you have any questions for clarification?
+

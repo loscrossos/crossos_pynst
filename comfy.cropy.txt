@@ -1,0 +1,10 @@
+PYTHON 3.12
+REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_lite_python312torch271cu129.txt
+RFILTER torch torchvision torchaudio 
+GITCLON https://github.com/comfyanonymous/ComfyUI .
+GITCLON https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
+REQSCAN .
+REQSCAN ComfyUI/custom_nodes
+HOMEEXE "ComfyUI_cpu" comfyUI/main.py --cpu --auto-launch 
+DESKICO "ComfyUI GPU Mode" comfyUI/main.py --gpu --use-sage-attention --auto-launch 
+DESKICO "ComfyUI CPU Mode" comfyUI/main.py --cpu  --auto-launch 

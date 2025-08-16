@@ -5,6 +5,6 @@ GITCLON https://github.com/comfyanonymous/ComfyUI .
 GITCLON https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
 REQSCAN .
 REQSCAN ComfyUI/custom_nodes
-HOMEEXE "ComfyUI_cpu" comfyUI/main.py --cpu --auto-launch 
-DESKICO "ComfyUI GPU Mode" comfyUI/main.py --gpu --use-sage-attention --auto-launch 
-DESKICO "ComfyUI CPU Mode" comfyUI/main.py --cpu  --auto-launch 
+HOMEEXE "ComfyUI_cpu" ComfyUI/main.py --cpu --auto-launch 
+DESKICO "ComfyUI GPU Mode" ComfyUI/main.py --gpu --use-sage-attention --auto-launch 
+DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch 

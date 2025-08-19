@@ -35,19 +35,17 @@ Example:
 ---
 PYTHON 3.12
 REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_lite_python312torch271cu129.txt
-RFILTER torch torchvision torchaudio 
+RFILTER torch torchvision torchaudio
 GITCLON https://github.com/comfyanonymous/ComfyUI .
 GITCLON https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
-REQSCAN ComfyUI
+REQSCAN .
 REQSCAN ComfyUI/custom_nodes
-
-DESTART CPU_Mode comfyUI/main.py --cpu
-COSTART "ComfyUI GPU Mode" comfyUI/main.py --gpu --use-sage-attention
-
-
-
-
+HOMEEXE "ComfyUI_cpu" ComfyUI/main.py --cpu --auto-launch
+DESKICO "ComfyUI GPU Mode" ComfyUI/main.py --gpu --use-sage-attention --auto-launch
+DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch
 ---
+
+
 
 
 -a target directory: The target directory --basedir [path]: the path to be used as base directory to install the repositories or where the location of the existing installation is. 

@@ -72,6 +72,19 @@ python crossos_pynst.py      -a install --input comfy.cropy.txt --basedir c:\tem
 * `--dry-run`: Simulate actions without making changes. Output will show which commands would normally run
 
   
+### Examples
+
+
+```bash
+PYTHON 3.12
+REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_lite_python312torch271cu129.txt
+RFILTER torch torchvision torchaudio
+GITCLON https://github.com/Hillobar/Rope .
+REQSCAN .
+DESKICO "Hillobar Rope" Rope/Rope.py
+
+```
+
 
 
 # ROADMAP

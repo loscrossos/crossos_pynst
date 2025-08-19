@@ -1,5 +1,35 @@
 #!/usr/bin/env python3
 
+"""
+#TODO
+-criticalfilecheck.
+-warnfilecheck
+
+
+FILECHECK warn ComfyUI/myfile
+FILECHECK crit ComfyUI/main.py
+
+UseCases:
+-Install repository
+-repair repository
+-install plugins
+-install files
+-verify installation integrity
+-update installation code
+
+
+ComfyUI.
+Fully automatically, safely and fail proof perform these tasks with one single command:
+-Install a fully configured (ALL accelerators!) ComnfyUI with start shortcut on your desktop from zero. 
+-repair broken installation by rebuilding venv and updating code
+-add plugins to an existing installation
+-install any workflow (automatic collection and installation of workflow, plugins, models)
+
+All this while:
+-not needing any admin rights!
+-not needing to disabl or override any security mechanisms of your OS
+
+"""
 
 
 #***START***
@@ -112,7 +142,7 @@ def create_shortcut_mac(app_name: str , python_command: str , icon_path: str , s
     executable_path = macos_path / app_name
     with open(executable_path, "w") as f:
         f.write(f"""#!/bin/bash
-    osascript -e 'tell application "Terminal" to do script "cd \\"{Path.cwd()}\\"; {python_command}"'
+    osascript -e 'tell application "Terminal" to do script "cd \\"{working_dir}\\"; {python_command}"'
     """)
     os.chmod(executable_path, 0o755)
     # === CONVERT PNG TO ICNS ===
@@ -187,7 +217,7 @@ def create_shortcut_linux(app_name: str , python_command: str , icon_path: str ,
 
 
 
-def crossos_make_shortcut(app_name, exec_line,  installpath, env_path, onDesktop=False):
+def crossos_make_shortcut(app_name, exec_line,  installpath, env_path, onDesktop=False, working_dir: str=None):
     """
     app_name: name of the shortcut. e.g. "ComfyUI CPU Mode"
     exec_line: python file to be called. include the folder from the installdir: e.g. ComfyUI/main.py
@@ -211,8 +241,8 @@ def crossos_make_shortcut(app_name, exec_line,  installpath, env_path, onDesktop
     param_targetshortcut_path=installpath
     if onDesktop:
         param_targetshortcut_path=str(get_desktop_directory())
-    param_working_dir=f"{param_env_path}{os.sep}{env_bin_folder}{os.sep}"
 
+    param_working_dir=working_dir
     crossos_make_icon(app_name, '#FFFFFF', '#0066CC', placement='sbs', size=256,  path=icon_path)
 
     if sys.platform.startswith("win"):
@@ -823,16 +853,18 @@ CMD_RFILTER="RFILTER"
 CMD_GITCLONE="GITCLON"
 CMD_GITCLONE_ALIAS1="GITCLONE"
 CMD_REQSCAN="REQSCAN"
+CMD_FILEGET="FILEGET"
+CMD_PRINT="NOTEOUT"
 
-
-
+CMD_PAUSE="PAUSE"
 
 CMD_DESK_ICON_SHORTCUT  ="DESKICO"
 CMD_DESK_SCRIPT_SHORTCUT="DESKEXE"
 CMD_BASE_ICON_SHORTCUT  ="HOMEICO"
 CMD_BASE_SCRIPT_SHORTCUT="HOMEEXE"
 
-CMD_STARTER="STARTER"
+
+TOKEN_PRINT_PREFIX="Info: "
 
 # ========= Utility logging =========
 def log_task(msg: str):
@@ -885,6 +917,44 @@ def require_tool(exe: str, how_to: str):
     if which(exe) is None:
         abort(f"Required tool '{exe}' not found in PATH. {how_to}")
 
+
+
+import sys
+
+def validate_file(path, allowed_keywords, limited_keywords):
+    """
+    Validate a text file against keyword rules.
+    
+    Args:
+        path (str): Path to the text file.
+        allowed_keywords (set[str]): All keywords that are valid as line starters.
+        limited_keywords (dict[str, int]): Keywords with usage limits.
+                                           Example: {"ONCE_ONLY": 1, "TEN_TIMES": 10}
+    """
+    counts = {k: 0 for k in limited_keywords}
+
+    with open(path, "r", encoding="utf-8") as f:
+        for lineno, line in enumerate(f, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue  # skip empty lines if allowed (remove this if not allowed)
+            
+            first_word = stripped.split()[0]
+
+            # Rule 1: line must start with allowed keyword
+            if first_word not in allowed_keywords:
+                log_subtask(f"FilePrecheck: on Inputfile Error at line {lineno}: '{first_word}' is not an allowed keyword.")
+                sys.exit(1)
+
+            # Rule 2: count restricted keywords
+            if first_word in limited_keywords:
+                counts[first_word] += 1
+                if counts[first_word] > limited_keywords[first_word]:
+                    log_subtask(f"FilePrecheck:  on Inputfile: Error at line {lineno}: '{first_word}' "
+                          f"exceeds allowed limit ({limited_keywords[first_word]}).")
+                    sys.exit(1)
+
+
 # ========= Python / venv helpers =========
 def python_cmd_for_version(version: str) -> list[str]:
     """
@@ -928,10 +998,10 @@ def create_or_replace_venv(venv_path: Path, version: str, do_backup: bool):
 
     # Create new venv
     cmd = python_cmd_for_version(version) + ["-m", "venv", str(venv_path)]
-    log_task(f"Creating virtual environment: {venv_path}")
     rc = run_cmd(cmd)
     if rc != 0:
         abort(f"Failed to create virtual environment at {venv_path}")
+    log_subtask(f"Created virtual environment: {venv_path}")
 
     # Ensure pip present and up-to-date
     vpy = get_venv_python(venv_path)
@@ -1048,14 +1118,13 @@ def do_git_pull( repo_path: Path):
     """     
     if not repo_path.exists():
         abort(f"Directory to perform git pull not found: {repo_path}")
-    log_task(f"Updating git repository: {repo_path}")
-
     if DRYRUN:
         log_subtask(f"[DRYRUN] Would update repository: git pull (cwd: {repo_path})")
     else:
         rc = run_cmd(["git", "pull"], repo_path)
         if rc != 0:
             abort(f"Failed to update repository (broken or not a repo) from: {str(repo_path)}")
+    log_subtask(f"Updated git repository: {repo_path}")
 
 
 def pip_install_requirements(python_exec: str, req_file: Path, current_filters: list[str], fail_label: str):
@@ -1070,7 +1139,7 @@ def pip_install_requirements(python_exec: str, req_file: Path, current_filters: 
     message_append=""
     if current_filters:
        message_append=f"(package filter applied and installing as temp file)" 
-    log_task(f"Installing requirements from file{message_append}: {req_file}")
+    log_subtask(f"Installing requirements from file{message_append}: {req_file}")
     rc = run_cmd([python_exec, "-m", "pip", "install", "-r", str(filtered)])
     if rc != 0:
         abort(f"Failed to install requirements from: {fail_label}")
@@ -1095,13 +1164,63 @@ def git_clone(url: str, target: Path):
             log_subtask(f"[DRYRUN] Would remove existing directory before clone: {target}")
         else:
             shutil.rmtree(target, ignore_errors=True)
-    log_task(f"Cloning: {url} -> {target}")
     rc = run_cmd(["git", "clone", url, str(target)])
     if rc != 0:
         abort(f"Git clone failed for {url}")
+    log_subtask(f"Cloned to: {target}")
+
+
+def task_print(text_tokens):
+    text = " ".join([quote_arg(x) for x in text_tokens])
+    print(f"{COLOR_SUBTASK}{TOKEN_PRINT_PREFIX}{COLOR_END}{text}")
+ 
+def task_pause():
+    """
+    Pause execution until the user presses Enter to continue
+    or Ctrl+C to abort. Works on Windows, Linux, and macOS.
+    """
+    try:
+        input("Press Enter to continue or Ctrl+C to abort... ")
+    except KeyboardInterrupt:
+        print("\nAborted by user.")
+        raise  # re-raise so caller can handle it if needed
+
+
+# ========= Download helpers =========
+import subprocess
+import os
+from urllib.parse import urlparse
+def download_with_wget(url: str, dest_dir: str, quiet: bool = True) -> str:
+    """
+    Downloads a file from `url` into `dest_dir` using wget.
+    Works on Windows, Linux, and macOS (requires wget installed).
+    
+    Args:
+        url (str): The URL of the file to download.
+        dest_dir (str): The destination directory.
+        quiet (bool): If True, suppress wget output (default False).
+    
+    Returns:
+        str: The full path of the downloaded file.
+    """
+    # Ensure destination directory exists
+    os.makedirs(dest_dir, exist_ok=True)
+    # Extract filename from URL
+    filename = os.path.basename(urlparse(url).path)
+    if not filename:  # if URL ends with /, fallback
+        filename = "downloaded_file"
+    dest_path = os.path.join(dest_dir, filename)
+    # Build wget command
+    cmd = ["wget", url, "-O", dest_path]
+    if quiet:
+        cmd.insert(1, "-q")  # insert -q after wget
+    # Run wget
+    subprocess.run(cmd, check=True)
+    return dest_path
+
 
 # ========= Starter helpers =========
-def make_starter(basedir: Path, venv_py: str, label: str, cmd_line: list[str]):
+def make_starter(basedir: Path, venv_py: str, label: str, cmd_line: list[str], working_dir: str):
     """
     Create .bat/.sh starter scripts that launch the given command with the venv python.
     Resolve any relative path to absolute under basedir if it exists there.
@@ -1115,9 +1234,9 @@ def make_starter(basedir: Path, venv_py: str, label: str, cmd_line: list[str]):
     script_path = basedir / script_name
 
     if system == "windows":
-        content = cmd_line + "\r\n"
+        content = f"cd {working_dir}\r\n" + cmd_line + "\r\n"
     else:
-        content = "#!/usr/bin/env bash\n" + cmd_line + "\n"
+        content = "#!/usr/bin/env bash\n" +f"cd {working_dir}\n" + cmd_line + "\n"
 
     if DRYRUN:
         log_subtask(f"[DRYRUN] Would create starter: {script_path}")
@@ -1126,7 +1245,7 @@ def make_starter(basedir: Path, venv_py: str, label: str, cmd_line: list[str]):
     script_path.write_text(content, encoding="utf-8")
     if system != "windows":
         os.chmod(script_path, 0o755)
-    log_task(f"Created starter: {script_path}")
+    log_subtask(f"Created starter shortcut: {script_path}")
 
 def quote_arg(s: str) -> str:
     if platform.system().lower() == "windows":
@@ -1203,7 +1322,7 @@ def parse_inputfile(inputfile_path: Path) -> list[tuple[str, list[str]]]:
     return commands
 
 # ========= Mode: INSTALL =========
-def do_install(commands: list[tuple[str, list[str]]], basedir: Path):
+def do_install(commands: list[tuple[str, list[str]]], basedir: Path, fileget_mode=False):
     # Ensure git available
     require_tool("git", "Please install Git and ensure it is on your PATH.")
 
@@ -1221,7 +1340,15 @@ def do_install(commands: list[tuple[str, list[str]]], basedir: Path):
     check_python_version_available(python_version)
     # Execute commands in order
     for cmd, params in commands:
-        if cmd == CMD_PYTHON:
+        if cmd == CMD_PAUSE:
+            task_pause()
+            
+        elif cmd == CMD_PRINT:
+            
+            
+            task_print(params)
+        
+        elif cmd == CMD_PYTHON:
             # Already handled; validate only occurrence
             continue
         elif cmd == CMD_RFILTER:
@@ -1234,22 +1361,29 @@ def do_install(commands: list[tuple[str, list[str]]], basedir: Path):
             url, suffix = params
             target = (basedir / suffix).resolve()
             target = target / extract_project_name(url)
+            log_task(f"{cmd} cloning: {url}")
             git_clone(url, target)
 
         elif cmd == CMD_BASE_ICON_SHORTCUT or cmd == CMD_DESK_ICON_SHORTCUT or cmd == CMD_BASE_SCRIPT_SHORTCUT or cmd == CMD_DESK_SCRIPT_SHORTCUT :
             continue
         elif cmd == CMD_REQSCAN:
             continue
+ 
+        elif cmd == CMD_FILEGET:
+            continue
+            
+            
         else:
             abort(f"Unknown command in inputfile: {cmd}")
-    do_repair(commands, basedir,False, True)    
-    log_task("Install completed successfully.")
+ 
+    do_repair(commands=commands, basedir= basedir, repairportable= False, fileget_mode=fileget_mode, install_mode=True)
+     
 
 
 
 
 # ========= Mode: REPAIR =========
-def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportable: bool, installmode=False):
+def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportable: bool,  fileget_mode=False,install_mode=False):
     # Ensure git available (not strictly required for repair flow, but keep parity)
     require_tool("git", "Please install Git and ensure it is on your PATH.")
 
@@ -1307,21 +1441,31 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
         venv_path = basedir / venv_name
 
         # Backup or delete existing venv dir if present
-        log_task(f"Task: building venv {venv_path} for Python {python_version}")
+        log_task(f"Building venv for Python {python_version}")
         create_or_replace_venv(venv_path, python_version, BACKUP)
         venv_python = get_venv_python(venv_path)
     # Now process commands permitted in REPAIR mode: PYTHON (already handled), RFILTER, REQFILE, STARTER, REQSCAN
     rfilters: list[str] = []
     # Collect REQSCAN paths (process them after REQFILEs or as they appear? Spec: executed in order they appear. We'll execute in order.)
     for cmd, params in commands:
-        if cmd == CMD_PYTHON:
+        
+        if cmd == CMD_PAUSE:
+            if install_mode:
+                continue
+            task_pause()
+            
+        elif cmd == CMD_PRINT:
+            if install_mode:
+                continue
+            task_print()
+        elif cmd == CMD_PYTHON:
             continue
         elif cmd == CMD_RFILTER:
             rfilters = params[:]
             log_task(f"{cmd} set: {', '.join(rfilters)}")
         elif cmd == CMD_REQFILE:
             src = params[0]
-            log_task(f"{cmd} need to get: {src}")
+            log_task(f"{cmd} installing: {src}")
             if re.match(r"^https?://", src, re.I):
                 temp = download_to_temp(src)
                 pip_install_requirements(venv_python, temp, rfilters, src)
@@ -1341,7 +1485,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
                 
                 path = Path(req)
                 git_dir=path.parent
-                log_subtask(f"{cmd} found a repository at: {git_dir}")
+                log_subtask(f"{cmd} Repository found. Installing: {git_dir}")
                 
                 do_git_pull(git_dir)
                 pip_install_requirements(venv_python, req, rfilters, str(req))
@@ -1355,24 +1499,24 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
 
             shortcut_name = params[0]
             single_exec_params = params[1:]
-
+            main_executable_file=""
             resolved = []
             for i, a in enumerate(single_exec_params):
-                candidate = basedir / a
+                main_executable_file = basedir / a
                 if a.startswith("./") or a.startswith(".\\") or "/" in a or "\\" in a:
-                    # Looks like a path — resolve if it exists
-                    if candidate.exists():
-                        resolved.append(str(candidate))
+                    # Looks like a path - resolve if it exists
+                    if main_executable_file.exists():
+                        resolved.append(str(main_executable_file))
                     else:
                         resolved.append(a)
                 else:
                     # Non-path-ish argument
                     resolved.append(a)           
-            
+            exec_working_dir= str(Path(main_executable_file).parent)
             full_exec_line = " ".join([quote_arg(venv_python)] + [quote_arg(x) for x in resolved]) 
            
             if cmd == CMD_BASE_SCRIPT_SHORTCUT:
-                make_starter(basedir, venv_python, shortcut_name, full_exec_line)
+                make_starter(basedir, venv_python, shortcut_name, full_exec_line, working_dir=exec_working_dir)
 
 
  
@@ -1381,19 +1525,40 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
                 if DRYRUN:
                     print(f"DRY_RUN: would create a homedir shortcut {shortcut_name}.venv: {venv_path}, basedir: {basedir}. Exex line: {full_exec_line}")
                 else:
-                    crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=basedir,env_path=venv_path, onDesktop=False)
+                    crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=basedir,env_path=venv_path, onDesktop=False, working_dir=exec_working_dir)
             elif cmd == CMD_DESK_ICON_SHORTCUT:
                 if DRYRUN:
-                    print(f"DRY_RUN: would create a Desktop shortcut {shortcut_name}.venv: {venv_path}, basedir: {basedir}. Exex line: {full_exec_line}")
+                    log_subtask(f"DRY_RUN: would create a Desktop shortcut {shortcut_name}.venv: {venv_path}, basedir: {basedir}. Exex line: {full_exec_line}")
                 else:
-                    crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=basedir,env_path=venv_path, onDesktop=True)
+                    crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=basedir,env_path=venv_path, onDesktop=True, working_dir=exec_working_dir)
 
             log_subtask(f"{cmd} Created Starter Shortcut: {shortcut_name}")
         elif cmd in (CMD_GITCLONE, CMD_GITCLONE_ALIAS1):
             continue
+        
+        elif cmd == CMD_FILEGET:
+            if len(params) != 2:
+                abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
+            url, suffix = params
+            targetdir = (basedir / suffix).resolve()
+            quietmode= not VERBOSE
+            
+            log_task(f"{cmd} Retrieving file: {url}")
+            if fileget_mode==False:
+                log_subtask(f"{cmd} Fileget option not present. ignoring download")    
+                continue
+
+
+            if DRYRUN:
+                print(f"DRYRUM: {cmd}: would download {url}")
+            else:
+                log_subtask(f"{cmd} Storing file to: {targetdir}")
+                download_with_wget(url=url,dest_dir=targetdir, quiet=quietmode)
+            
+            
         else:
             abort(f"Unknown command in inputfile: {cmd}")
-    log_task("Virtual environment setup was finished successfully.")
+    
 
 
 
@@ -1414,7 +1579,7 @@ def main():
     parser.add_argument("-a", dest="mode", choices=["install", "repair"], required=True,
                         help="Main mode: install or repair")
     parser.add_argument("--input", required=True, help="Path to inputfile (will be coerced to UTF-8 if needed)")
-    parser.add_argument("--basedir", required=True, help="Base directory for install/repair")
+    parser.add_argument("--dir", required=True, help="Base directory for install/repair")
     parser.add_argument("--repairportable", action="store_true",
                         help="(repair only) Treat installation as portable with 'python_embedded' folder")
     parser.add_argument("--nodesktop", action="store_true",
@@ -1425,6 +1590,8 @@ def main():
                         help="Show subprocess output")
     parser.add_argument("--backup", action="store_true",
                         help="Backup existing venv (or copy python_embedded) instead of deleting/replacing")
+    parser.add_argument("--fileget", action="store_true",
+                        help="Enable Filedownloads. This can consume high band width and is disabled by default")
     args = parser.parse_args()
 
     STARTER_NO_DESKTOP = args.nodesktop
@@ -1433,19 +1600,38 @@ def main():
     BACKUP = args.backup
 
     inputfile_path = Path(args.input).expanduser().resolve()
-    basedir = Path(args.basedir).expanduser().resolve()
+    installdir = Path(args.dir).expanduser().resolve()
 
     # Basic validations
     if not inputfile_path.is_file():
         abort(f"inputfile file not found: {inputfile_path}")
 
-    log_task("=== STARTING CROSSOS PYNST ===")
-    if not basedir.exists():
+    allowed_keys={CMD_PYTHON,
+        CMD_REQFILE,
+        CMD_RFILTER,
+        CMD_GITCLONE,
+        CMD_GITCLONE_ALIAS1,
+        CMD_REQSCAN,
+        CMD_FILEGET,
+        CMD_PRINT,
+        CMD_PAUSE,
+        CMD_DESK_ICON_SHORTCUT  ,
+        CMD_DESK_SCRIPT_SHORTCUT,
+        CMD_BASE_ICON_SHORTCUT  ,
+        CMD_BASE_SCRIPT_SHORTCUT}
+    restricted_keys={CMD_PYTHON: 1, CMD_PAUSE: 10}
+    validate_file(inputfile_path,allowed_keywords=allowed_keys,limited_keywords=restricted_keys)
+    
+    fileget_text=""
+    if args.fileget:
+        fileget_text="(File Download enabled)"
+    log_task(f"=== STARTING CROSSOS PYNST {fileget_text} ===")
+    if not installdir.exists():
         if DRYRUN:
-            log_subtask(f"[DRYRUN] Would create base directory: {basedir}")
+            log_subtask(f"[DRYRUN] Would create base directory: {installdir}")
         else:
-            log_subtask(f"Creating base directory: {basedir}")
-            basedir.mkdir(parents=True, exist_ok=True)
+            log_subtask(f"Creating base directory: {installdir}")
+            installdir.mkdir(parents=True, exist_ok=True)
 
     # Parse instructions
     commands = parse_inputfile(inputfile_path)
@@ -1457,11 +1643,12 @@ def main():
 
     if args.mode == "install":
         log_task("=== INSTALL MODE ===")
-        do_install(commands, basedir)
+        do_install(commands=commands, basedir=installdir, fileget_mode=args.fileget)
+        log_subtask("--- INSTALL COMPLETED ---")
     else:
         log_task("=== REPAIR MODE ===")
-        do_repair(commands, basedir, args.repairportable)
-
+        do_repair(commands=commands, basedir= installdir, repairportable= args.repairportable, fileget_mode=args.fileget)
+        log_subtask("--- REPAIR COMPLETED ---")
 if __name__ == "__main__":
     try:
         main()

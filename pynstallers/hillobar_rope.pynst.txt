@@ -1,25 +1,25 @@
-NOTEOUT Known issues:
-NOTEOUT Windows: installs fine. faceswap looks weird and seemingly does not work right.
-NOTEOUT Linux: needs TKinter to be installed prior. i didnt try it.
-PAUSE
+PRINTIT Known issues:
+PRINTIT Windows: installs fine. faceswap looks weird and seemingly does not work right.
+PRINTIT Linux: needs TKinter to be installed prior. i didnt try it.
+PAUSEIT
 PYTHON 3.10
-GITCLON https://github.com/loscrossos/core_rope .
+CLONEIT https://github.com/loscrossos/core_rope .
 REQSCAN .
 DESKICO "Core Rope" core_rope/Rope.py
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/2d106det.onnx core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/79999_iter.pth core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/codeformer_fp16.onnx  core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/det_10g.onnx  core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/epoch_16_best.ckpt  core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/faceparser_fp16.onnx    core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/GFPGANv1.4.onnx    core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/GPEN-BFR-256.onnx    core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/GPEN-BFR-512.onnx   core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/inswapper_128.fp16.onnx    core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/occluder.onnx    core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/rd64-uni-refined.pth    core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/res50.onnx core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/scrfd_2.5g_bnkps.onnx    core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/w600k_r50.onnx    core_rope/models
-FILEGET https://github.com/Hillobar/Rope/releases/download/Sapphire/yoloface_8n.onnx    core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/2d106det.onnx core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/79999_iter.pth core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/codeformer_fp16.onnx  core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/det_10g.onnx  core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/epoch_16_best.ckpt  core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/faceparser_fp16.onnx    core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/GFPGANv1.4.onnx    core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/GPEN-BFR-256.onnx    core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/GPEN-BFR-512.onnx   core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/inswapper_128.fp16.onnx    core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/occluder.onnx    core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/rd64-uni-refined.pth    core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/res50.onnx core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/scrfd_2.5g_bnkps.onnx    core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/w600k_r50.onnx    core_rope/models
+GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/yoloface_8n.onnx    core_rope/models
 

@@ -2,6 +2,43 @@
 
 A **cross-platform** (Windows, Linux, macOS) single-file Python tool to install or rebuild&repair pretty much any python project!
 
+
+barebone: install only repo. no overwrites
+install: installs repo and files. no overwrites
+repair: repairs a venv. no overwrites
+upshine: rebuilds venv, updates codes. 
+
+
+
+modes                 | barebone| install  | repair  | upshine
+---                   | ---     |---       | ---   |---
+installs repoistories | yes     |          | no    |
+updates reposity code | no      | yes      | no    |
+Downloads files/models| yes      | | |
+creates icons         | yes     | | |
+runs python commands
+
+
+modes                 | Install Repo | update code  | download models  | create icons
+---                   | ---     |---       | ---   |---
+
+
+
+Install comfyUI: install
+repair comfy: repair
+fully update comfy: upshine
+Install visomaster but i want my own models: barebone
+install a workflow: install
+
+options:
+to overwrite: --force
+code: 
+--gitsafe (default)
+--gitlatest
+
+provide venvname:
+--venvname
+
 **Install**
 
 With one command you can (fully from zero) install a fully accelerated and configured ComfyUI/WAN/LLM or any other python project so that its ready to use: it has the latest code, ALL the cool accelerators for your Nvidia Card, can have plugins included as well as the starter shortcuts on your desktop... on all OSes!

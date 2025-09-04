@@ -1,0 +1,8 @@
+GETFILE https://raw.githubusercontent.com/loscrossos/comfy_workflows/refs/heads/main/comfy_wf_qwen_edit_safetensorGGUF.json     ComfyUI/user/default/workflows
+GETFILE https://huggingface.co/QuantStack/Qwen-Image-Edit-GGUF/resolve/main/Qwen_Image_Edit-Q6_K.gguf ComfyUI/models/unet
+REQSCAN ComfyUI/custom_nodes
+GETFILE https://huggingface.co/lightx2v/Qwen-Image-Lightning/resolve/main/Qwen-Image-Lightning-8steps-V1.1.safetensors  ComfyUI/models/loras
+GETFILE https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors ComfyUI/models/text_encoders
+GETFILE https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors  	ComfyUI/models/vae
+CLONEIT https://github.com/city96/ComfyUI-GGUF ComfyUI/custom_nodes 
+

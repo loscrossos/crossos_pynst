@@ -2,12 +2,20 @@
 
 """
 #TODO
--criticalfilecheck.
--warnfilecheck
+DONE: criticalfilecheck.
+TODO: warnfilecheck
 
 
-FILECHECK warn ComfyUI/myfile
-FILECHECK crit ComfyUI/main.py
+FILECHECK warn ComfyUI/myfile "this does not seem to be a Comfy installation"
+FILEVERIF crit ComfyUI/main.py  "Not having this file will slowdown your processes"
+
+FILECRITX
+FILEWARNX
+
+
+
+
+
 
 UseCases:
 -Install repository
@@ -31,6 +39,17 @@ All this while:
 
 """
 
+
+"""
+i need a python function that takes a string and uses the first letters of the frst 2 words (if only one word only the first 2 letters) to create a ico or png file with the letters as a logo.  (the format "png" or "ico" shall be given as a param)
+e.g. if the input is "test command" then the letters are "te co".
+make the letters rounded and nice. not blocky. 
+only need A-Z (uppercase) and digits 0-9,
+The ico or png dimensions is 256x256.
+the program shall run on windows, linux and macos and shall not have any dependencies: only standard library.
+
+any questions before coding?
+"""
 
 #***START***
 #SHORTCUTMAKER
@@ -243,7 +262,9 @@ def crossos_make_shortcut(app_name, exec_line,  installpath, env_path, onDesktop
         param_targetshortcut_path=str(get_desktop_directory())
 
     param_working_dir=working_dir
-    crossos_make_icon(app_name, '#FFFFFF', '#0066CC', placement='sbs', size=256,  path=icon_path)
+    #crossos_make_icon(app_name, '#FFFFFF', '#0066CC', placement='sbs', size=256,  path=icon_path)
+
+    crossos_make_icon_artsy(text=app_name, outfile=icon_path)
 
     if sys.platform.startswith("win"):
         create_shortcut_windows(app_name=param_app_name , python_command=param_python_command , icon_path=param_icon_path , shortcut_path=param_targetshortcut_path , working_dir=param_working_dir )
@@ -256,133 +277,50 @@ def crossos_make_shortcut(app_name, exec_line,  installpath, env_path, onDesktop
 ##***END***
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #***START***
 ###***ICONMAKER ***START***
 
-####FANCY C MAKER------------------------------
 
 
-##Create windows Ico start----
-import struct
-from typing import DefaultDict
-
-def create_c_png(path="c_icon.png"):
-    import zlib
-    size = 256
-    bg = (0, 102, 204)     # blue background RGB
-    fg = (255, 255, 255)   # white letter C RGB
-
-    # Generate raw image data (RGBA scanlines with filter type 0)
-    def pixel(x, y):
-        cx, cy = size//2, size//2
-        radius = size * 0.4
-        thickness = size * 0.18
-        dx, dy = x - cx, y - cy
-        dist = (dx*dx + dy*dy)**0.5
-        # Same "C" shape logic
-        if (radius - thickness < dist < radius and
-            (dx < radius * 0.3 or dy > radius * 0.7 or dy < -radius * 0.7)):
-            return fg
-        else:
-            return bg
-
-    raw_data = bytearray()
-    for y in range(size):
-        raw_data.append(0)  # no filter for this scanline
-        for x in range(size):
-            r, g, b = pixel(x, y)
-            raw_data.extend([r, g, b, 255])  # opaque alpha
-
-    def png_chunk(chunk_type, data):
-        chunk = chunk_type + data
-        import zlib
-        return (len(data).to_bytes(4,'big') + chunk + zlib.crc32(chunk).to_bytes(4,'big'))
-
-    # PNG signature
-    png = bytearray(b'\x89PNG\r\n\x1a\n')
-
-    # IHDR chunk
-    ihdr = (
-        size.to_bytes(4,'big') + size.to_bytes(4,'big') +
-        b'\x08' +    # bit depth 8
-        b'\x06' +    # color type 6 = RGBA
-        b'\x00' +    # compression
-        b'\x00' +    # filter
-        b'\x00'      # interlace
-    )
-    png += png_chunk(b'IHDR', ihdr)
-
-    # IDAT chunk (compressed image data)
-    png += png_chunk(b'IDAT', zlib.compress(raw_data))
-
-    # IEND chunk
-    png += png_chunk(b'IEND', b'')
-
-    with open(path, 'wb') as f:
-        f.write(png)
- 
-
-def create_c_ico(path="c_icon.ico"):
-    size = 256
-    bg_color = (4, 42, 54, 55)  # Blue background (RGBA)
-    fg_color = (255, 255, 255, 255)  # White letter C (RGBA)
-
-    # Create pixel array (BGRA order)
-    pixels = bytearray(size * size * 4)
-    cx, cy = size // 2, size // 2
-    radius = int(size * 0.4)
-    thickness = int(size * 0.18)
-    for y in range(size):
-        for x in range(size):
-            i = (y * size + x) * 4
-            dx, dy = x - cx, y - cy
-            dist = (dx*dx + dy*dy) ** 0.5
-            # Draw "C": an arc with a gap on right side
-            if (radius - thickness < dist < radius and
-                (dx < radius * 0.3 or dy > radius * 0.7 or dy < -radius * 0.7)):
-                pixels[i:i+4] = fg_color[::-1]  # BGRA
-            else:
-                pixels[i:i+4] = bg_color[::-1]  # BGRA
-
-    ico = bytearray()
-    # ICONDIR header: Reserved, Type (1=icon), Count
-    ico.extend(struct.pack('<HHH', 0, 1, 1))
-    # ICONDIRENTRY:
-    # Width, Height, ColorCount, Reserved, Planes, BitCount, SizeInBytes, ImageOffset
-    ico.extend(struct.pack('<BBBBHHII',
-        size % 256, size % 256, 0, 0, 1, 32,
-        size * size * 4 + 40 + size * size // 8,  # Size of image data + header + mask
-        6 + 16  # Offset to image data: ICONDIR(6) + ICONDIRENTRY(16)
-    ))
-
-    # BITMAPINFOHEADER: size=40, width, height*2 (XOR+AND masks), planes, bitcount, compression, sizeimage, xppm, yppm, clrused, clrimportant
-    ico.extend(struct.pack('<IIIHHIIIIII',
-        40, size, size * 2, 1, 32, 0,
-        size * size * 4, 0, 0, 0, 0
-    ))
-
-    # Pixel data: BMP stores bottom-up
-    for y in range(size-1, -1, -1):
-        start = y * size * 4
-        end = (y + 1) * size * 4
-        ico.extend(pixels[start:end])
-
-    # AND mask (1 bit per pixel; all zero = no transparency)
-    ico.extend(b'\x00' * (size * size // 8))
-
-    with open(path, 'wb') as f:
-        f.write(ico)
-
-
-
-
-###FANC YC MAKER END---------------------------
-
-
-
-
+#####ENGINE1 Blocky and pixely+++++++++++++
 import struct, zlib
-
 # Simple 8x8 rounded block font (A-Z, uppercase only)
 FONT = {
     'A': ["00111100",
@@ -738,8 +676,608 @@ def crossos_make_icon(word, fg_hex, bg_hex, placement='sbs', size=256, path='log
         raise ValueError("Format must be 'png' or 'ico'")
 
 
-###***END***
+###***END***  #####ENGINE1 Blocky and pixely+++++++++++++
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#####ENGINE2 better+++++++++++++
+
+
+
+#!/usr/bin/env python3
+# Pure-stdlib logo generator with anti-aliased vector strokes.
+# - Accepts a string, extracts first 2 letters of first 2 words (or first 2 of one word)
+# - Renders smooth, geometric stroke letters (A–Z, 0–9) at 256x256
+# - Saves as PNG or ICO (PNG-in-ICO) with configurable colors
+#
+# No external dependencies. Works on Windows, Linux, macOS.
+
+from pathlib import Path
+import math
+import struct
+import zlib
+
+
+# --------------------------
+# Utilities
+# --------------------------
+
+def clamp(x, lo, hi):
+    return lo if x < lo else hi if x > hi else x
+
+
+def lerp(a, b, t):
+    return a + (b - a) * t
+
+
+def length(x1, y1, x2, y2):
+    return math.hypot(x2 - x1, y2 - y1)
+
+
+def downsample_mask(mask_hi, w_hi, h_hi, ss):
+    """Average ss x ss blocks from grayscale hi-res mask into low-res mask."""
+    w_lo, h_lo = w_hi // ss, h_hi // ss
+    mask_lo = [0.0] * (w_lo * h_lo)
+    inv = 1.0 / (ss * ss)
+    for y in range(h_lo):
+        for x in range(w_lo):
+            s = 0.0
+            y0 = y * ss
+            x0 = x * ss
+            for yy in range(y0, y0 + ss):
+                i = yy * w_hi + x0
+                s += sum(mask_hi[i:i + ss])
+            mask_lo[y * w_lo + x] = s * inv
+    return mask_lo, w_lo, h_lo
+
+
+def compose_rgba_over(bg, fg, alpha):  # colors are (r,g,b,a) 0..255, alpha is 0..1 (from mask)
+    a_fg = (fg[3] / 255.0) * alpha
+    a_bg = bg[3] / 255.0
+    a_out = a_fg + a_bg * (1 - a_fg)
+    if a_out == 0:
+        return (0, 0, 0, 0)
+    r = int((fg[0] * a_fg + bg[0] * a_bg * (1 - a_fg)) / a_out + 0.5)
+    g = int((fg[1] * a_fg + bg[1] * a_bg * (1 - a_fg)) / a_out + 0.5)
+    b = int((fg[2] * a_fg + bg[2] * a_bg * (1 - a_fg)) / a_out + 0.5)
+    a = int(a_out * 255 + 0.5)
+    return (r, g, b, a)
+
+
+def encode_png(rgba_bytes, w, h):
+    """Minimal PNG encoder for RGBA data."""
+    stride = w * 4
+    # Prepend filter 0 to each scanline
+    raw = b"".join(b"\x00" + rgba_bytes[y * stride:(y + 1) * stride] for y in range(h))
+    comp = zlib.compress(raw)
+    def chunk(typ, data):
+        return struct.pack("!I", len(data)) + typ + data + struct.pack("!I", zlib.crc32(typ + data) & 0xffffffff)
+    ihdr = struct.pack("!2I5B", w, h, 8, 6, 0, 0, 0)  # 8-bit RGBA
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", comp) + chunk(b"IEND", b"")
+
+
+def write_png_or_ico(png_bytes, outfile: Path, size):
+    suf = outfile.suffix.lower()
+    if suf == ".png":
+        outfile.write_bytes(png_bytes)
+    elif suf == ".ico":
+        # Write ICO with a single PNG entry (supported since Vista/Win7+)
+        header = struct.pack("<3H", 0, 1, 1)  # reserved=0, type=1(icon), count=1
+        width = size if size < 256 else 0
+        height = size if size < 256 else 0
+        png_size = len(png_bytes)
+        offset = 6 + 16  # header + single dir entry
+        entry = struct.pack("<BBBBHHII",
+                            width, height,
+                            0, 0,      # colors, reserved
+                            1, 32,     # planes, bitcount
+                            png_size, offset)
+        outfile.write_bytes(header + entry + png_bytes)
+    else:
+        raise ValueError("Output file must end with .png or .ico")
+
+
+# --------------------------
+# Stroke-based vector font
+# --------------------------
+# Each glyph defined by:
+#   {
+#     "w": advance width (relative, ~1.0),
+#     "strokes": [(x1,y1,x2,y2), ...] in normalized glyph space [0..1]
+#   }
+# Coordinates follow a geometric, mono-line sans-serif style.
+# Digits included. All uppercase.
+
+def G(w, segs):  # helper to build glyph dict
+    return {"w": w, "strokes": segs}
+
+GLYPHS = {}
+
+# Basic geometric helpers for consistency
+MARGIN_X = 0.10
+MARGIN_Y = 0.10
+LEFT = MARGIN_X
+RIGHT = 1.0 - MARGIN_X
+TOP = MARGIN_Y
+BOTTOM = 1.0 - MARGIN_Y
+MID_X = 0.5
+MID_Y = 0.5
+BAR_HI = MID_Y - 0.02
+BAR_LO = MID_Y + 0.02
+
+# A
+GLYPHS["A"] = G(1.0, [
+    (LEFT, BOTTOM, MID_X, TOP),
+    (RIGHT, BOTTOM, MID_X, TOP),
+    (LEFT + 0.14, MID_Y, RIGHT - 0.14, MID_Y),
+])
+
+# B (angular bowls)
+GLYPHS["B"] = G(1.0, [
+    (LEFT, TOP, LEFT, BOTTOM),
+    (LEFT, TOP, RIGHT - 0.1, TOP + 0.15),
+    (RIGHT - 0.1, TOP + 0.15, LEFT, MID_Y),
+    (LEFT, MID_Y, RIGHT - 0.1, MID_Y + 0.15),
+    (RIGHT - 0.1, MID_Y + 0.15, LEFT, BOTTOM),
+])
+
+# C
+GLYPHS["C"] = G(1.0, [
+    (RIGHT, TOP + 0.1, LEFT + 0.15, TOP),
+    (LEFT + 0.15, TOP, LEFT, MID_Y),
+    (LEFT, MID_Y, LEFT + 0.15, BOTTOM),
+    (LEFT + 0.15, BOTTOM, RIGHT, BOTTOM - 0.1),
+])
+
+# D
+GLYPHS["D"] = G(1.0, [
+    (LEFT, TOP, LEFT, BOTTOM),
+    (LEFT, TOP, RIGHT - 0.1, MID_Y - 0.2),
+    (RIGHT - 0.1, MID_Y - 0.2, RIGHT - 0.1, MID_Y + 0.2),
+    (RIGHT - 0.1, MID_Y + 0.2, LEFT, BOTTOM),
+])
+
+# E
+GLYPHS["E"] = G(0.95, [
+    (LEFT, TOP, LEFT, BOTTOM),
+    (LEFT, TOP, RIGHT, TOP),
+    (LEFT, MID_Y, RIGHT - 0.15, MID_Y),
+    (LEFT, BOTTOM, RIGHT, BOTTOM),
+])
+
+# F
+GLYPHS["F"] = G(0.95, [
+    (LEFT, TOP, LEFT, BOTTOM),
+    (LEFT, TOP, RIGHT, TOP),
+    (LEFT, MID_Y, RIGHT - 0.2, MID_Y),
+])
+
+# G
+GLYPHS["G"] = G(1.0, [
+    (RIGHT - 0.05, TOP + 0.12, LEFT + 0.15, TOP),
+    (LEFT + 0.15, TOP, LEFT, MID_Y),
+    (LEFT, MID_Y, LEFT + 0.15, BOTTOM),
+    (LEFT + 0.15, BOTTOM, RIGHT, BOTTOM - 0.1),
+    (RIGHT, BOTTOM - 0.1, RIGHT, MID_Y + 0.05),
+    (RIGHT, MID_Y + 0.05, MID_X + 0.05, MID_Y + 0.05),
+])
+
+# H
+GLYPHS["H"] = G(1.0, [
+    (LEFT, TOP, LEFT, BOTTOM),
+    (RIGHT, TOP, RIGHT, BOTTOM),
+    (LEFT, MID_Y, RIGHT, MID_Y),
+])
+
+# I
+GLYPHS["I"] = G(0.7, [
+    (MID_X, TOP, MID_X, BOTTOM),
+    (LEFT, TOP, RIGHT, TOP),
+    (LEFT, BOTTOM, RIGHT, BOTTOM),
+])
+
+# J
+GLYPHS["J"] = G(1.0, [
+    (RIGHT - 0.2, TOP, RIGHT - 0.2, BOTTOM - 0.1),
+    (RIGHT - 0.2, BOTTOM - 0.1, RIGHT - 0.5, BOTTOM),
+    (RIGHT - 0.5, BOTTOM, LEFT + 0.15, BOTTOM - 0.1),
+])
+
+# K
+GLYPHS["K"] = G(1.0, [
+    (LEFT, TOP, LEFT, BOTTOM),
+    (RIGHT, TOP, LEFT + 0.1, MID_Y),
+    (LEFT + 0.1, MID_Y, RIGHT, BOTTOM),
+])
+
+# L
+GLYPHS["L"] = G(0.9, [
+    (LEFT, TOP, LEFT, BOTTOM),
+    (LEFT, BOTTOM, RIGHT, BOTTOM),
+])
+
+# M
+GLYPHS["M"] = G(1.1, [
+    (LEFT, BOTTOM, LEFT, TOP),
+    (LEFT, TOP, MID_X, MID_Y),
+    (MID_X, MID_Y, RIGHT, TOP),
+    (RIGHT, TOP, RIGHT, BOTTOM),
+])
+
+# O
+GLYPHS["O"] = G(1.0, [
+    (LEFT + 0.1, MID_Y, LEFT + 0.2, TOP + 0.1),
+    (LEFT + 0.2, TOP + 0.1, MID_X, TOP),
+    (MID_X, TOP, RIGHT - 0.2, TOP + 0.1),
+    (RIGHT - 0.2, TOP + 0.1, RIGHT - 0.1, MID_Y),
+    (RIGHT - 0.1, MID_Y, RIGHT - 0.2, BOTTOM - 0.1),
+    (RIGHT - 0.2, BOTTOM - 0.1, MID_X, BOTTOM),
+    (MID_X, BOTTOM, LEFT + 0.2, BOTTOM - 0.1),
+    (LEFT + 0.2, BOTTOM - 0.1, LEFT + 0.1, MID_Y),
+])
+
+# P
+GLYPHS["P"] = G(0.95, [
+    (LEFT, TOP, LEFT, BOTTOM),
+    (LEFT, TOP, RIGHT - 0.1, TOP),
+    (RIGHT - 0.1, TOP, RIGHT - 0.1, MID_Y),
+    (RIGHT - 0.1, MID_Y, LEFT, MID_Y),
+])
+
+# Q
+GLYPHS["Q"] = G(1.0, GLYPHS["O"]["strokes"] + [
+    (MID_X + 0.05, MID_Y + 0.05, RIGHT, BOTTOM),
+])
+
+# R
+GLYPHS["R"] = G(1.0, [
+    (LEFT, TOP, LEFT, BOTTOM),
+    (LEFT, TOP, RIGHT - 0.1, TOP),
+    (RIGHT - 0.1, TOP, RIGHT - 0.1, MID_Y),
+    (RIGHT - 0.1, MID_Y, LEFT, MID_Y),
+    (LEFT + 0.2, MID_Y, RIGHT, BOTTOM),
+])
+
+# S
+GLYPHS["S"] = G(1.0, [
+    (RIGHT - 0.05, TOP + 0.15, MID_X, TOP),
+    (MID_X, TOP, LEFT + 0.05, TOP + 0.15),
+    (LEFT + 0.05, TOP + 0.15, LEFT + 0.15, MID_Y - 0.05),
+    (LEFT + 0.15, MID_Y - 0.05, RIGHT - 0.15, MID_Y + 0.05),
+    (RIGHT - 0.15, MID_Y + 0.05, RIGHT - 0.05, BOTTOM - 0.15),
+    (RIGHT - 0.05, BOTTOM - 0.15, MID_X, BOTTOM),
+    (MID_X, BOTTOM, LEFT + 0.05, BOTTOM - 0.15),
+])
+
+# T
+GLYPHS["T"] = G(1.0, [
+    (LEFT, TOP, RIGHT, TOP),
+    (MID_X, TOP, MID_X, BOTTOM),
+])
+
+# U
+GLYPHS["U"] = G(1.0, [
+    (LEFT, TOP, LEFT, BOTTOM - 0.15),
+    (LEFT, BOTTOM - 0.15, MID_X, BOTTOM),
+    (MID_X, BOTTOM, RIGHT, BOTTOM - 0.15),
+    (RIGHT, BOTTOM - 0.15, RIGHT, TOP),
+])
+
+# V
+GLYPHS["V"] = G(1.0, [
+    (LEFT, TOP, MID_X, BOTTOM),
+    (MID_X, BOTTOM, RIGHT, TOP),
+])
+
+# W
+GLYPHS["W"] = G(1.2, [
+    (LEFT, TOP, LEFT + 0.25, BOTTOM),
+    (LEFT + 0.25, BOTTOM, MID_X, TOP),
+    (MID_X, TOP, RIGHT - 0.25, BOTTOM),
+    (RIGHT - 0.25, BOTTOM, RIGHT, TOP),
+])
+
+# X
+GLYPHS["X"] = G(1.0, [
+    (LEFT, TOP, RIGHT, BOTTOM),
+    (RIGHT, TOP, LEFT, BOTTOM),
+])
+
+# Y
+GLYPHS["Y"] = G(1.0, [
+    (LEFT, TOP, MID_X, MID_Y),
+    (RIGHT, TOP, MID_X, MID_Y),
+    (MID_X, MID_Y, MID_X, BOTTOM),
+])
+
+# Z
+GLYPHS["Z"] = G(1.0, [
+    (LEFT, TOP, RIGHT, TOP),
+    (RIGHT, TOP, LEFT, BOTTOM),
+    (LEFT, BOTTOM, RIGHT, BOTTOM),
+])
+
+# Digits 0–9 (geometric)
+GLYPHS["0"] = G(1.0, GLYPHS["O"]["strokes"])
+GLYPHS["1"] = G(0.8, [
+    (MID_X, TOP, MID_X, BOTTOM),
+    (MID_X - 0.2, TOP + 0.2, MID_X, TOP),
+])
+GLYPHS["2"] = G(1.0, [
+    (LEFT + 0.05, TOP + 0.15, MID_X, TOP),
+    (MID_X, TOP, RIGHT - 0.05, TOP + 0.15),
+    (RIGHT - 0.05, TOP + 0.15, RIGHT - 0.1, MID_Y),
+    (RIGHT - 0.1, MID_Y, LEFT + 0.1, BOTTOM),
+    (LEFT + 0.1, BOTTOM, RIGHT, BOTTOM),
+])
+GLYPHS["3"] = G(1.0, [
+    (LEFT + 0.05, TOP + 0.15, MID_X, TOP),
+    (MID_X, TOP, RIGHT - 0.05, TOP + 0.15),
+    (RIGHT - 0.05, TOP + 0.15, RIGHT - 0.1, MID_Y),
+    (RIGHT - 0.1, MID_Y, MID_X, MID_Y),
+    (MID_X, MID_Y, RIGHT - 0.1, MID_Y + 0.01),
+    (RIGHT - 0.1, MID_Y + 0.01, RIGHT - 0.05, BOTTOM - 0.15),
+    (RIGHT - 0.05, BOTTOM - 0.15, MID_X, BOTTOM),
+    (MID_X, BOTTOM, LEFT + 0.05, BOTTOM - 0.15),
+])
+GLYPHS["4"] = G(1.0, [
+    (RIGHT - 0.2, TOP, RIGHT - 0.2, BOTTOM),
+    (LEFT, MID_Y, RIGHT - 0.2, MID_Y),
+    (LEFT, MID_Y, RIGHT - 0.5, TOP),
+])
+GLYPHS["5"] = G(1.0, [
+    (RIGHT, TOP, LEFT, TOP),
+    (LEFT, TOP, LEFT, MID_Y),
+    (LEFT, MID_Y, RIGHT - 0.05, MID_Y),
+    (RIGHT - 0.05, MID_Y, RIGHT, BOTTOM - 0.15),
+    (RIGHT, BOTTOM - 0.15, MID_X, BOTTOM),
+    (MID_X, BOTTOM, LEFT + 0.1, BOTTOM - 0.15),
+])
+GLYPHS["6"] = G(1.0, [
+    (RIGHT - 0.05, TOP + 0.15, MID_X, TOP),
+    (MID_X, TOP, LEFT + 0.1, TOP + 0.2),
+    (LEFT + 0.1, TOP + 0.2, LEFT, MID_Y + 0.05),
+    (LEFT, MID_Y + 0.05, LEFT + 0.15, BOTTOM),
+    (LEFT + 0.15, BOTTOM, MID_X, BOTTOM),
+    (MID_X, BOTTOM, RIGHT - 0.05, BOTTOM - 0.15),
+    (RIGHT - 0.05, BOTTOM - 0.15, RIGHT - 0.1, MID_Y),
+    (RIGHT - 0.1, MID_Y, LEFT + 0.1, MID_Y),
+])
+GLYPHS["7"] = G(1.0, [
+    (LEFT, TOP, RIGHT, TOP),
+    (RIGHT, TOP, LEFT + 0.2, BOTTOM),
+])
+GLYPHS["8"] = G(1.0, [
+    (MID_X, MID_Y, LEFT + 0.1, TOP + 0.2),
+    (LEFT + 0.1, TOP + 0.2, MID_X, TOP),
+    (MID_X, TOP, RIGHT - 0.1, TOP + 0.2),
+    (RIGHT - 0.1, TOP + 0.2, MID_X, MID_Y),
+    (MID_X, MID_Y, LEFT + 0.15, BOTTOM - 0.2),
+    (LEFT + 0.15, BOTTOM - 0.2, MID_X, BOTTOM),
+    (MID_X, BOTTOM, RIGHT - 0.15, BOTTOM - 0.2),
+    (RIGHT - 0.15, BOTTOM - 0.2, MID_X, MID_Y),
+])
+GLYPHS["9"] = G(1.0, [
+    (LEFT + 0.05, BOTTOM - 0.15, MID_X, BOTTOM),
+    (MID_X, BOTTOM, RIGHT - 0.1, BOTTOM - 0.2),
+    (RIGHT - 0.1, BOTTOM - 0.2, RIGHT, MID_Y - 0.05),
+    (RIGHT, MID_Y - 0.05, RIGHT - 0.15, TOP),
+    (RIGHT - 0.15, TOP, MID_X, TOP),
+    (MID_X, TOP, LEFT + 0.05, TOP + 0.15),
+    (LEFT + 0.05, TOP + 0.15, LEFT + 0.1, MID_Y),
+    (LEFT + 0.1, MID_Y, RIGHT - 0.1, MID_Y),
+])
+
+
+# --------------------------
+# Stroke rendering (supersampled, anti-aliased)
+# --------------------------
+
+def draw_disk(mask, w, h, cx, cy, r):
+    """Draw a filled disk (antialiased via supersampling done later)."""
+    x0 = int(math.floor(cx - r))
+    x1 = int(math.ceil (cx + r))
+    y0 = int(math.floor(cy - r))
+    y1 = int(math.ceil (cy + r))
+    r2 = r * r
+    for y in range(y0, y1 + 1):
+        if y < 0 or y >= h:
+            continue
+        dy = y - cy
+        dx_max2 = r2 - dy * dy
+        if dx_max2 < 0:
+            continue
+        dx_max = math.sqrt(dx_max2)
+        x_start = int(math.floor(cx - dx_max))
+        x_end   = int(math.ceil (cx + dx_max))
+        base = y * w
+        for x in range(x_start, x_end + 1):
+            if 0 <= x < w:
+                mask[base + x] = 1.0  # binary coverage; AA comes from downsample
+
+
+def draw_thick_segment(mask, w, h, x1, y1, x2, y2, radius):
+    """Draw a thick line segment by splatting overlapping disks along the path."""
+    seg_len = math.hypot(x2 - x1, y2 - y1)
+    if seg_len == 0:
+        draw_disk(mask, w, h, x1, y1, radius)
+        return
+    # step at about radius/2 for solid coverage
+    step = max(1.0, radius * 0.5)
+    n = int(seg_len / step) + 1
+    for i in range(n + 1):
+        t = i / n
+        cx = lerp(x1, x2, t)
+        cy = lerp(y1, y2, t)
+        draw_disk(mask, w, h, cx, cy, radius)
+
+
+def render_glyphs_to_mask(letters, size, stroke_px=22, spacing=0.12, ss=4):
+    """
+    Render the given letters (string with A-Z 0-9 and spaces) to a hi-res grayscale mask (0..1),
+    using supersampling for antialiasing.
+    """
+    reduction_factor_for_second_letter=0.6
+    # Supersampled canvas
+    W = size * ss
+    H = size * ss
+    mask = [0.0] * (W * H)
+
+    # Layout: normalize glyph height to 1.0 box; scale to fit into vertical bounds
+    # Leave uniform paddings
+    pad = 0.12  # normalized padding around
+    box_h = 1.0 - 2 * pad
+    # Compute total advance width
+    advances = []
+    total_w = 0.0
+    for ch in letters:
+        if ch == " ":
+            adv = 0.35  # space width
+        else:
+            g = GLYPHS.get(ch)
+            if not g:
+                continue
+            adv = g["w"]
+        advances.append((ch, adv))
+        total_w += adv
+        total_w += spacing if ch != " " else spacing * 0.6
+    if advances:
+        total_w -= spacing  # no trailing spacing
+
+    # Scale so that glyphs fit horizontally with padding
+    scale = (1.0 - 2 * pad) / max(1e-6, total_w)
+    # Convert normalized coords to pixels
+    def NX(x): return (pad + x) * scale * size * ss
+    def NY(y): return (pad + y) * box_h * size * ss
+
+    # Baseline and centering vertically
+    # Our glyphs use [0..1] y; map TOP~pad to BOTTOM~(1-pad)
+    y_offset = (H - box_h * size * ss) * 0.5
+
+    # Stroke radius in hi-res pixels
+    radius = stroke_px * ss / 2.0
+
+    # Draw each glyph
+    x_cursor = (W - total_w * scale * size * ss) * 0.5
+    for ch, adv in advances:
+        if ch == " ":
+            x_cursor += adv * scale * size * ss + spacing * 0.6 * scale * size * ss
+            #reset radius after a space
+            radius = stroke_px * ss / 2.0
+            continue
+        g = GLYPHS.get(ch)
+        if not g:
+            x_cursor += spacing * scale * size * ss
+            continue
+        for (x1, y1, x2, y2) in g["strokes"]:
+            X1 = x_cursor + NX(x1) - NX(0)
+            X2 = x_cursor + NX(x2) - NX(0)
+            Y1 = y_offset + NY(y1)
+            Y2 = y_offset + NY(y2)
+            draw_thick_segment(mask, W, H, X1, Y1, X2, Y2, radius)
+        x_cursor += g["w"] * scale * size * ss + spacing * scale * size * ss
+        #reduce radius for the second letter
+        radius = (stroke_px*reduction_factor_for_second_letter) * ss / 2.0
+    return mask, W, H
+
+
+# --------------------------
+# Text handling & main API
+# --------------------------
+
+def extract_logo_letters(text: str) -> str:
+    words = [w for w in text.strip().split() if w]
+    if not words:
+        return "AA"  # fallback
+    if len(words) >= 2:
+        s = words[0][:2] + " " + words[1][:2]
+    else:
+        s = words[0][:2]
+    return s.upper()
+
+
+def crossos_make_icon_artsy(text: str,
+              outfile: str,
+              size: int = 256,
+              fg=(0, 0, 0, 255),
+              bg=(255, 255, 255, 255),
+              stroke_px: int = 22,
+              supersample: int = 10):
+    """
+    Create a 256x256 logo with stroke-rendered letters (A-Z, 0-9).
+    - text: input string; we use first 2 letters of first 2 words (or first 2 of one word)
+    - outfile: path ending in .png or .ico
+    - size: output size (default 256)
+    - fg, bg: RGBA tuples (0..255)
+    - stroke_px: stroke thickness in output pixels (approximate)
+    - supersample: supersampling factor for antialiasing (4 is good)
+    """
+    letters = extract_logo_letters(text)
+    # Render supersampled mask
+    mask_hi, W, H = render_glyphs_to_mask(letters, size=size, stroke_px=stroke_px, spacing=0.19, ss=supersample)
+    # Downsample to final mask
+    mask, w, h = downsample_mask(mask_hi, W, H, supersample)
+    # Compose RGBA
+    out = bytearray(w * h * 4)
+    for y in range(h):
+        for x in range(w):
+            a = clamp(mask[y * w + x], 0.0, 1.0)
+            r, g, b, a_out = compose_rgba_over(bg, fg, a)
+            i = (y * w + x) * 4
+            out[i + 0] = r
+            out[i + 1] = g
+            out[i + 2] = b
+            out[i + 3] = a_out
+    # Encode PNG
+    png_bytes = encode_png(bytes(out), w, h)
+    # Save as PNG or ICO
+    write_png_or_ico(png_bytes, Path(outfile), size)
+
+#crossos_make_icon_artsy(text="Tester Comfy Install", outfile="mylogo.ico")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#####END ENGINE2 Blocky and pixely+++++++++++++
 
 
 
@@ -841,27 +1379,48 @@ STARTER_NO_DESKTOP = False
 DRYRUN = False
 VERBOSE = False
 BACKUP = False
+OPTION_FORCE_REINSTALL =False 
 
-COLOR_TASK = "\033[32m"     # Dark green for main tasks
-COLOR_SUBTASK = "\033[94m"  # Blue for subtasks
-COLOR_ERROR = "\033[91m"    # Red for errors
-COLOR_END = "\033[0m"
 
+PURPLE = '\033[95m'
+CYAN = '\033[96m'
+DARKCYAN = '\033[36m'
+BLUE = '\033[94m'
+GREEN = '\033[92m'
+YELLOW = '\033[93m'
+RED = '\033[91m'
+BOLD = '\033[1m'
+UNDERLINE = '\033[4m'
+
+COLOR_TASK = GREEN     
+COLOR_SUBTASK = BLUE
+COLOR_JOB = DARKCYAN
+COLOR_ERROR = RED
+COLOR_END = f"\033[0m"
+
+
+
+
+CMD_COMMENTEDOUT_LINE="#"
 CMD_PYTHON="PYTHON"
 CMD_REQFILE="REQFILE"
 CMD_RFILTER="RFILTER"
-CMD_GITCLONE="GITCLON"
-CMD_GITCLONE_ALIAS1="GITCLONE"
+CMD_GITCLONE="CLONEIT"
+CMD_GITCLONE_ALIAS1="GITCLON"
 CMD_REQSCAN="REQSCAN"
-CMD_FILEGET="FILEGET"
-CMD_PRINT="NOTEOUT"
-
-CMD_PAUSE="PAUSE"
+CMD_FILEGET="GETFILE"
+CMD_PRINT="PRINTIT"
+CMD_CONFIRM_FILE_OR_ABORT="CONFIRM"
+CMD_PAUSE="PAUSEIT"
+CMD_EXEC ="EXECUTE"
 
 CMD_DESK_ICON_SHORTCUT  ="DESKICO"
 CMD_DESK_SCRIPT_SHORTCUT="DESKEXE"
 CMD_BASE_ICON_SHORTCUT  ="HOMEICO"
 CMD_BASE_SCRIPT_SHORTCUT="HOMEEXE"
+
+
+
 
 
 TOKEN_PRINT_PREFIX="Info: "
@@ -870,8 +1429,11 @@ TOKEN_PRINT_PREFIX="Info: "
 def log_task(msg: str):
     print(f"{COLOR_TASK}{msg}{COLOR_END}")
 
+def log_job(msg: str):
+    print(f"{COLOR_JOB}{msg}{COLOR_END}")
 def log_subtask(msg: str):
     print(f"{COLOR_SUBTASK}{msg}{COLOR_END}")
+
 
 def log_error(msg: str):
     print(f"{COLOR_ERROR}{msg}{COLOR_END}")
@@ -880,19 +1442,39 @@ def abort(msg: str, code: int = 1):
     log_error(msg)
     sys.exit(code)
 
+import io
 def run_cmd(cmd, cwd=None) -> int:
     """
     Run a command with optional output suppression.
     Returns the process return code.
     """
     if DRYRUN:
-        log_subtask(f"[DRYRUN] Would run: {' '.join(map(str, cmd))} (cwd={cwd or os.getcwd()})")
+        log_job(f"[DRYRUN] Would run: {' '.join(map(str, cmd))} (cwd={cwd or os.getcwd()})")
         return 0
     if VERBOSE:
-        return subprocess.call(cmd, cwd=cwd)
+        return subprocess.call(cmd, cwd=cwd )
     else:
-        with subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
-            stdout, stderr = p.communicate()
+# Silent run with forced ASCII environment to handle Unicode issues
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "ascii:replace"  # Force ASCII, replace invalid chars
+        env["LANG"] = "C"  # Set locale to C to avoid Unicode issues
+        try:
+            p = subprocess.run(
+                cmd,
+                cwd=cwd,
+                stdout=subprocess.DEVNULL,  # Discard output
+                stderr=subprocess.DEVNULL,  # Discard errors
+                env=env  # Use modified environment
+            )
+            return p.returncode
+        except Exception:
+            # Fallback to basic run if environment tweak fails
+            p = subprocess.run(
+                cmd,
+                cwd=cwd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
             return p.returncode
 
 def ensure_utf8(path: Path):
@@ -943,14 +1525,14 @@ def validate_file(path, allowed_keywords, limited_keywords):
 
             # Rule 1: line must start with allowed keyword
             if first_word not in allowed_keywords:
-                log_subtask(f"FilePrecheck: on Inputfile Error at line {lineno}: '{first_word}' is not an allowed keyword.")
+                log_job(f"FilePrecheck: on Inputfile Error at line {lineno}: '{first_word}' is not an allowed keyword (is not in allowed list for this version).")
                 sys.exit(1)
 
             # Rule 2: count restricted keywords
             if first_word in limited_keywords:
                 counts[first_word] += 1
                 if counts[first_word] > limited_keywords[first_word]:
-                    log_subtask(f"FilePrecheck:  on Inputfile: Error at line {lineno}: '{first_word}' "
+                    log_job(f"FilePrecheck:  on Inputfile: Error at line {lineno}: '{first_word}' "
                           f"exceeds allowed limit ({limited_keywords[first_word]}).")
                     sys.exit(1)
 
@@ -985,15 +1567,15 @@ def create_or_replace_venv(venv_path: Path, version: str, do_backup: bool):
         if do_backup:
             bak = unique_bak_name(venv_path)
             if DRYRUN:
-                log_subtask(f"[DRYRUN] Would move existing venv '{venv_path}' -> '{bak}'")
+                log_job(f"[DRYRUN] Would move existing venv '{venv_path}' -> '{bak}'")
             else:
-                log_subtask(f"Backing up existing venv to: {bak}")
+                log_job(f"Backing up existing venv to: {bak}")
                 venv_path.rename(bak)
         else:
             if DRYRUN:
-                log_subtask(f"[DRYRUN] Would delete existing venv: {venv_path}")
+                log_job(f"[DRYRUN] Would delete existing venv: {venv_path}")
             else:
-                log_subtask(f"Deleting existing venv: {venv_path}")
+                log_job(f"Deleting existing venv: {venv_path}")
                 shutil.rmtree(venv_path, ignore_errors=True)
 
     # Create new venv
@@ -1001,7 +1583,7 @@ def create_or_replace_venv(venv_path: Path, version: str, do_backup: bool):
     rc = run_cmd(cmd)
     if rc != 0:
         abort(f"Failed to create virtual environment at {venv_path}")
-    log_subtask(f"Created virtual environment: {venv_path}")
+    log_job(f"Created virtual environment: {venv_path}")
 
     # Ensure pip present and up-to-date
     vpy = get_venv_python(venv_path)
@@ -1021,7 +1603,7 @@ def is_venv_empty(python_exec: str) -> bool:
     """
     if DRYRUN:
         # In dry-run, pretend it's empty to let flow proceed without side-effects.
-        log_subtask("[DRYRUN] Assuming environment is empty for checks.")
+        log_job("[DRYRUN] Assuming environment is empty for checks.")
         return True
     try:
         out = subprocess.check_output([python_exec, "-m", "pip", "freeze"], stderr=subprocess.STDOUT)
@@ -1036,7 +1618,7 @@ def uninstall_all_packages(python_exec: str):
     """
     log_task("Uninstalling all packages from current environment (pip freeze -> pip uninstall -y) ...")
     if DRYRUN:
-        log_subtask("[DRYRUN] Would run 'pip freeze' and uninstall all packages.")
+        log_job("[DRYRUN] Would run 'pip freeze' and uninstall all packages.")
         return
     try:
         out = subprocess.check_output([python_exec, "-m", "pip", "freeze"], stderr=subprocess.STDOUT)
@@ -1045,7 +1627,7 @@ def uninstall_all_packages(python_exec: str):
 
     pkgs = [l.strip() for l in out.decode("utf-8", errors="replace").splitlines() if l.strip()]
     if not pkgs:
-        log_subtask("No packages installed.")
+        log_job("No packages installed.")
         return
     # Write to temp file to avoid command-line length limits
     with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8", suffix=".txt") as tf:
@@ -1103,9 +1685,9 @@ def download_to_temp(url: str) -> Path:
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".txt")
     os.close(tmp_fd)
     p = Path(tmp_path)
-    log_subtask(f"Downloading {url} -> {p}")
+    log_job(f"Downloading to tempfile: {p}")
     if DRYRUN:
-        log_subtask("[DRYRUN] Skipping actual download.")
+        log_job("[DRYRUN] Skipping actual download.")
         # Create an empty file to keep flow consistent
         p.write_text("", encoding="utf-8")
         return p
@@ -1119,12 +1701,13 @@ def do_git_pull( repo_path: Path):
     if not repo_path.exists():
         abort(f"Directory to perform git pull not found: {repo_path}")
     if DRYRUN:
-        log_subtask(f"[DRYRUN] Would update repository: git pull (cwd: {repo_path})")
+        log_job(f"[DRYRUN] Would update repository: git pull (cwd: {repo_path})")
     else:
+        log_job(f"Updating git repository: {repo_path}")
         rc = run_cmd(["git", "pull"], repo_path)
         if rc != 0:
             abort(f"Failed to update repository (broken or not a repo) from: {str(repo_path)}")
-    log_subtask(f"Updated git repository: {repo_path}")
+        
 
 
 def pip_install_requirements(python_exec: str, req_file: Path, current_filters: list[str], fail_label: str):
@@ -1139,10 +1722,14 @@ def pip_install_requirements(python_exec: str, req_file: Path, current_filters: 
     message_append=""
     if current_filters:
        message_append=f"(package filter applied and installing as temp file)" 
-    log_subtask(f"Installing requirements from file{message_append}: {req_file}")
-    rc = run_cmd([python_exec, "-m", "pip", "install", "-r", str(filtered)])
-    if rc != 0:
-        abort(f"Failed to install requirements from: {fail_label}")
+       
+    if DRYRUN:
+        log_job(f"[DRYRUN] Would Install  requirements from file{message_append}: {req_file}")
+    else:
+        log_job(f"Installing requirements from file{message_append}: {req_file}")
+        rc = run_cmd([python_exec, "-m", "pip", "install", "-r", str(filtered)])
+        if rc != 0:
+            abort(f"Failed to install requirements from: {fail_label}")
 
 # ========= Git helpers =========
 
@@ -1156,23 +1743,44 @@ def extract_project_name(url):
     project_name = url.split('/')[-1]
     return project_name
 
+import os, shutil, stat
+from pathlib import Path
+
+def _force_remove_readonly(func, path, excinfo):
+    """Clear readonly flag and reattempt removal"""
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+def remove_dir_force(target: Path):
+    if DRYRUN:
+        log_job(f"[DRYRUN] Would remove existing directory before clone: {target}")
+    else:
+        if target.exists():
+            if target.is_file() or target.is_symlink():
+                target.unlink()
+            else:
+                shutil.rmtree(target, onerror=_force_remove_readonly)
+
+
 def git_clone(url: str, target: Path):
     target.parent.mkdir(parents=True, exist_ok=True)
+
     if target.exists():
-        # If exists, assume it's the expected repo already — remove it to re-clone.
-        if DRYRUN:
-            log_subtask(f"[DRYRUN] Would remove existing directory before clone: {target}")
+        if OPTION_FORCE_REINSTALL:
+            remove_dir_force(target)
         else:
-            shutil.rmtree(target, ignore_errors=True)
+            log_job(f"Repository already exists. Not cloning...")
+            return       
+    log_job(f"Cloning repo...")
     rc = run_cmd(["git", "clone", url, str(target)])
     if rc != 0:
         abort(f"Git clone failed for {url}")
-    log_subtask(f"Cloned to: {target}")
+    log_job(f"Cloned to: {target}")
 
 
 def task_print(text_tokens):
     text = " ".join([quote_arg(x) for x in text_tokens])
-    print(f"{COLOR_SUBTASK}{TOKEN_PRINT_PREFIX}{COLOR_END}{text}")
+    print(f"{COLOR_JOB}{TOKEN_PRINT_PREFIX}{COLOR_END}{text}")
  
 def task_pause():
     """
@@ -1182,11 +1790,190 @@ def task_pause():
     try:
         input("Press Enter to continue or Ctrl+C to abort... ")
     except KeyboardInterrupt:
-        print("\nAborted by user.")
+        abort("\nAborted by user.")
         raise  # re-raise so caller can handle it if needed
 
 
 # ========= Download helpers =========
+
+import urllib.request
+
+def get_file_size(url: str, verbose: bool = False):
+    """
+    Returns the file size from server as (size_in_bytes, human_readable_str).
+    If Content-Length is missing, returns (None, None).
+    """
+    try:
+        req = urllib.request.Request(url, method="HEAD")
+        with urllib.request.urlopen(req) as response:
+            length = response.getheader("Content-Length")
+
+        if length is None:
+            if verbose:
+                log_job(f"Server did not provide Content-Length for {url}")
+            return None, None
+
+        size_bytes = int(length)
+        size_str = human_readable_size(size_bytes)
+        return size_bytes, size_str
+
+    except Exception as e:
+        if verbose:
+            log_job(f"Error fetching file size for {url}: {e}")
+        return None, None
+
+
+def human_readable_size(num_bytes: int) -> str:
+    """Convert bytes into human-readable string with appropriate unit."""
+    for unit in ["bytes", "KB", "MB", "GB", "TB"]:
+        if num_bytes < 1024.0 or unit == "TB":
+            return f"{num_bytes:.2f} {unit}" if unit != "bytes" else f"{num_bytes} {unit}"
+        num_bytes /= 1024.0
+
+
+
+import os
+import urllib.request
+import sys
+
+def check_if_file_is_aready_downloaded(url: str, filepath: str, verbose=False) -> bool:
+    """
+    Check if the file at 'filepath' exists and is complete compared to the file size on the server.
+    Returns True if the file exists and matches the server size, else False.
+    """
+    try:
+        # Send a HEAD request
+        req = urllib.request.Request(url, method="HEAD")
+        with urllib.request.urlopen(req) as response:
+            length = response.getheader("Content-Length")
+        
+        if length is None:
+            # Can't determine size from server
+            if verbose:
+                log_job(f"file does not exist on server: {url}")
+            return os.path.exists(filepath)
+        
+        expected_size = int(length)
+        if os.path.exists(filepath):
+            actual_size = os.path.getsize(filepath)
+            if actual_size != expected_size:
+                log_job(f"Size on server different than file size! Server Size: {expected_size}. actual size {actual_size}")
+            return actual_size == expected_size
+        else:
+            return False
+    except Exception as e:
+        log_job(f"check_file error: {e}")
+        return False
+
+import sys
+import urllib.request
+
+def human_readable_size(num_bytes: int) -> str:
+    """Convert bytes into human-readable string with appropriate unit."""
+    for unit in ["bytes", "KB", "MB", "GB", "TB"]:
+        if num_bytes < 1024.0 or unit == "TB":
+            return f"{num_bytes:.2f} {unit}" if unit != "bytes" else f"{num_bytes} {unit}"
+        num_bytes /= 1024.0
+
+def download_file_old(url: str, filepath: str, show_progress: bool = False):
+    """
+    Download the file from 'url' into 'filepath'.
+    If show_progress is True, displays a progress bar with human-readable file size.
+    """
+
+    total_human = None  # will be set once we know total size
+
+    def progress(block_num, block_size, total_size):
+        nonlocal total_human
+        if not show_progress:
+            return
+        if total_size > 0 and total_human is None:
+            total_human = human_readable_size(total_size)
+
+        downloaded = block_num * block_size
+        percent = downloaded * 100 / total_size if total_size > 0 else 0
+        percent = min(100, percent)
+        bar_len = 50
+        filled_len = int(bar_len * percent // 100)
+        bar = '=' * filled_len + '-' * (bar_len - filled_len)
+
+        downloaded_human = human_readable_size(min(downloaded, total_size))
+        sys.stdout.write(f"\r[{bar}] {percent:6.2f}% ({downloaded_human} / {total_human})      ")
+        sys.stdout.flush()
+        if downloaded >= total_size:
+            print()  # newline after completion
+
+    try:
+        urllib.request.urlretrieve(url, filepath, reporthook=progress)
+    except Exception as e:
+        abort(f"download_file error: {e}")
+
+
+def download_file(url: str, filepath: str, show_progress: bool = False):
+    """
+    Download the file from 'url' into 'filepath'.
+    Decodes %20 etc. in the local filename, but leaves the URL untouched.
+    If show_progress is True, displays a progress bar with human-readable file size.
+    """
+    total_human = None  # will be set once we know total size
+
+    def progress(block_num, block_size, total_size):
+        nonlocal total_human
+        if not show_progress:
+            return
+        if total_size > 0 and total_human is None:
+            total_human = human_readable_size(total_size)
+
+        downloaded = block_num * block_size
+        percent = downloaded * 100 / total_size if total_size > 0 else 0
+        percent = min(100, percent)
+        bar_len = 50
+        filled_len = int(bar_len * percent // 100)
+        bar = '=' * filled_len + '-' * (bar_len - filled_len)
+
+        downloaded_human = human_readable_size(min(downloaded, total_size))
+        sys.stdout.write(f"\r[{bar}] {percent:6.2f}% ({downloaded_human} / {total_human})")
+        sys.stdout.flush()
+        if downloaded >= total_size:
+            print()  # newline after completion
+
+    try:
+        # decode the filename part only
+        dirpath, fname = os.path.split(filepath)
+        fname = urllib.parse.unquote(fname)
+        filepath_decoded = os.path.join(dirpath, fname)
+
+        urllib.request.urlretrieve(url, filepath_decoded, reporthook=progress)
+        return filepath_decoded
+    except Exception as e:
+        abort(f"download_file error: {e}")
+        return None
+
+#url = "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/wan2.2-i2v-rapid-aio-example.json"
+#path = "d:/resources/"
+#download_only_if_not_existent(url, path, verbose=False, show_progress=True)
+
+
+
+from urllib.parse import urlparse
+import os
+
+def download_only_if_not_existent(url, directory_target_path, verbose=False, show_progress=True):
+    # Ensure target directory exists
+    os.makedirs(directory_target_path, exist_ok=True)
+
+    # Extract filename from URL
+    filename = os.path.basename(urlparse(url).path)
+    filepath = os.path.join(directory_target_path, filename)
+
+    if check_if_file_is_aready_downloaded(url, filepath, verbose=True):
+        log_job(f"File already exists and is complete: {filepath}")
+    else:
+        download_file(url, filepath, show_progress=True)
+
+
+
+
 import subprocess
 import os
 from urllib.parse import urlparse
@@ -1220,13 +2007,13 @@ def download_with_wget(url: str, dest_dir: str, quiet: bool = True) -> str:
 
 
 # ========= Starter helpers =========
-def make_starter(basedir: Path, venv_py: str, label: str, cmd_line: list[str], working_dir: str):
+def crossos_make_starter_script(basedir: Path, venv_py: str, label: str, cmd_line: list[str], working_dir: str):
     """
     Create .bat/.sh starter scripts that launch the given command with the venv python.
     Resolve any relative path to absolute under basedir if it exists there.
     """
     if STARTER_NO_DESKTOP:
-        log_subtask("STARTER creation skipped due to --nodesktop.")
+        log_job("STARTER creation skipped due to --nodesktop.")
         return
 
     system = platform.system().lower()
@@ -1239,13 +2026,13 @@ def make_starter(basedir: Path, venv_py: str, label: str, cmd_line: list[str], w
         content = "#!/usr/bin/env bash\n" +f"cd {working_dir}\n" + cmd_line + "\n"
 
     if DRYRUN:
-        log_subtask(f"[DRYRUN] Would create starter: {script_path}")
+        log_job(f"[DRYRUN] Would create starter: {script_path}")
         return
 
     script_path.write_text(content, encoding="utf-8")
     if system != "windows":
         os.chmod(script_path, 0o755)
-    log_subtask(f"Created starter shortcut: {script_path}")
+    log_job(f"Created starter shortcut: {script_path}")
 
 def quote_arg(s: str) -> str:
     if platform.system().lower() == "windows":
@@ -1295,9 +2082,9 @@ def backup_embedded_folder(embedded_dir: Path):
     """
     bak = unique_bak_name(embedded_dir)
     if DRYRUN:
-        log_subtask(f"[DRYRUN] Would copy '{embedded_dir}' -> '{bak}'")
+        log_job(f"[DRYRUN] Would copy '{embedded_dir}' -> '{bak}'")
         return
-    log_subtask(f"Creating backup of embedded Python at: {bak}")
+    log_job(f"Creating backup of embedded Python at: {bak}")
     shutil.copytree(embedded_dir, bak)
 
 # ========= Parsing ifile =========
@@ -1321,8 +2108,51 @@ def parse_inputfile(inputfile_path: Path) -> list[tuple[str, list[str]]]:
         commands.append((cmd, params))
     return commands
 
+
+
+
+from pathlib import Path
+import re
+
+def get_dir_name(path: Path, root_fallback: str = "ROOT") -> str:
+    """
+    Returns the name of the directory for the given path.
+    - If path is root (C: or /), returns root_fallback.
+    - Ensures the name is alphanumeric, underscores, or dashes.
+    Works on Windows, Linux, macOS.
+    """
+    path = path.resolve()
+
+    # Handle root directories
+    if path == path.anchor:
+        return root_fallback
+
+    name = path.name
+    # Keep only alphanumeric, underscore, dash
+    clean_name = re.sub(r'[^0-9A-Za-z_-]', '', name)
+
+    # If nothing left after cleaning, use fallback
+    return clean_name if clean_name else root_fallback
+
+
+ 
+
+import os
+def confirm_file_exists(path: str):
+    """
+    Check if the given path exists (file or directory).
+    If not, prints an error message.
+    """
+    if os.path.exists(path):
+        return True
+    else:
+        abort(f"CONFIRM: Fatal Error: required path does not exist. Check failed. -> {path}")
+        return False
+
+
+
 # ========= Mode: INSTALL =========
-def do_install(commands: list[tuple[str, list[str]]], basedir: Path, fileget_mode=False):
+def do_install(commands: list[tuple[str, list[str]]], basedir: Path, fileget_mode=False, custom_venv_name=None, comfyui_portable_mode=False):
     # Ensure git available
     require_tool("git", "Please install Git and ensure it is on your PATH.")
 
@@ -1342,14 +2172,9 @@ def do_install(commands: list[tuple[str, list[str]]], basedir: Path, fileget_mod
     for cmd, params in commands:
         if cmd == CMD_PAUSE:
             task_pause()
-            
-        elif cmd == CMD_PRINT:
-            
-            
+        elif cmd == CMD_PRINT: 
             task_print(params)
-        
         elif cmd == CMD_PYTHON:
-            # Already handled; validate only occurrence
             continue
         elif cmd == CMD_RFILTER:
             continue
@@ -1368,29 +2193,36 @@ def do_install(commands: list[tuple[str, list[str]]], basedir: Path, fileget_mod
             continue
         elif cmd == CMD_REQSCAN:
             continue
- 
         elif cmd == CMD_FILEGET:
             continue
-            
-            
+        elif cmd == CMD_COMMENTEDOUT_LINE:
+            continue
+        elif cmd == CMD_CONFIRM_FILE_OR_ABORT:
+            path_to_confirm = params[0]
+            target = (basedir / path_to_confirm).resolve()
+            confirm_file_exists(target)
+        elif cmd == CMD_EXEC:
+            continue
         else:
             abort(f"Unknown command in inputfile: {cmd}")
- 
-    do_repair(commands=commands, basedir= basedir, repairportable= False, fileget_mode=fileget_mode, install_mode=True)
+    do_repair(commands=commands, basedir= basedir, repairportable= False, fileget_mode=fileget_mode, install_mode=True, custom_venv_name=custom_venv_name)
      
 
 
 
 
 # ========= Mode: REPAIR =========
-def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportable: bool,  fileget_mode=False,install_mode=False):
+def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportable: bool,  fileget_mode=False,install_mode=False, custom_venv_name=None):
     # Ensure git available (not strictly required for repair flow, but keep parity)
     require_tool("git", "Please install Git and ensure it is on your PATH.")
 
     embedded_dir = basedir / "python_embedded"
     is_embedded_present = embedded_dir.is_dir()
-    venv_path=""
+    venv_path=None
+    venv_python=None
+    venv_name=None
     # Validate portable/manual selection
+    #GET teh python to be used
     if repairportable:
         if not is_embedded_present:
             abort("this is not a portable or manual installation")
@@ -1402,22 +2234,17 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
             if not Path(alt).exists():
                 abort("Embedded Python executable not found in 'python_embedded'.")
             python_exec = alt
-
         # Optional backup of python_embedded
         if BACKUP:
             backup_embedded_folder(embedded_dir)
-
         # Uninstall all packages in embedded environment
         uninstall_all_packages(python_exec)
-
         # Verify empty
         if not is_venv_empty(python_exec):
             abort("Embedded environment is not empty after uninstall. Aborting.")
-
         # requirements installs will proceed using this python_exec
         venv_python = python_exec
         venv_path=embedded_dir
-
     else:
         if is_embedded_present:
             # The presence of python_embedded suggests it's a portable install; user should pass --repairportable
@@ -1425,12 +2252,13 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
         # Build/rebuild a new venv with the requested/implicit Python version
         # Determine PYTHON version from commands (default 3.12 if absent)
         python_version = DEFAULT_PYTHON_VERSION
+        create_venv_mode=False
         for cmd, params in commands:
             if cmd == CMD_PYTHON:
                 python_version = params[0]
+                create_venv_mode=True
                 break
         check_python_version_available(python_version)
-
         # OS-specific venv name
         system = platform.system().lower()
         venv_name = {
@@ -1438,26 +2266,34 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
             "linux": ".env_linux",
             "darwin": ".env_macos"
         }.get(system, ".env")
+        
+        if custom_venv_name is not None:
+            venv_name=custom_venv_name
+        
         venv_path = basedir / venv_name
-
         # Backup or delete existing venv dir if present
-        log_task(f"Building venv for Python {python_version}")
-        create_or_replace_venv(venv_path, python_version, BACKUP)
+        if create_venv_mode:
+            log_task(f"Building venv for Python {python_version}")
+            create_or_replace_venv(venv_path, python_version, BACKUP)
         venv_python = get_venv_python(venv_path)
+        
+        exec_test_path =Path(venv_python)
+        if not exec_test_path.exists():
+            abort(f"FATAL: could not find python venv. This does not exist: {venv_python}")
+        
+
     # Now process commands permitted in REPAIR mode: PYTHON (already handled), RFILTER, REQFILE, STARTER, REQSCAN
     rfilters: list[str] = []
     # Collect REQSCAN paths (process them after REQFILEs or as they appear? Spec: executed in order they appear. We'll execute in order.)
-    for cmd, params in commands:
-        
+    for cmd, params in commands:        
         if cmd == CMD_PAUSE:
             if install_mode:
                 continue
             task_pause()
-            
         elif cmd == CMD_PRINT:
             if install_mode:
                 continue
-            task_print()
+            task_print(params)
         elif cmd == CMD_PYTHON:
             continue
         elif cmd == CMD_RFILTER:
@@ -1472,92 +2308,120 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
             else:
                 pip_install_requirements(venv_python, (basedir / src) if not Path(src).is_file() else Path(src), rfilters, src)
         elif cmd == CMD_REQSCAN:
+            #TODO: maybe its more efficient to collect all reqscans and copy all reqfiles and concatenate them into once command as in: pip install -r fiole1.txt -r file2.txt -r file3.txt
+            
             # Search one level below basedir/suffix for requirements.txt (plus root-of-suffix)
             scan_root = (basedir / params[0]).resolve()
             if not scan_root.exists():
-                log_subtask(f"{cmd} path does not exist, skipping: {scan_root}")
+                log_job(f"{cmd} path does not exist, skipping: {scan_root}")
                 continue
             log_task(f"{cmd} searching for requirements in: {scan_root} (depth=1)")
             reqs = scan_requirements_one_level(scan_root)
             if not reqs:
-                log_subtask("No requirements.txt files found at the specified depth.")
+                log_job("No requirements.txt files found at the specified depth.")
             for req in reqs:
-                
                 path = Path(req)
                 git_dir=path.parent
-                log_subtask(f"{cmd} Repository found. Installing: {git_dir}")
-                
+                log_subtask(f"{cmd} Repository found: {git_dir}")
                 do_git_pull(git_dir)
                 pip_install_requirements(venv_python, req, rfilters, str(req))
         elif  cmd == CMD_BASE_ICON_SHORTCUT or cmd == CMD_DESK_ICON_SHORTCUT or cmd == CMD_BASE_SCRIPT_SHORTCUT or cmd == CMD_DESK_SCRIPT_SHORTCUT :
             
-            
-            
-            
             if not params:
                 abort(f"{cmd} requires parameters.")
-
             shortcut_name = params[0]
-            single_exec_params = params[1:]
-            main_executable_file=""
-            resolved = []
-            for i, a in enumerate(single_exec_params):
-                main_executable_file = basedir / a
-                if a.startswith("./") or a.startswith(".\\") or "/" in a or "\\" in a:
-                    # Looks like a path - resolve if it exists
-                    if main_executable_file.exists():
-                        resolved.append(str(main_executable_file))
-                    else:
-                        resolved.append(a)
-                else:
-                    # Non-path-ish argument
-                    resolved.append(a)           
-            exec_working_dir= str(Path(main_executable_file).parent)
-            full_exec_line = " ".join([quote_arg(venv_python)] + [quote_arg(x) for x in resolved]) 
-           
-            if cmd == CMD_BASE_SCRIPT_SHORTCUT:
-                make_starter(basedir, venv_python, shortcut_name, full_exec_line, working_dir=exec_working_dir)
+            fill_gap=" "
+            base_name=get_dir_name(basedir)
+            shortcut_name= f"{shortcut_name}{fill_gap}{base_name}{fill_gap}{venv_name}"
 
-
- 
+            exec_working_dir, full_exec_line, main_executable_file, executable_as_list = get_executable_line_and_dir(basedir, venv_python, params) 
             
+            if cmd == CMD_BASE_SCRIPT_SHORTCUT:
+                crossos_make_starter_script(basedir, venv_python, shortcut_name, full_exec_line, working_dir=exec_working_dir)
             elif cmd == CMD_BASE_ICON_SHORTCUT:
                 if DRYRUN:
-                    print(f"DRY_RUN: would create a homedir shortcut {shortcut_name}.venv: {venv_path}, basedir: {basedir}. Exex line: {full_exec_line}")
+                    log_job(f"DRY_RUN: would create a homedir shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{basedir}'. Exec line: '{full_exec_line}'")
                 else:
                     crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=basedir,env_path=venv_path, onDesktop=False, working_dir=exec_working_dir)
             elif cmd == CMD_DESK_ICON_SHORTCUT:
                 if DRYRUN:
-                    log_subtask(f"DRY_RUN: would create a Desktop shortcut {shortcut_name}.venv: {venv_path}, basedir: {basedir}. Exex line: {full_exec_line}")
+                    log_job(f"DRY_RUN: would create a Desktop shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{basedir}'. Exec line: '{full_exec_line}'")
                 else:
                     crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=basedir,env_path=venv_path, onDesktop=True, working_dir=exec_working_dir)
 
-            log_subtask(f"{cmd} Created Starter Shortcut: {shortcut_name}")
-        elif cmd in (CMD_GITCLONE, CMD_GITCLONE_ALIAS1):
-            continue
+            log_job(f"{cmd} Created Starter Shortcut: '{shortcut_name}'")
+        elif cmd == CMD_EXEC:
+             
+            if not params:
+                abort(f"{cmd} requires parameters.")
+            
+            single_exec_params = params
+            
+            exec_working_dir, full_exec_line, main_executable_file, params_as_list = get_executable_line_and_dir(basedir, venv_python, params) 
+            
+            log_task(f"Executing command: {full_exec_line}")
+                
+            exec_command= [venv_python]
+            exec_command = exec_command+  params_as_list  
+            if DRYRUN:
+                log_job(f"{cmd}: would run: {exec_command}")
+            else:
+                rc = run_cmd(exec_command, exec_working_dir)
+                if rc != 0:
+                    abort(f"Failed to exec command: {str(exec_command)}")
+            
         
+            
+        elif cmd in (CMD_GITCLONE, CMD_GITCLONE_ALIAS1):
+            continue        
         elif cmd == CMD_FILEGET:
             if len(params) != 2:
                 abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
             url, suffix = params
             targetdir = (basedir / suffix).resolve()
-            quietmode= not VERBOSE
+            
             
             log_task(f"{cmd} Retrieving file: {url}")
             if fileget_mode==False:
-                log_subtask(f"{cmd} Fileget option not present. ignoring download")    
+                log_job(f"{cmd} Fileget option not present. ignoring download")    
                 continue
-
-
             if DRYRUN:
-                print(f"DRYRUM: {cmd}: would download {url}")
+                log_job(f"DRYRUM: {cmd}: would download {url}")
             else:
-                log_subtask(f"{cmd} Storing file to: {targetdir}")
-                download_with_wget(url=url,dest_dir=targetdir, quiet=quietmode)
-            
-            
+                log_job(f"{cmd} Storing file to: {targetdir}")
+                #url = "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/wan2.2-i2v-rapid-aio-example.json"
+                #path = "d:/resources/"
+                download_only_if_not_existent(url=url, directory_target_path=targetdir, verbose=VERBOSE, show_progress=True)
+                #quietmode= not VERBOSE
+                #download_with_wget(url=url,dest_dir=targetdir, quiet=quietmode)
+        elif cmd == CMD_COMMENTEDOUT_LINE:
+            continue
+        elif cmd == CMD_CONFIRM_FILE_OR_ABORT:
+            path_to_confirm = params[0]
+            target = (basedir / path_to_confirm).resolve()
+            confirm_file_exists(target)
         else:
             abort(f"Unknown command in inputfile: {cmd}")
+
+def get_executable_line_and_dir(basedir, venv_python, params):
+    single_exec_params = params[1:]
+    main_executable_file=""
+    params_as_list = []
+    for i, a in enumerate(single_exec_params):
+        main_executable_temp = basedir / a
+        if a.startswith("./") or a.startswith(".\\") or "/" in a or "\\" in a:
+            # Looks like a path - resolve if it exists
+            if main_executable_temp.exists():
+                params_as_list.append(str(main_executable_temp))
+                main_executable_file = main_executable_temp
+            else:
+                params_as_list.append(a)
+        else:
+                    # Non-path-ish argument
+            params_as_list.append(a)
+    exec_working_dir= str(Path(main_executable_file).parent)
+    full_exec_line = " ".join([quote_arg(venv_python)] + [quote_arg(x) for x in params_as_list])
+    return exec_working_dir,full_exec_line, main_executable_file, params_as_list
     
 
 
@@ -1573,25 +2437,17 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
 def main():
     global STARTER_NO_DESKTOP, DRYRUN, VERBOSE, BACKUP
 
-    parser = argparse.ArgumentParser(
-        description="Install or repair a Python project based on a instruction file."
-    )
-    parser.add_argument("-a", dest="mode", choices=["install", "repair"], required=True,
-                        help="Main mode: install or repair")
+    parser = argparse.ArgumentParser(description="Install or repair a Python project based on a instruction file.")
+    parser.add_argument("-a", dest="mode", choices=["install", "repair"], required=True,help="Main mode: install or repair")
     parser.add_argument("--input", required=True, help="Path to inputfile (will be coerced to UTF-8 if needed)")
     parser.add_argument("--dir", required=True, help="Base directory for install/repair")
-    parser.add_argument("--repairportable", action="store_true",
-                        help="(repair only) Treat installation as portable with 'python_embedded' folder")
-    parser.add_argument("--nodesktop", action="store_true",
-                        help="Do not create STARTER scripts")
-    parser.add_argument("--dryrun", action="store_true",
-                        help="Simulate actions without changing files or installing")
-    parser.add_argument("--verbose", action="store_true",
-                        help="Show subprocess output")
-    parser.add_argument("--backup", action="store_true",
-                        help="Backup existing venv (or copy python_embedded) instead of deleting/replacing")
-    parser.add_argument("--fileget", action="store_true",
-                        help="Enable Filedownloads. This can consume high band width and is disabled by default")
+    parser.add_argument("--repairportable", action="store_true", help="(repair only) Treat installation as portable with 'python_embedded' folder")
+    parser.add_argument("--nodesktop", action="store_true", help="Do not create STARTER scripts")
+    parser.add_argument("--dryrun", action="store_true", help="Simulate actions without changing files or installing")
+    parser.add_argument("--verbose", action="store_true",help="Show subprocess output")
+    parser.add_argument("--backup", action="store_true", help="Backup existing venv (or copy python_embedded) instead of deleting/replacing")
+    parser.add_argument("--fileget", action="store_true",help="Enable Filedownloads. This can consume high band width and is disabled by default")
+    parser.add_argument("--venv",type=str,default=None,help="Name of the custom virtual environment")
     args = parser.parse_args()
 
     STARTER_NO_DESKTOP = args.nodesktop
@@ -1602,11 +2458,11 @@ def main():
     inputfile_path = Path(args.input).expanduser().resolve()
     installdir = Path(args.dir).expanduser().resolve()
 
-    # Basic validations
+    # Basic validations for compatibility
     if not inputfile_path.is_file():
         abort(f"inputfile file not found: {inputfile_path}")
-
-    allowed_keys={CMD_PYTHON,
+    allowed_keys={
+        CMD_PYTHON,
         CMD_REQFILE,
         CMD_RFILTER,
         CMD_GITCLONE,
@@ -1618,9 +2474,14 @@ def main():
         CMD_DESK_ICON_SHORTCUT  ,
         CMD_DESK_SCRIPT_SHORTCUT,
         CMD_BASE_ICON_SHORTCUT  ,
-        CMD_BASE_SCRIPT_SHORTCUT}
+        CMD_BASE_SCRIPT_SHORTCUT,
+        CMD_COMMENTEDOUT_LINE,
+        CMD_CONFIRM_FILE_OR_ABORT,
+        CMD_EXEC
+        }
     restricted_keys={CMD_PYTHON: 1, CMD_PAUSE: 10}
     validate_file(inputfile_path,allowed_keywords=allowed_keys,limited_keywords=restricted_keys)
+    
     
     fileget_text=""
     if args.fileget:
@@ -1628,9 +2489,9 @@ def main():
     log_task(f"=== STARTING CROSSOS PYNST {fileget_text} ===")
     if not installdir.exists():
         if DRYRUN:
-            log_subtask(f"[DRYRUN] Would create base directory: {installdir}")
+            log_job(f"[DRYRUN] Would create base directory: {installdir}")
         else:
-            log_subtask(f"Creating base directory: {installdir}")
+            log_job(f"Creating base directory: {installdir}")
             installdir.mkdir(parents=True, exist_ok=True)
 
     # Parse instructions
@@ -1643,12 +2504,12 @@ def main():
 
     if args.mode == "install":
         log_task("=== INSTALL MODE ===")
-        do_install(commands=commands, basedir=installdir, fileget_mode=args.fileget)
-        log_subtask("--- INSTALL COMPLETED ---")
+        do_install(commands=commands, basedir=installdir, custom_venv_name=args.venv, fileget_mode=args.fileget)
+        log_job("--- INSTALL COMPLETED ---")
     else:
         log_task("=== REPAIR MODE ===")
-        do_repair(commands=commands, basedir= installdir, repairportable= args.repairportable, fileget_mode=args.fileget)
-        log_subtask("--- REPAIR COMPLETED ---")
+        do_repair(commands=commands, basedir= installdir, repairportable= args.repairportable, custom_venv_name=args.venv, fileget_mode=args.fileget)
+        log_job("--- REPAIR COMPLETED ---")
 if __name__ == "__main__":
     try:
         main()

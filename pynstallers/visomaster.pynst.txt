@@ -1,8 +1,8 @@
-NOTEOUT This will install core Visomaster with pyton 3.10.
-NOTEOUT It is possible to install with python 3.12 but on windows it needs the visual studio dev console with cmake installed. 
-NOTEOUT Before using this installation you have to run the model downloader.
-PAUSE
+PRINTIT This will install core Visomaster with pyton 3.10.
+PRINTIT It is possible to install with python 3.12 but on windows it needs the visual studio dev console with cmake installed. 
+PRINTIT Before using this installation you have to run the model downloader.
+PAUSEIT
 PYTHON 3.10
-GITCLON https://github.com/loscrossos/core_visomaster .
+CLONEIT https://github.com/loscrossos/core_visomaster .
 REQSCAN .
 DESKICO "Core Visomaster" core_visomaster/appvisomaster.py

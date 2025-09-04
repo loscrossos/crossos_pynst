@@ -1,0 +1,14 @@
+PRINTIT Models source: https://huggingface.co/QuantStack/Wan2.2-S2V-14B-GGUF
+GETFILE https://huggingface.co/QuantStack/Wan2.2-S2V-14B-GGUF/resolve/main/workflow/QuantStack%20-%20Wan2.2%20S2V%20(GGUF).json                     ComfyUI/user/default/workflows
+
+GETFILE https://huggingface.co/QuantStack/Wan2.2-S2V-14B-GGUF/resolve/main/Wan2.2-S2V-14B-Q2_K.gguf                                                 ComfyUI/models/unet/wan
+# GETFILE https://huggingface.co/QuantStack/Wan2.2-S2V-14B-GGUF/resolve/main/Wan2.2-S2V-14B-Q5_K_S.gguf                                             ComfyUI/models/unet/wan
+GETFILE https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank128_bf16.safetensors           ComfyUI/models/loras/WanVideo/Lightx2v
+GETFILE https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/audio_encoders/wav2vec2_large_english_fp16.safetensors ComfyUI/models/audio_encoders
+# GETFILE https://huggingface.co/city96/umt5-xxl-encoder-gguf/resolve/main/umt5-xxl-encoder-Q4_K_S.gguf                                             ComfyUI/models/text_encoders
+GETFILE https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors   ComfyUI/models/text_encoders
+GETFILE https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors                            ComfyUI/models/vae/wanvideo
+CLONEIT https://github.com/city96/ComfyUI-GGUF                                                                                                      ComfyUI/custom_nodes
+CLONEIT https://github.com/cubiq/ComfyUI_essentials                                                                                                 ComfyUI/custom_nodes
+CLONEIT https://github.com/melMass/comfy_mtb                                                                                                        ComfyUI/custom_nodes
+REQSCAN ComfyUI/custom_nodes

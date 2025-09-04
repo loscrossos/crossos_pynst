@@ -1,0 +1,6 @@
+GETFILE https://raw.githubusercontent.com/loscrossos/comfy_workflows/refs/heads/main/comfy_wf_wan2.2-ti2v-aio_uncensored.json ComfyUI/user/default/workflows
+GETFILE https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/v8/wan2.2-i2v-rapid-aio-v8.safetensors ComfyUI/models/checkpoints
+GETFILE https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/v8/wan2.2-t2v-rapid-aio-v8.1.safetensors ComfyUI/models/checkpoints
+GETFILE https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/clip_vision/clip_vision_h.safetensors ComfyUI/models/clip_vision
+CLONEIT https://github.com/city96/ComfyUI-GGUF ComfyUI/custom_nodes
+REQSCAN ComfyUI/custom_nodes

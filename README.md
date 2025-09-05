@@ -1,4 +1,4 @@
-# **CrossOS Pynst: your all-in-one Iron-Clad Python Installation Manager**
+# CrossOS Pynst: your all-in-one Iron-Clad Python Installation Manager
 
 A **cross-platform** (Windows, Linux, macOS) single-file Python tool to install or rebuild&repair pretty much any python project!
 

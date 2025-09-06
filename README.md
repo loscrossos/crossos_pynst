@@ -2,31 +2,46 @@
 
 A **cross-platform** (Windows, Linux, macOS) single-file Python tool to install or rebuild&repair pretty much any python project!
 
+Elements:
 
-barebone: install only repo. no overwrites
-install: installs repo and files. no overwrites
-repair: repairs a venv. no overwrites
-upshine: rebuilds venv, updates codes. 
-
-CMD_COMMENTEDOUT_LINE="#" 
-CMD_PYTHON="PYTHON"
-CMD_REQFILE="REQFILE"
-CMD_RFILTER="RFILTER"
-CMD_GITCLONE="CLONEIT"
-CMD_GITCLONE_ALIAS1="GITCLON"
-CMD_REQSCAN="REQSCAN"
-CMD_FILEGET="GETFILE"
-CMD_PRINT="PRINTIT"
-CMD_CONFIRM_FILE_OR_ABORT="CONFIRM"
-CMD_PAUSE="PAUSEIT"
-CMD_EXEC ="EXECUTE"
-
-CMD_DESK_ICON_SHORTCUT  ="DESKICO"
-CMD_DESK_SCRIPT_SHORTCUT="DESKEXE"
-CMD_BASE_ICON_SHORTCUT  ="HOMEICO"
-CMD_BASE_SCRIPT_SHORTCUT="HOMEEXE"
+Mode element  |  venv                     | repo                  | code in repo      | files
+---           | ---                       | ---                   | ---               | ---
+**Sensitive** | created if not existent   | cloned if not existent| untouched         | Downloaded if not existent
+**Install**   | created if not existent   | cloned if not existent| code update (no reset)       | Downloaded if not existent 
+**Rebuild**   | deleted if exists,rebuilt | cloned if not exists  | reset and updated | Check for integrity and redownload 
 
 
+
+TODO:
+on gitclone: 
+reset it first by running:
+git restore .
+
+
+install: installs repo and files. Only installs venv, files and repos if they dont exist. Updates code of existing repos.
+repair: rebuilds a venv. deletes and reinstalls repos to latest code.
+
+
+
+commmand                            | sensitive                       | INSTALL   | REPAIR
+---                                 | ---                             |---        | ---   
+CMD_COMMENTEDOUT_LINE="#"           | comment                         | <- same |<- same
+CMD_PYTHON=    "PYTHON"             | set python version              | <- same |<- same
+CMD_REQFILE=   "REQFILE"            | install req file                | <- same |<- same
+##*CMD_REQPACKAGE="REQWHEEL"        | install req wheel or module     | <- same |<- same
+CMD_RFILTER="RFILTER"               | Filter out packages (from files and wheel)  | <- same |<- same
+CMD_GITCLONE="CLONEIT"              | clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
+CMD_GITCLONE_ALIAS1="GITCLON"       |   | <- same |<- same
+CMD_REQSCAN="REQSCAN"               |   | <- same |<- same
+CMD_FILEGET="GETFILE"               |   | <- same |<- same
+CMD_PRINT="PRINTIT"                 |   | <- same |<- same
+CMD_CONFIRM_FILE_OR_ABORT="CONFIRM" |   | <- same |<- same
+CMD_PAUSE="PAUSEIT"                 |   | <- same |<- same
+CMD_EXEC ="EXECUTE"                 |   | <- same |<- same
+CMD_DESK_ICON_SHORTCUT  ="DESKICO"  |   | <- same |<- same
+CMD_DESK_SCRIPT_SHORTCUT="DESKEXE"  |   | <- same |<- same
+CMD_BASE_ICON_SHORTCUT  ="HOMEICO"  |    | <- same |<- same
+CMD_BASE_SCRIPT_SHORTCUT="HOMEEXE"  |   | <- same |<- same
 
 
 

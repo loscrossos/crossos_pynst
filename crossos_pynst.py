@@ -1400,24 +1400,24 @@ COLOR_END = f"\033[0m"
 
 
 
-
-CMD_COMMENTEDOUT_LINE="#"
-CMD_PYTHON="PYTHON"
-CMD_REQFILE="REQFILE"
-CMD_RFILTER="RFILTER"
-CMD_GITCLONE="CLONEIT"
-CMD_GITCLONE_ALIAS1="GITCLON"
-CMD_REQSCAN="REQSCAN"
-CMD_FILEGET="GETFILE"
-CMD_PRINT="PRINTIT"
-CMD_CONFIRM_FILE_OR_ABORT="CONFIRM"
-CMD_PAUSE="PAUSEIT"
-CMD_EXEC ="EXECUTE"
-
-CMD_DESK_ICON_SHORTCUT  ="DESKICO"
-CMD_DESK_SCRIPT_SHORTCUT="DESKEXE"
-CMD_BASE_ICON_SHORTCUT  ="HOMEICO"
-CMD_BASE_SCRIPT_SHORTCUT="HOMEEXE"
+Comand                              | safe                  | install               |       repair        
+---                                 | ---                   | ---                   | ---
+CMD_COMMENTEDOUT_LINE="#"           | coment line           | <-same as safe        | <-same as safe
+CMD_PYTHON="PYTHON"                 | ensures python version| <-same as safe        | <-same as safe
+CMD_REQFILE="REQFILE"               | installs requirement file    | same  | same
+CMD_RFILTER="RFILTER"               | from here on the packages defined are removed from req files and install comamds                  | same  | same
+CMD_GITCLONE="CLONEIT"              |  clones a repo (only if it does not exist)                 |                   |
+CMD_GITCLONE_ALIAS1="GITCLON"       |                   |                   |
+CMD_REQSCAN="REQSCAN"               |                   |                   |
+CMD_FILEGET="GETFILE"               |                   |                   |
+CMD_PRINT="PRINTIT"                 |                   |                   |
+CMD_CONFIRM_FILE_OR_ABORT="CONFIRM" |                   |                   |
+CMD_PAUSE="PAUSEIT"                 |                   |                   |
+CMD_EXEC ="EXECUTE"                 |                   |                   |
+CMD_DESK_ICON_SHORTCUT  ="DESKICO"  |                   |                   |
+CMD_DESK_SCRIPT_SHORTCUT="DESKEXE"  |                   |                   |
+CMD_BASE_ICON_SHORTCUT  ="HOMEICO"  |                   |                   |
+CMD_BASE_SCRIPT_SHORTCUT="HOMEEXE"  |                   |                   |
 
 
 

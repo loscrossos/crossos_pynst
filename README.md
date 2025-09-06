@@ -8,6 +8,27 @@ install: installs repo and files. no overwrites
 repair: repairs a venv. no overwrites
 upshine: rebuilds venv, updates codes. 
 
+CMD_COMMENTEDOUT_LINE="#" 
+CMD_PYTHON="PYTHON"
+CMD_REQFILE="REQFILE"
+CMD_RFILTER="RFILTER"
+CMD_GITCLONE="CLONEIT"
+CMD_GITCLONE_ALIAS1="GITCLON"
+CMD_REQSCAN="REQSCAN"
+CMD_FILEGET="GETFILE"
+CMD_PRINT="PRINTIT"
+CMD_CONFIRM_FILE_OR_ABORT="CONFIRM"
+CMD_PAUSE="PAUSEIT"
+CMD_EXEC ="EXECUTE"
+
+CMD_DESK_ICON_SHORTCUT  ="DESKICO"
+CMD_DESK_SCRIPT_SHORTCUT="DESKEXE"
+CMD_BASE_ICON_SHORTCUT  ="HOMEICO"
+CMD_BASE_SCRIPT_SHORTCUT="HOMEEXE"
+
+
+
+
 
 
 modes                 | barebone| install  | repair  | upshine

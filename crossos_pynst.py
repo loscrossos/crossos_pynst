@@ -1739,6 +1739,21 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
             abort(f"Failed to install requirements from: {fail_label}")
 
 
+def pip_run_command(python_exec: str, pip_command: list[str], fail_label: str="Pip command failed"):
+    """
+    run a command through pip.
+    """
+
+       
+    if DRYRUN:
+        log_job(f"[DRYRUN] Would run: pip {pip_command}")
+    else:
+        log_job(f"Running pip command: pip {pip_command}")
+        rc = run_cmd([python_exec, "-m", "pip" ]+pip_command)
+        if rc != 0:
+            abort(f"Failed to run pip command: {fail_label}")
+
+
 
 # ========= Git helpers =========
 
@@ -2212,6 +2227,8 @@ def do_install(commands: list[tuple[str, list[str]]], basedir: Path, fileget_mod
             confirm_file_exists(target)
         elif cmd == CMD_EXEC:
             continue
+        elif cmd ==CMD_PIPEXEC:
+            continue
         else:
             abort(f"Unknown command in inputfile: {cmd}")
     do_repair(commands=commands, basedir= basedir, repairportable= False, fileget_mode=fileget_mode, install_mode=True, custom_venv_name=custom_venv_name)
@@ -2368,18 +2385,10 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
              
             if not params:
                 abort(f"{cmd} requires parameters.")
-            
-            #single_exec_params = params
-            
+                        
             exec_working_dir, full_exec_line, main_executable_file, params_as_list = get_executable_line_and_dir(basedir, venv_python, params)
-
-            print(f"execdir: {exec_working_dir}")
-            print(f"full_exec_line: {full_exec_line}")
-            print(f"main_executable_file: {main_executable_file}")
-            print(f"params_as_list: {params_as_list}")
-            print(f"params original: {params}")
-            
-            log_task(f"{cmd}: Executing command: '{full_exec_line}', CWD='{exec_working_dir}'")
+ 
+            log_task(f"{cmd}: command: '{full_exec_line}', CWD='{exec_working_dir}'")
                 
             exec_command= [venv_python] +  [main_executable_file] + params_as_list 
             if DRYRUN:
@@ -2410,6 +2419,11 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
                 download_only_if_not_existent(url=url, directory_target_path=targetdir, verbose=VERBOSE, show_progress=True)
                 #quietmode= not VERBOSE
                 #download_with_wget(url=url,dest_dir=targetdir, quiet=quietmode)
+        elif cmd ==CMD_PIPEXEC:
+            if len(params) < 1:
+                abort(f"{cmd} requires at least one parameter")
+            pip_run_command(venv_python, pip_command= params)
+            
         elif cmd == CMD_COMMENTEDOUT_LINE:
             continue
         elif cmd == CMD_CONFIRM_FILE_OR_ABORT:
@@ -2481,11 +2495,14 @@ def main():
     allowed_keys={
         CMD_PYTHON,
         CMD_PIPREQFILE,
+        CMD_PIPREQPACKAGE,
+        CMD_PIPEXEC,
         CMD_RFILTER,
         CMD_GITCLONE,
         CMD_GITCLONE_ALIAS1,
         CMD_REQSCAN,
         CMD_GETFILE,
+        CMD_GETBLOB,
         CMD_PRINT,
         CMD_PAUSE,
         CMD_SHORTCUT_DESK_ICON  ,

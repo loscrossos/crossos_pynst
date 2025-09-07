@@ -41,12 +41,12 @@ CMD_SHORTCUT_BASE_SCRIPT= "HOMEEXE" #|   | <- same |<- same
 
 
 
--TODO: code CMD_PIPEXEC. all arguments are fed into pip. RFILTER does not affect this command. sensoinstall does not safeguard this command.
-  -TODO: issue warnin if running CMD_PIPEXEC in sensoinstall mode, also warn ifruning at all as this is advanced. disabled in settings.
--TODO: code CMD_REQPACKAGE. It has has arguments of several wheels, which are passed to "pip install". RFILTER does not affect this command.
--TODO:on CMD_GITCLONE in rebuild mode: reset it first by running: git restore 
--TODO: implement CMD_GETBLOB, a copy of CMD_GETFILE
--TODO: implement --noblob. info: CMD_GETBLOB is a copy of getfile but meant for large files which are not mandatory (like models). a switch can be provided to not load these files. 
+x-TODO: code CMD_PIPEXEC. all arguments are fed into pip. RFILTER does not affect this command. sensoinstall does not safeguard this command.
+  --TODO: issue warnin if running CMD_PIPEXEC in sensoinstall mode, also warn ifruning at all as this is advanced. disabled in settings.
+--TODO: code CMD_REQPACKAGE. It has has arguments of several wheels, which are passed to "pip install". RFILTER does not affect this command.
+--TODO:on CMD_GITCLONE in rebuild mode: reset it first by running: git restore 
+--TODO: implement CMD_GETBLOB, a copy of CMD_GETFILE
+--TODO: implement --noblob. info: CMD_GETBLOB is a copy of getfile but meant for large files which are not mandatory (like models). a switch can be provided to not load these files. 
 
 #docu: CMD_REQSCAN command is affected by RFILTER
 

@@ -4,10 +4,11 @@
 #TODO
 DONE: criticalfilecheck.
 TODO: warnfilecheck
+TODO: 
 
 
-FILECHECK warn ComfyUI/myfile "this does not seem to be a Comfy installation"
-FILEVERIF crit ComfyUI/main.py  "Not having this file will slowdown your processes"
+FILECHECK crit ComfyUI/myfile "this does not seem to be a Comfy installation"
+FILECHECK warn ComfyUI/main.py  "Not having this file will slowdown your processes"
 
 FILECRITX
 FILEWARNX
@@ -1555,8 +1556,13 @@ def check_python_version_available(version: str):
     if rc != 0:
         abort(f"Python {version} not available on this system. Please install it and try again.")
 
-def create_or_replace_venv(venv_path: Path, version: str, do_backup: bool):
+def ensure_venv_exists(venv_path: Path, version: str, do_backup: bool, replace_existing_venv=False):
     """
+    ensure a venv exists:
+    if venv exists:
+        if backup is needed make one
+        if the venv is to be replaced delete it.
+    
     Create a new venv at venv_path using the specified Python version.
     If venv_path exists:
       - if BACKUP: rename to .bak (unique suffix)
@@ -1570,12 +1576,14 @@ def create_or_replace_venv(venv_path: Path, version: str, do_backup: bool):
             else:
                 log_job(f"Backing up existing venv to: {bak}")
                 venv_path.rename(bak)
-        else:
+        if replace_existing_venv:
             if DRYRUN:
                 log_job(f"[DRYRUN] Would delete existing venv: {venv_path}")
             else:
                 log_job(f"Deleting existing venv: {venv_path}")
                 shutil.rmtree(venv_path, ignore_errors=True)
+        else:
+            return
 
     # Create new venv
     cmd = python_cmd_for_version(version) + ["-m", "venv", str(venv_path)]
@@ -1585,11 +1593,11 @@ def create_or_replace_venv(venv_path: Path, version: str, do_backup: bool):
     log_job(f"Created virtual environment: {venv_path}")
 
     # Ensure pip present and up-to-date
-    vpy = get_venv_python(venv_path)
+    vpy = get_theoretic_venv_python_executable(venv_path)
     run_cmd([vpy, "-m", "ensurepip", "--upgrade"])
     #run_cmd([vpy, "-m", "pip", "install", "--upgrade", "pip", "wheel", "setuptools"])
 
-def get_venv_python(venv_path: Path) -> str:
+def get_theoretic_venv_python_executable(venv_path: Path) -> str:
     system = platform.system().lower()
     if system == "windows":
         return str(venv_path / "Scripts" / "python.exe")
@@ -1709,7 +1717,7 @@ def do_git_pull( repo_path: Path):
         
 
 
-def pip_install_requirements(python_exec: str, req_file: Path, current_filters: list[str], fail_label: str):
+def pip_install_requirements_file(python_exec: str, req_file: Path, current_filters: list[str], fail_label: str):
     """
     Install requirements from a (possibly remote) file with RFILTER applied.
     """
@@ -1729,6 +1737,8 @@ def pip_install_requirements(python_exec: str, req_file: Path, current_filters: 
         rc = run_cmd([python_exec, "-m", "pip", "install", "-r", str(filtered)])
         if rc != 0:
             abort(f"Failed to install requirements from: {fail_label}")
+
+
 
 # ========= Git helpers =========
 
@@ -2255,7 +2265,6 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
         for cmd, params in commands:
             if cmd == CMD_PYTHON:
                 python_version = params[0]
-                create_venv_mode=True
                 break
         check_python_version_available(python_version)
         # OS-specific venv name
@@ -2273,9 +2282,12 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
         # Backup or delete existing venv dir if present
         if create_venv_mode:
             log_task(f"Building venv for Python {python_version}")
-            create_or_replace_venv(venv_path, python_version, BACKUP)
-        venv_python = get_venv_python(venv_path)
-        
+            ensure_venv_exists(venv_path, python_version, BACKUP)
+        venv_python = get_theoretic_venv_python_executable(venv_path)
+
+        if os.path.exists(venv_python)==False:
+            abort(f"PYthon executable was not found at {venv_python}")
+
         exec_test_path =Path(venv_python)
         if not exec_test_path.exists():
             abort(f"FATAL: could not find python venv. This does not exist: {venv_python}")
@@ -2303,9 +2315,9 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
             log_task(f"{cmd} installing: {req_file_to_install}")
             if re.match(r"^https?://", req_file_to_install, re.I):
                 downloaded_temp_fie = download_to_temp(req_file_to_install)
-                pip_install_requirements(venv_python, downloaded_temp_fie, rfilters, req_file_to_install)
+                pip_install_requirements_file(python_exec=venv_python, req_file=downloaded_temp_fie, current_filters=rfilters, fail_label=req_file_to_install)
             else:
-                pip_install_requirements(venv_python, (basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install), rfilters, req_file_to_install)
+                pip_install_requirements_file(python_exec=venv_python, req_file=(basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install),current_filters= rfilters, fail_label=req_file_to_install)
         elif cmd == CMD_REQSCAN:
             #TODO: maybe its more efficient to collect all reqscans and copy all reqfiles and concatenate them into once command as in: pip install -r fiole1.txt -r file2.txt -r file3.txt
             
@@ -2323,7 +2335,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
                 git_dir=path.parent
                 log_subtask(f"{cmd} Repository found: {git_dir}")
                 do_git_pull(git_dir)
-                pip_install_requirements(venv_python, req, rfilters, str(req))
+                pip_install_requirements_file(python_exec=venv_python, req_file=req, current_filters=rfilters, fail_label=str(req))
         elif  cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :
             
             if not params:
@@ -2354,11 +2366,11 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
             if not params:
                 abort(f"{cmd} requires parameters.")
             
-            single_exec_params = params
+            #single_exec_params = params
             
-            exec_working_dir, full_exec_line, main_executable_file, params_as_list = get_executable_line_and_dir(basedir, venv_python, params) 
-            
-            log_task(f"Executing command: {full_exec_line}")
+            exec_working_dir, full_exec_line, main_executable_file, params_as_list = get_executable_line_and_dir(basedir, venv_python, params)
+            print(params)
+            log_task(f"{cmd}: Executing command: {full_exec_line}")
                 
             exec_command= [venv_python]
             exec_command = exec_command+  params_as_list  

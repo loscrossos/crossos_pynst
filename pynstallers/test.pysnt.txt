@@ -1,0 +1,2 @@
+PYTHON 3.13
+EXECUTE ./test.py test.py

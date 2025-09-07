@@ -1399,26 +1399,25 @@ COLOR_ERROR = RED
 COLOR_END = f"\033[0m"
 
 
-
-Comand                              | safe                  | install               |       repair        
----                                 | ---                   | ---                   | ---
-CMD_COMMENTEDOUT_LINE="#"           | coment line           | <-same as safe        | <-same as safe
-CMD_PYTHON="PYTHON"                 | ensures python version| <-same as safe        | <-same as safe
-CMD_REQFILE="REQFILE"               | installs requirement file    | same  | same
-CMD_RFILTER="RFILTER"               | from here on the packages defined are removed from req files and install comamds                  | same  | same
-CMD_GITCLONE="CLONEIT"              |  clones a repo (only if it does not exist)                 |                   |
-CMD_GITCLONE_ALIAS1="GITCLON"       |                   |                   |
-CMD_REQSCAN="REQSCAN"               |                   |                   |
-CMD_FILEGET="GETFILE"               |                   |                   |
-CMD_PRINT="PRINTIT"                 |                   |                   |
-CMD_CONFIRM_FILE_OR_ABORT="CONFIRM" |                   |                   |
-CMD_PAUSE="PAUSEIT"                 |                   |                   |
-CMD_EXEC ="EXECUTE"                 |                   |                   |
-CMD_DESK_ICON_SHORTCUT  ="DESKICO"  |                   |                   |
-CMD_DESK_SCRIPT_SHORTCUT="DESKEXE"  |                   |                   |
-CMD_BASE_ICON_SHORTCUT  ="HOMEICO"  |                   |                   |
-CMD_BASE_SCRIPT_SHORTCUT="HOMEEXE"  |                   |                   |
-
+CMD_COMMENTEDOUT_LINE=    "#"       #| comment                         | <- same |<- same
+CMD_PYTHON=               "PYTHON"  #| set python version              | <- same |<- same
+CMD_PIPREQFILE=           "REQFILE" #| install req file                | <- same |<- same
+CMD_PIPREQPACKAGE=        "REQWHLS" #| install req wheel or module     | <- same |<- same
+CMD_PIPEXEC=        "RAWPIPCOMMAND" #| Advanced: Raw command line passed to pip.      | <- same |<- same
+CMD_RFILTER=              "RFILTER" #| Filter out packages (from files and wheel)  | <- same |<- same
+CMD_GITCLONE=             "CLONEIT" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
+CMD_GITCLONE_ALIAS1=      "GITCLON" #|   | <- same |<- same
+CMD_REQSCAN=              "REQSCAN" #|   | <- same |<- same
+CMD_GETFILE=              "GETFILE" #|   | <- same |<- same
+CMD_GETBLOB=              "GETBLOB" #|   | <- same |<- same
+CMD_PRINT=                "PRINTIT" #|   | <- same |<- same
+CMD_CONFIRM_FILE_OR_ABORT="CONFIRM" #|   | <- same |<- same
+CMD_PAUSE=                "PAUSEIT" #|   | <- same |<- same
+CMD_EXEC =                "EXECUTE" #|   | <- same |<- same
+CMD_SHORTCUT_DESK_ICON  = "DESKICO" #|   | <- same |<- same
+CMD_SHORTCUT_DESK_SCRIPT= "DESKEXE" #|   | <- same |<- same
+CMD_SHORTCUT_BASE_ICON  = "HOMEICO" #|   | <- same |<- same
+CMD_SHORTCUT_BASE_SCRIPT= "HOMEEXE" #|   | <- same |<- same
 
 
 
@@ -2178,7 +2177,7 @@ def do_install(commands: list[tuple[str, list[str]]], basedir: Path, fileget_mod
             continue
         elif cmd == CMD_RFILTER:
             continue
-        elif cmd == CMD_REQFILE:
+        elif cmd == CMD_PIPREQFILE:
             continue
         elif cmd in (CMD_GITCLONE, CMD_GITCLONE_ALIAS1):
             if len(params) != 2:
@@ -2189,11 +2188,11 @@ def do_install(commands: list[tuple[str, list[str]]], basedir: Path, fileget_mod
             log_task(f"{cmd} cloning: {url}")
             git_clone(url, target)
 
-        elif cmd == CMD_BASE_ICON_SHORTCUT or cmd == CMD_DESK_ICON_SHORTCUT or cmd == CMD_BASE_SCRIPT_SHORTCUT or cmd == CMD_DESK_SCRIPT_SHORTCUT :
+        elif cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :
             continue
         elif cmd == CMD_REQSCAN:
             continue
-        elif cmd == CMD_FILEGET:
+        elif cmd == CMD_GETFILE:
             continue
         elif cmd == CMD_COMMENTEDOUT_LINE:
             continue
@@ -2299,14 +2298,14 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
         elif cmd == CMD_RFILTER:
             rfilters = params[:]
             log_task(f"{cmd} set: {', '.join(rfilters)}")
-        elif cmd == CMD_REQFILE:
-            src = params[0]
-            log_task(f"{cmd} installing: {src}")
-            if re.match(r"^https?://", src, re.I):
-                temp = download_to_temp(src)
-                pip_install_requirements(venv_python, temp, rfilters, src)
+        elif cmd == CMD_PIPREQFILE:
+            req_file_to_install = params[0]
+            log_task(f"{cmd} installing: {req_file_to_install}")
+            if re.match(r"^https?://", req_file_to_install, re.I):
+                downloaded_temp_fie = download_to_temp(req_file_to_install)
+                pip_install_requirements(venv_python, downloaded_temp_fie, rfilters, req_file_to_install)
             else:
-                pip_install_requirements(venv_python, (basedir / src) if not Path(src).is_file() else Path(src), rfilters, src)
+                pip_install_requirements(venv_python, (basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install), rfilters, req_file_to_install)
         elif cmd == CMD_REQSCAN:
             #TODO: maybe its more efficient to collect all reqscans and copy all reqfiles and concatenate them into once command as in: pip install -r fiole1.txt -r file2.txt -r file3.txt
             
@@ -2325,7 +2324,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
                 log_subtask(f"{cmd} Repository found: {git_dir}")
                 do_git_pull(git_dir)
                 pip_install_requirements(venv_python, req, rfilters, str(req))
-        elif  cmd == CMD_BASE_ICON_SHORTCUT or cmd == CMD_DESK_ICON_SHORTCUT or cmd == CMD_BASE_SCRIPT_SHORTCUT or cmd == CMD_DESK_SCRIPT_SHORTCUT :
+        elif  cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :
             
             if not params:
                 abort(f"{cmd} requires parameters.")
@@ -2336,14 +2335,14 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
 
             exec_working_dir, full_exec_line, main_executable_file, executable_as_list = get_executable_line_and_dir(basedir, venv_python, params) 
             
-            if cmd == CMD_BASE_SCRIPT_SHORTCUT:
+            if cmd == CMD_SHORTCUT_BASE_SCRIPT:
                 crossos_make_starter_script(basedir, venv_python, shortcut_name, full_exec_line, working_dir=exec_working_dir)
-            elif cmd == CMD_BASE_ICON_SHORTCUT:
+            elif cmd == CMD_SHORTCUT_BASE_ICON:
                 if DRYRUN:
                     log_job(f"DRY_RUN: would create a homedir shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{basedir}'. Exec line: '{full_exec_line}'")
                 else:
                     crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=basedir,env_path=venv_path, onDesktop=False, working_dir=exec_working_dir)
-            elif cmd == CMD_DESK_ICON_SHORTCUT:
+            elif cmd == CMD_SHORTCUT_DESK_ICON:
                 if DRYRUN:
                     log_job(f"DRY_RUN: would create a Desktop shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{basedir}'. Exec line: '{full_exec_line}'")
                 else:
@@ -2374,7 +2373,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
             
         elif cmd in (CMD_GITCLONE, CMD_GITCLONE_ALIAS1):
             continue        
-        elif cmd == CMD_FILEGET:
+        elif cmd == CMD_GETFILE:
             if len(params) != 2:
                 abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
             url, suffix = params
@@ -2463,18 +2462,18 @@ def main():
         abort(f"inputfile file not found: {inputfile_path}")
     allowed_keys={
         CMD_PYTHON,
-        CMD_REQFILE,
+        CMD_PIPREQFILE,
         CMD_RFILTER,
         CMD_GITCLONE,
         CMD_GITCLONE_ALIAS1,
         CMD_REQSCAN,
-        CMD_FILEGET,
+        CMD_GETFILE,
         CMD_PRINT,
         CMD_PAUSE,
-        CMD_DESK_ICON_SHORTCUT  ,
-        CMD_DESK_SCRIPT_SHORTCUT,
-        CMD_BASE_ICON_SHORTCUT  ,
-        CMD_BASE_SCRIPT_SHORTCUT,
+        CMD_SHORTCUT_DESK_ICON  ,
+        CMD_SHORTCUT_DESK_SCRIPT,
+        CMD_SHORTCUT_BASE_ICON  ,
+        CMD_SHORTCUT_BASE_SCRIPT,
         CMD_COMMENTEDOUT_LINE,
         CMD_CONFIRM_FILE_OR_ABORT,
         CMD_EXEC

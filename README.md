@@ -4,18 +4,17 @@ A **cross-platform** (Windows, Linux, macOS) single-file Python tool to install 
 
 Elements:
 
-Mode element  |  venv                     | repo                  | code in repo      | files
----           | ---                       | ---                   | ---               | ---
-**Sensitive** | created if not existent   | cloned if not existent| untouched         | Downloaded if not existent
-**Install**   | created if not existent   | cloned if not existent| code update (no reset)       | Downloaded if not existent 
-**Rebuild**   | deleted if exists,rebuilt | cloned if not exists  | reset and updated | Check for integrity and redownload 
+Mode element  |  venv                     | repo                  | code in repo          | files
+---           | ---                       | ---                   | ---                   | ---
+**Sensitive** | created if not existent   | cloned if not existent| untouched             | Downloaded if not existent
+**Install**   | created if not existent   | cloned if not existent| code update (no reset)| Downloaded if not existent 
+**Rebuild**   | deleted if exists,rebuilt | cloned if not exists  | reset and updated     | Check for integrity and redownload 
 
 
 
 TODO:
-on gitclone: 
-reset it first by running:
-git restore .
+
+
 
 
 install: installs repo and files. Only installs venv, files and repos if they dont exist. Updates code of existing repos.
@@ -23,47 +22,45 @@ repair: rebuilds a venv. deletes and reinstalls repos to latest code.
 
 
 
-commmand                            | sensitive                       | INSTALL   | REPAIR
----                                 | ---                             |---        | ---   
-CMD_COMMENTEDOUT_LINE="#"           | comment                         | <- same |<- same
-CMD_PYTHON=    "PYTHON"             | set python version              | <- same |<- same
-CMD_REQFILE=   "REQFILE"            | install req file                | <- same |<- same
-##*CMD_REQPACKAGE="REQWHEEL"        | install req wheel or module     | <- same |<- same
-CMD_RFILTER="RFILTER"               | Filter out packages (from files and wheel)  | <- same |<- same
-CMD_GITCLONE="CLONEIT"              | clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
-CMD_GITCLONE_ALIAS1="GITCLON"       |   | <- same |<- same
-CMD_REQSCAN="REQSCAN"               |   | <- same |<- same
-CMD_FILEGET="GETFILE"               |   | <- same |<- same
-CMD_PRINT="PRINTIT"                 |   | <- same |<- same
-CMD_CONFIRM_FILE_OR_ABORT="CONFIRM" |   | <- same |<- same
-CMD_PAUSE="PAUSEIT"                 |   | <- same |<- same
-CMD_EXEC ="EXECUTE"                 |   | <- same |<- same
-CMD_DESK_ICON_SHORTCUT  ="DESKICO"  |   | <- same |<- same
-CMD_DESK_SCRIPT_SHORTCUT="DESKEXE"  |   | <- same |<- same
-CMD_BASE_ICON_SHORTCUT  ="HOMEICO"  |    | <- same |<- same
-CMD_BASE_SCRIPT_SHORTCUT="HOMEEXE"  |   | <- same |<- same
+commmand                              | sensitive                       | Install   | Rebuild
+---                                   | ---                             |---        | ---   
+CMD_COMMENTEDOUT_LINE=    "#"       #| comment                         | <- same |<- same
+CMD_PYTHON=               "PYTHON"  #| set python version              | <- same |<- same
+CMD_PIPREQFILE=           "REQFILE" #| install req file                | <- same |<- same
+CMD_PIPREQPACKAGE=        "REQWHLS" #| install req wheel or module     | <- same |<- same
+CMD_PIPEXEC=        "RAWPIPCOMMAND" #| Advanced: Raw command line passed to pip.      | <- same |<- same
+CMD_RFILTER=              "RFILTER" #| Filter out packages (from files and wheel)  | <- same |<- same
+CMD_GITCLONE=             "CLONEIT" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
+CMD_GITCLONE_ALIAS1=      "GITCLON" #|   | <- same |<- same
+CMD_REQSCAN=              "REQSCAN" #|   | <- same |<- same
+CMD_GETFILE=              "GETFILE" #|   | <- same |<- same
+CMD_GETBLOB=              "GETBLOB" #|   | <- same |<- same
+CMD_PRINT=                "PRINTIT" #|   | <- same |<- same
+CMD_CONFIRM_FILE_OR_ABORT="CONFIRM" #|   | <- same |<- same
+CMD_PAUSE=                "PAUSEIT" #|   | <- same |<- same
+CMD_EXEC =                "EXECUTE" #|   | <- same |<- same
+CMD_SHORTCUT_DESK_ICON  = "DESKICO" #|   | <- same |<- same
+CMD_SHORTCUT_DESK_SCRIPT= "DESKEXE" #|   | <- same |<- same
+CMD_SHORTCUT_BASE_ICON  = "HOMEICO" #|   | <- same |<- same
+CMD_SHORTCUT_BASE_SCRIPT= "HOMEEXE" #|   | <- same |<- same
 
 
+-TODO: code CMD_REQPACKAGE. It has has arguments of several wheels, which are passed to "pip install". RFILTER does not affect this command.
 
+-TODO: code CMD_PIPEXEC. all arguments are fed into pip. RFILTER does not affect this command. sensoinstall does not safeguard this command.
+-TODO: issue warnin if running CMD_PIPEXEC in sensoinstall mode, also warn ifruning at all as this is advanced. disabled in settings.
 
-modes                 | barebone| install  | repair  | upshine
----                   | ---     |---       | ---   |---
-installs repoistories | yes     |          | no    |
-updates reposity code | no      | yes      | no    |
-Downloads files/models| yes      | | |
-creates icons         | yes     | | |
-runs python commands
+-TODO:on CMD_GITCLONE in rebuild mode: reset it first by running: git restore .
+-TODO: implement CMD_GETBLOB
+-TODO: implement --noblob. info: CMD_GETBLOB is a copy of getfile but meant for large files which are not mandatory (like models). a switch can be provided to not load these files. 
 
-
-modes                 | Install Repo | update code  | download models  | create icons
----                   | ---     |---       | ---   |---
-
+#docu: CMD_REQSCAN command is affected by RFILTER
 
 
 Install comfyUI: install
-repair comfy: repair
-fully update comfy: upshine
-Install visomaster but i want my own models: barebone
+repair comfy:    repair
+fully update comfy: install
+Install visomaster but i want my own models: install --noblob
 install a workflow: install
 
 options:

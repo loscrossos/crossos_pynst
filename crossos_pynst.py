@@ -2381,8 +2381,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
             
             log_task(f"{cmd}: Executing command: '{full_exec_line}', CWD='{exec_working_dir}'")
                 
-            exec_command= [venv_python]
-            exec_command = exec_command+  params_as_list  
+            exec_command= [venv_python] +  [main_executable_file] + params_as_list 
             if DRYRUN:
                 log_job(f"{cmd}: would run: {exec_command}")
             else:
@@ -2424,7 +2423,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
 
 
 def get_executable_line_and_dir(basedir, venv_python, params):
-    single_exec_params = params[:1]
+    single_exec_params = params[1:]
     main_executable_file=None
     main_executable_temp= basedir / params[0]
     if main_executable_temp.exists():
@@ -2432,13 +2431,12 @@ def get_executable_line_and_dir(basedir, venv_python, params):
     else:
         abort(f"Python file not found: {main_executable_temp}")
 
-    
     params_as_list = []
     for i, a in enumerate(single_exec_params):
         #if a.startswith("./") or a.startswith(".\\") or "/" in a or "\\" in a:
         params_as_list.append(a)
     exec_working_dir= str(Path(main_executable_file).parent)
-    full_exec_line = " ".join([quote_arg(venv_python)] + [quote_arg(x) for x in params_as_list])
+    full_exec_line = " ".join([quote_arg(venv_python)] +[main_executable_file]+ [quote_arg(x) for x in params_as_list])
 
     return exec_working_dir,full_exec_line, main_executable_file, params_as_list
     

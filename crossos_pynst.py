@@ -2340,12 +2340,15 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
             
             if not params:
                 abort(f"{cmd} requires parameters.")
+            #the first param is the shortcut name
             shortcut_name = params[0]
+            #the params follow
+            actual_params = params[1:]
             fill_gap=" "
             base_name=get_dir_name(basedir)
             shortcut_name= f"{shortcut_name}{fill_gap}{base_name}{fill_gap}{venv_name}"
 
-            exec_working_dir, full_exec_line, main_executable_file, executable_as_list = get_executable_line_and_dir(basedir, venv_python, params) 
+            exec_working_dir, full_exec_line, main_executable_file, executable_as_list = get_executable_line_and_dir(basedir, venv_python, actual_params) 
             
             if cmd == CMD_SHORTCUT_BASE_SCRIPT:
                 crossos_make_starter_script(basedir, venv_python, shortcut_name, full_exec_line, working_dir=exec_working_dir)
@@ -2369,8 +2372,14 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
             #single_exec_params = params
             
             exec_working_dir, full_exec_line, main_executable_file, params_as_list = get_executable_line_and_dir(basedir, venv_python, params)
-            print(params)
-            log_task(f"{cmd}: Executing command: {full_exec_line}")
+
+            print(f"execdir: {exec_working_dir}")
+            print(f"full_exec_line: {full_exec_line}")
+            print(f"main_executable_file: {main_executable_file}")
+            print(f"params_as_list: {params_as_list}")
+            print(f"params original: {params}")
+            
+            log_task(f"{cmd}: Executing command: '{full_exec_line}', CWD='{exec_working_dir}'")
                 
             exec_command= [venv_python]
             exec_command = exec_command+  params_as_list  
@@ -2381,8 +2390,6 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
                 if rc != 0:
                     abort(f"Failed to exec command: {str(exec_command)}")
             
-        
-            
         elif cmd in (CMD_GITCLONE, CMD_GITCLONE_ALIAS1):
             continue        
         elif cmd == CMD_GETFILE:
@@ -2390,7 +2397,6 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
                 abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
             url, suffix = params
             targetdir = (basedir / suffix).resolve()
-            
             
             log_task(f"{cmd} Retrieving file: {url}")
             if fileget_mode==False:
@@ -2414,24 +2420,26 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
         else:
             abort(f"Unknown command in inputfile: {cmd}")
 
+
+
+
 def get_executable_line_and_dir(basedir, venv_python, params):
-    single_exec_params = params[1:]
-    main_executable_file=""
+    single_exec_params = params[:1]
+    main_executable_file=None
+    main_executable_temp= basedir / params[0]
+    if main_executable_temp.exists():
+        main_executable_file = str(main_executable_temp)
+    else:
+        abort(f"Python file not found: {main_executable_temp}")
+
+    
     params_as_list = []
     for i, a in enumerate(single_exec_params):
-        main_executable_temp = basedir / a
-        if a.startswith("./") or a.startswith(".\\") or "/" in a or "\\" in a:
-            # Looks like a path - resolve if it exists
-            if main_executable_temp.exists():
-                params_as_list.append(str(main_executable_temp))
-                main_executable_file = main_executable_temp
-            else:
-                params_as_list.append(a)
-        else:
-                    # Non-path-ish argument
-            params_as_list.append(a)
+        #if a.startswith("./") or a.startswith(".\\") or "/" in a or "\\" in a:
+        params_as_list.append(a)
     exec_working_dir= str(Path(main_executable_file).parent)
     full_exec_line = " ".join([quote_arg(venv_python)] + [quote_arg(x) for x in params_as_list])
+
     return exec_working_dir,full_exec_line, main_executable_file, params_as_list
     
 

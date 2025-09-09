@@ -44,7 +44,7 @@ CMD_SHORTCUT_BASE_SCRIPT= "HOMEEXE" #|   | <- same |<- same
 x-TODO: code CMD_PIPEXEC. all arguments are fed into pip. RFILTER does not affect this command. sensoinstall does not safeguard this command.
   --TODO: issue warnin if running CMD_PIPEXEC in sensoinstall mode, also warn ifruning at all as this is advanced. disabled in settings.
 --TODO: code CMD_REQPACKAGE. It has has arguments of several wheels, which are passed to "pip install". RFILTER does not affect this command.
---TODO:on CMD_GITCLONE in rebuild mode: reset it first by running: git restore .
+x-TODO:on CMD_GITCLONE in rebuild mode: reset it first by running: git restore .
   --info: 
     -a git repo where a file is changed by me but others are changed on server can be "pulled"
     -a git where a file is changed by me and the sme file on server must be restore'd before hand

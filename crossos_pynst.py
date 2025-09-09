@@ -1404,9 +1404,9 @@ APP_NAME="Pynst"
 
 #main modes of operation
 
-MODE_SENSOINSTALL="modesenso"
-MODE_INSTALL="modeinstall"
-MODE_REBUILD="moderebuild"
+MODE_SENSOINSTALL="sensoinstall"
+MODE_INSTALL="install"
+MODE_REBUILD="rebuild"
 
 DEFAULT_PYTHON_VERSION = "3.12"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
@@ -1415,7 +1415,7 @@ STARTER_NO_DESKTOP = False
 DRYRUN = False
 VERBOSE = False
 BACKUP = False
-OPTION_FORCE_REINSTALL =False 
+GLOBAL_OPTION_FORCE_REINSTALL =False 
 
 
 PURPLE = '\033[95m'
@@ -1430,7 +1430,7 @@ UNDERLINE = '\033[4m'
 
 COLOR_TASK = GREEN     
 COLOR_SUBTASK = BLUE
-COLOR_JOB = DARKCYAN
+COLOR_SUBSUBTASK = DARKCYAN
 COLOR_ERROR = RED
 COLOR_END = "\033[0m"
 
@@ -1464,8 +1464,8 @@ TOKEN_PRINT_PREFIX="Info: "
 def log_task(msg: str):
     print(f"{COLOR_TASK}{msg}{COLOR_END}")
 
-def log_job(msg: str):
-    print(f"{COLOR_JOB}{msg}{COLOR_END}")
+def log_subsubtask(msg: str):
+    print(f"{COLOR_SUBSUBTASK}{msg}{COLOR_END}")
 def log_subtask(msg: str):
     print(f"{COLOR_SUBTASK}{msg}{COLOR_END}")
 
@@ -1484,7 +1484,7 @@ def run_cmd(cmd, cwd=None) -> int:
     Returns the process return code.
     """
     if DRYRUN:
-        log_job(f"[DRYRUN] Would run: {' '.join(map(str, cmd))} (cwd={cwd or os.getcwd()})")
+        log_subsubtask(f"[DRYRUN] Would run: {' '.join(map(str, cmd))} (cwd={cwd or os.getcwd()})")
         return 0
     if VERBOSE:
         return subprocess.call(cmd, cwd=cwd )
@@ -1560,14 +1560,14 @@ def validate_file(path, allowed_keywords, limited_keywords):
 
             # Rule 1: line must start with allowed keyword
             if first_word not in allowed_keywords:
-                log_job(f"FilePrecheck: on Inputfile Error at line {lineno}: '{first_word}' is not an allowed keyword (is not in allowed list for this version).")
+                log_subsubtask(f"FilePrecheck: on Inputfile Error at line {lineno}: '{first_word}' is not an allowed keyword (is not in allowed list for this version).")
                 sys.exit(1)
 
             # Rule 2: count restricted keywords
             if first_word in limited_keywords:
                 counts[first_word] += 1
                 if counts[first_word] > limited_keywords[first_word]:
-                    log_job(f"FilePrecheck:  on Inputfile: Error at line {lineno}: '{first_word}' "
+                    log_subsubtask(f"FilePrecheck:  on Inputfile: Error at line {lineno}: '{first_word}' "
                           f"exceeds allowed limit ({limited_keywords[first_word]}).")
                     sys.exit(1)
 
@@ -1607,15 +1607,15 @@ def ensure_venv_exists(venv_path: Path, version: str, do_backup: bool, replace_e
         if do_backup:
             bak = unique_bak_name(venv_path)
             if DRYRUN:
-                log_job(f"[DRYRUN] Would move existing venv '{venv_path}' -> '{bak}'")
+                log_subsubtask(f"[DRYRUN] Would move existing venv '{venv_path}' -> '{bak}'")
             else:
-                log_job(f"Backing up existing venv to: {bak}")
+                log_subsubtask(f"Backing up existing venv to: {bak}")
                 venv_path.rename(bak)
         if replace_existing_venv:
             if DRYRUN:
-                log_job(f"[DRYRUN] Would delete existing venv: {venv_path}")
+                log_subsubtask(f"[DRYRUN] Would delete existing venv: {venv_path}")
             else:
-                log_job(f"Deleting existing venv: {venv_path}")
+                log_subsubtask(f"Deleting existing venv: {venv_path}")
                 shutil.rmtree(venv_path, ignore_errors=True)
         else:
             return
@@ -1625,7 +1625,7 @@ def ensure_venv_exists(venv_path: Path, version: str, do_backup: bool, replace_e
     rc = run_cmd(cmd)
     if rc != 0:
         abort(f"Failed to create virtual environment at {venv_path}")
-    log_job(f"Created virtual environment: {venv_path}")
+    log_subsubtask(f"Created virtual environment: {venv_path}")
 
     # Ensure pip present and up-to-date
     vpy = get_theoretic_venv_python_executable(venv_path)
@@ -1645,7 +1645,7 @@ def is_venv_empty(python_exec: str) -> bool:
     """
     if DRYRUN:
         # In dry-run, pretend it's empty to let flow proceed without side-effects.
-        log_job("[DRYRUN] Assuming environment is empty for checks.")
+        log_subsubtask("[DRYRUN] Assuming environment is empty for checks.")
         return True
     try:
         out = subprocess.check_output([python_exec, "-m", "pip", "freeze"], stderr=subprocess.STDOUT)
@@ -1660,7 +1660,7 @@ def uninstall_all_packages(python_exec: str):
     """
     log_task("Uninstalling all packages from current environment (pip freeze -> pip uninstall -y) ...")
     if DRYRUN:
-        log_job("[DRYRUN] Would run 'pip freeze' and uninstall all packages.")
+        log_subsubtask("[DRYRUN] Would run 'pip freeze' and uninstall all packages.")
         return
     try:
         out = subprocess.check_output([python_exec, "-m", "pip", "freeze"], stderr=subprocess.STDOUT)
@@ -1669,7 +1669,7 @@ def uninstall_all_packages(python_exec: str):
 
     pkgs = [l.strip() for l in out.decode("utf-8", errors="replace").splitlines() if l.strip()]
     if not pkgs:
-        log_job("No packages installed.")
+        log_subsubtask("No packages installed.")
         return
     # Write to temp file to avoid command-line length limits
     with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8", suffix=".txt") as tf:
@@ -1727,29 +1727,15 @@ def download_to_temp(url: str) -> Path:
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".txt")
     os.close(tmp_fd)
     p = Path(tmp_path)
-    log_job(f"Downloading to tempfile: {p}")
+    log_subsubtask(f"Downloading to tempfile: {p}")
     if DRYRUN:
-        log_job("[DRYRUN] Skipping actual download.")
+        log_subsubtask("[DRYRUN] Skipping actual download.")
         # Create an empty file to keep flow consistent
         p.write_text("", encoding="utf-8")
         return p
     urllib.request.urlretrieve(url, p)
     return p
 
-def do_git_pull( repo_path: Path):
-    """
-    Perform a git pull on a directory
-    """     
-    if not repo_path.exists():
-        abort(f"Directory to perform git pull not found: {repo_path}")
-    if DRYRUN:
-        log_job(f"[DRYRUN] Would update repository: git pull (cwd: {repo_path})")
-    else:
-        log_job(f"Updating git repository: {repo_path}")
-        rc = run_cmd(["git", "pull"], repo_path)
-        if rc != 0:
-            abort(f"Failed to update repository (broken or not a repo) from: {str(repo_path)}")
-        
 
 
 def pip_install_requirements_file(python_exec: str, req_file: Path, current_filters: list[str], fail_label: str):
@@ -1766,9 +1752,9 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
        message_append=f"(package filter applied and installing as temp file)" 
        
     if DRYRUN:
-        log_job(f"[DRYRUN] Would Install  requirements from file{message_append}: {req_file}")
+        log_subsubtask(f"[DRYRUN] Would Install  requirements from file{message_append}: {req_file}")
     else:
-        log_job(f"Installing requirements from file{message_append}: {req_file}")
+        log_subsubtask(f"Installing requirements from file{message_append}: {req_file}")
         rc = run_cmd([python_exec, "-m", "pip", "install", "-r", str(filtered)])
         if rc != 0:
             abort(f"Failed to install requirements from: {fail_label}")
@@ -1777,13 +1763,11 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
 def pip_run_command(python_exec: str, pip_command: list[str], fail_label: str="Pip command failed"):
     """
     run a command through pip.
-    """
-
-       
+    """       
     if DRYRUN:
-        log_job(f"[DRYRUN] Would run: pip {pip_command}")
+        log_subsubtask(f"[DRYRUN] Would run: pip {pip_command}")
     else:
-        log_job(f"Running pip command: pip {pip_command}")
+        log_subsubtask(f"Running pip command: pip {pip_command}")
         rc = run_cmd([python_exec, "-m", "pip" ]+pip_command)
         if rc != 0:
             abort(f"Failed to run pip command: {fail_label}")
@@ -1812,7 +1796,7 @@ def _force_remove_readonly(func, path, excinfo):
 
 def remove_dir_force(target: Path):
     if DRYRUN:
-        log_job(f"[DRYRUN] Would remove existing directory before clone: {target}")
+        log_subsubtask(f"[DRYRUN] Would remove existing directory before clone: {target}")
     else:
         if target.exists():
             if target.is_file() or target.is_symlink():
@@ -1821,25 +1805,53 @@ def remove_dir_force(target: Path):
                 shutil.rmtree(target, onerror=_force_remove_readonly)
 
 
-def git_clone(url: str, target: Path, reset_code=False):
+def git_clone(url: str, target: Path, operating_mode=None):
     target.parent.mkdir(parents=True, exist_ok=True)
 
     if target.exists():
-        if OPTION_FORCE_REINSTALL:
+        if GLOBAL_OPTION_FORCE_REINSTALL:
             remove_dir_force(target)
         else:
-            log_job(f"Repository already exists. Not cloning...")
-            return       
-    log_job(f"Cloning repo...")
-    rc = run_cmd(["git", "clone", url, str(target)])
+            log_subsubtask(f"Repository already exists. Not cloning...")
+            if operating_mode==MODE_INSTALL or operating_mode==MODE_REBUILD:
+                log_subtask("Repository: updating code")
+                do_git_pull(repo_path=target, operating_mode=operating_mode)
+            return
+
+    log_subsubtask(f"Cloning repo...")
+    rc = run_cmd(cmd=["git", "clone", url, str(target)],cwd=str(target.parent))
     if rc != 0:
         abort(f"Git clone failed for {url}")
-    log_job(f"Cloned to: {target}")
+    log_subsubtask(f"Cloned to: {target}")
+
+
+def do_git_pull( repo_path: Path, operating_mode=None):
+    """
+    Perform a git pull on a directory
+    """     
+    if not repo_path.exists():
+        abort(f"Directory to perform git pull not found: {repo_path}")
+
+    if DRYRUN:
+        log_subsubtask(f"[DRYRUN] Would update repository: git pull (cwd: {repo_path})")
+    else:
+        if operating_mode==MODE_REBUILD:
+            log_subtask("Repository: resetting code for update")
+            rc = run_cmd(cmd=["git", "restore", "." ],cwd=repo_path)
+            if rc != 0:
+                abort(f"Git reset failed. Repo broken or conflicting changes (force remove might be needed): {repo_path}")
+
+        log_subsubtask(f"Updating git repository: {repo_path}")
+        rc = run_cmd(cmd=["git", "pull"], cwd=repo_path)
+        if rc != 0:
+            abort(f"Failed to update repository (broken or not a repo) from: {str(repo_path)}")
+        
+
 
 
 def task_print(text_tokens):
     text = " ".join([quote_arg(x) for x in text_tokens])
-    print(f"{COLOR_JOB}{TOKEN_PRINT_PREFIX}{COLOR_END}{text}")
+    print(f"{COLOR_SUBSUBTASK}{TOKEN_PRINT_PREFIX}{COLOR_END}{text}")
  
 def task_pause():
     """
@@ -1869,7 +1881,7 @@ def get_file_size(url: str, verbose: bool = False):
 
         if length is None:
             if verbose:
-                log_job(f"Server did not provide Content-Length for {url}")
+                log_subsubtask(f"Server did not provide Content-Length for {url}")
             return None, None
 
         size_bytes = int(length)
@@ -1878,7 +1890,7 @@ def get_file_size(url: str, verbose: bool = False):
 
     except Exception as e:
         if verbose:
-            log_job(f"Error fetching file size for {url}: {e}")
+            log_subsubtask(f"Error fetching file size for {url}: {e}")
         return None, None
 
 
@@ -1909,19 +1921,19 @@ def check_if_file_is_aready_downloaded(url: str, filepath: str, verbose=False) -
         if length is None:
             # Can't determine size from server
             if verbose:
-                log_job(f"file does not exist on server: {url}")
+                log_subsubtask(f"file does not exist on server: {url}")
             return os.path.exists(filepath)
         
         expected_size = int(length)
         if os.path.exists(filepath):
             actual_size = os.path.getsize(filepath)
             if actual_size != expected_size:
-                log_job(f"Size on server different than file size! Server Size: {expected_size}. actual size {actual_size}")
+                log_subsubtask(f"Size on server different than file size! Server Size: {expected_size}. actual size {actual_size}")
             return actual_size == expected_size
         else:
             return False
     except Exception as e:
-        log_job(f"check_file error: {e}")
+        log_subsubtask(f"check_file error: {e}")
         return False
 
 import sys
@@ -2026,7 +2038,7 @@ def download_only_if_not_existent(url, directory_target_path, verbose=False, sho
     filepath = os.path.join(directory_target_path, filename)
 
     if check_if_file_is_aready_downloaded(url, filepath, verbose=True):
-        log_job(f"File already exists and is complete: {filepath}")
+        log_subsubtask(f"File already exists and is complete: {filepath}")
     else:
         download_file(url, filepath, show_progress=True)
 
@@ -2072,7 +2084,7 @@ def crossos_make_starter_script(basedir: Path, venv_py: str, label: str, cmd_lin
     Resolve any relative path to absolute under basedir if it exists there.
     """
     if STARTER_NO_DESKTOP:
-        log_job("STARTER creation skipped due to --nodesktop.")
+        log_subsubtask("STARTER creation skipped due to --nodesktop.")
         return
 
     system = platform.system().lower()
@@ -2085,13 +2097,13 @@ def crossos_make_starter_script(basedir: Path, venv_py: str, label: str, cmd_lin
         content = "#!/usr/bin/env bash\n" +f"cd {working_dir}\n" + cmd_line + "\n"
 
     if DRYRUN:
-        log_job(f"[DRYRUN] Would create starter: {script_path}")
+        log_subsubtask(f"[DRYRUN] Would create starter: {script_path}")
         return
 
     script_path.write_text(content, encoding="utf-8")
     if system != "windows":
         os.chmod(script_path, 0o755)
-    log_job(f"Created starter shortcut: {script_path}")
+    log_subsubtask(f"Created starter shortcut: {script_path}")
 
 def quote_arg(s: str) -> str:
     if platform.system().lower() == "windows":
@@ -2141,9 +2153,9 @@ def backup_embedded_folder(embedded_dir: Path):
     """
     bak = unique_bak_name(embedded_dir)
     if DRYRUN:
-        log_job(f"[DRYRUN] Would copy '{embedded_dir}' -> '{bak}'")
+        log_subsubtask(f"[DRYRUN] Would copy '{embedded_dir}' -> '{bak}'")
         return
-    log_job(f"Creating backup of embedded Python at: {bak}")
+    log_subsubtask(f"Creating backup of embedded Python at: {bak}")
     shutil.copytree(embedded_dir, bak)
 
 # ========= Parsing ifile =========
@@ -2314,12 +2326,12 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
             # Search one level below basedir/suffix for requirements.txt (plus root-of-suffix)
             scan_root = (basedir / params[0]).resolve()
             if not scan_root.exists():
-                log_job(f"{cmd} path does not exist, skipping: {scan_root}")
+                log_subsubtask(f"{cmd} path does not exist, skipping: {scan_root}")
                 continue
             log_task(f"{cmd} searching for requirements in: {scan_root} (depth=1)")
             reqs = scan_requirements_one_level(scan_root)
             if not reqs:
-                log_job("No requirements.txt files found at the specified depth.")
+                log_subsubtask("No requirements.txt files found at the specified depth.")
             for req in reqs:
                 path = Path(req)
                 git_dir=path.parent
@@ -2344,16 +2356,16 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
                 crossos_make_starter_script(basedir, venv_python, shortcut_name, full_exec_line, working_dir=exec_working_dir)
             elif cmd == CMD_SHORTCUT_BASE_ICON:
                 if DRYRUN:
-                    log_job(f"DRY_RUN: would create a homedir shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{basedir}'. Exec line: '{full_exec_line}'")
+                    log_subsubtask(f"DRY_RUN: would create a homedir shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{basedir}'. Exec line: '{full_exec_line}'")
                 else:
                     crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=basedir,env_path=venv_path, onDesktop=False, working_dir=exec_working_dir)
             elif cmd == CMD_SHORTCUT_DESK_ICON:
                 if DRYRUN:
-                    log_job(f"DRY_RUN: would create a Desktop shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{basedir}'. Exec line: '{full_exec_line}'")
+                    log_subsubtask(f"DRY_RUN: would create a Desktop shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{basedir}'. Exec line: '{full_exec_line}'")
                 else:
                     crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=basedir,env_path=venv_path, onDesktop=True, working_dir=exec_working_dir)
 
-            log_job(f"{cmd} Created Starter Shortcut: '{shortcut_name}'")
+            log_subsubtask(f"{cmd} Created Starter Shortcut: '{shortcut_name}'")
         elif cmd == CMD_EXEC:
              
             if not params:
@@ -2365,7 +2377,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
                 
             exec_command= [venv_python] +  [main_executable_file] + params_as_list 
             if DRYRUN:
-                log_job(f"{cmd}: would run: {exec_command}")
+                log_subsubtask(f"{cmd}: would run: {exec_command}")
             else:
                 rc = run_cmd(exec_command, exec_working_dir)
                 if rc != 0:
@@ -2385,14 +2397,13 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
                 abort("mode unrecognized")
                 
         
-                if len(params) != 2:
-                    abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
-                url, suffix = params
-                target = (basedir / suffix).resolve()
-                target = target / extract_project_name(url)
-                log_task(f"{cmd} cloning: {url}")
-                git_clone(url, target)
-            continue                
+            if len(params) != 2:
+                abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
+            url, suffix = params
+            target = (basedir / suffix).resolve()
+            target = target / extract_project_name(url)
+            log_task(f"{cmd} cloning: {url}")
+            git_clone(url=url, target=target,operating_mode=operation_mode)
             
         elif cmd == CMD_GETFILE or cmd==CMD_GETBLOB:
 
@@ -2404,13 +2415,13 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
             log_task(f"{cmd}: retrieving file: {url}")
 
             if noblob_mode and cmd==CMD_GETBLOB:
-                log_job(f"{cmd}: no-blob mode. ignoring download")    
+                log_subsubtask(f"{cmd}: no-blob mode. ignoring download")    
                 continue
 
             if DRYRUN:
-                log_job(f"DRYRUM: {cmd}: would download {url}")
+                log_subsubtask(f"DRYRUM: {cmd}: would download {url}")
             else:
-                log_job(f"{cmd} Storing file to: {targetdir}")
+                log_subsubtask(f"{cmd} Storing file to: {targetdir}")
                 #url = "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/wan2.2-i2v-rapid-aio-example.json"
                 #path = "d:/resources/"
                 download_only_if_not_existent(url=url, directory_target_path=targetdir, verbose=VERBOSE, show_progress=True)
@@ -2521,9 +2532,9 @@ def main():
     log_task(f"=== STARTING CROSSOS PYNST {fileget_text} ===")
     if not installdir.exists():
         if DRYRUN:
-            log_job(f"[DRYRUN] Would create base directory: {installdir}")
+            log_subsubtask(f"[DRYRUN] Would create base directory: {installdir}")
         else:
-            log_job(f"Creating base directory: {installdir}")
+            log_subsubtask(f"Creating base directory: {installdir}")
             installdir.mkdir(parents=True, exist_ok=True)
 
 

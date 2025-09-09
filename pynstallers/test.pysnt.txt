@@ -1,2 +1,2 @@
 PYTHON 3.13
-RAWPIPCOMMAND freeze
+RAWPIPCOMMAND install pycow

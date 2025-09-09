@@ -1337,6 +1337,32 @@ def crossos_make_icon_artsy(text: str,
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # -*- coding: utf-8 -*-
 
 """
@@ -1374,7 +1400,16 @@ from pathlib import Path
 
 
 # ========= Global defaults & flags =========
+APP_NAME="Pynst"
+
+#main modes of operation
+
+MODE_SENSOINSTALL="modesenso"
+MODE_INSTALL="modeinstall"
+MODE_REBUILD="moderebuild"
+
 DEFAULT_PYTHON_VERSION = "3.12"
+COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
 
 STARTER_NO_DESKTOP = False
 DRYRUN = False
@@ -1397,7 +1432,7 @@ COLOR_TASK = GREEN
 COLOR_SUBTASK = BLUE
 COLOR_JOB = DARKCYAN
 COLOR_ERROR = RED
-COLOR_END = f"\033[0m"
+COLOR_END = "\033[0m"
 
 
 CMD_COMMENTEDOUT_LINE=    "#"       #| comment                         | <- same |<- same
@@ -1786,7 +1821,7 @@ def remove_dir_force(target: Path):
                 shutil.rmtree(target, onerror=_force_remove_readonly)
 
 
-def git_clone(url: str, target: Path):
+def git_clone(url: str, target: Path, reset_code=False):
     target.parent.mkdir(parents=True, exist_ok=True)
 
     if target.exists():
@@ -2175,81 +2210,23 @@ def confirm_file_exists(path: str):
 
 
 
-# ========= Mode: INSTALL =========
-def do_install(commands: list[tuple[str, list[str]]], basedir: Path, fileget_mode=False, custom_venv_name=None, comfyui_portable_mode=False):
-    # Ensure git available
-    require_tool("git", "Please install Git and ensure it is on your PATH.")
-
-    # State
-    python_version = DEFAULT_PYTHON_VERSION
-
-    # First pass: allow PYTHON to set version before venv creation if it's the first command,
-    # but spec says PYTHON can only occur once and is the version to use. If absent, use default.
-    for cmd, params in commands:
-        if cmd == CMD_PYTHON:
-            python_version = params[0]
-            break
-
-    # Strictly check Python version available
-    check_python_version_available(python_version)
-    # Execute commands in order
-    for cmd, params in commands:
-        if cmd == CMD_PAUSE:
-            task_pause()
-        elif cmd == CMD_PRINT: 
-            task_print(params)
-        elif cmd == CMD_PYTHON:
-            continue
-        elif cmd == CMD_RFILTER:
-            continue
-        elif cmd == CMD_PIPREQFILE:
-            continue
-        elif cmd in (CMD_GITCLONE, CMD_GITCLONE_ALIAS1):
-            if len(params) != 2:
-                abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
-            url, suffix = params
-            target = (basedir / suffix).resolve()
-            target = target / extract_project_name(url)
-            log_task(f"{cmd} cloning: {url}")
-            git_clone(url, target)
-
-        elif cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :
-            continue
-        elif cmd == CMD_REQSCAN:
-            continue
-        elif cmd == CMD_GETFILE:
-            continue
-        elif cmd == CMD_COMMENTEDOUT_LINE:
-            continue
-        elif cmd == CMD_CONFIRM_FILE_OR_ABORT:
-            path_to_confirm = params[0]
-            target = (basedir / path_to_confirm).resolve()
-            confirm_file_exists(target)
-        elif cmd == CMD_EXEC:
-            continue
-        elif cmd ==CMD_PIPEXEC:
-            continue
-        else:
-            abort(f"Unknown command in inputfile: {cmd}")
-    do_repair(commands=commands, basedir= basedir, repairportable= False, fileget_mode=fileget_mode, install_mode=True, custom_venv_name=custom_venv_name)
-     
 
 
 
 
 # ========= Mode: REPAIR =========
-def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportable: bool,  fileget_mode=False,install_mode=False, custom_venv_name=None):
+def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_portable_mode: bool,  noblob_mode=False,install_mode=False, custom_venv_name=None, operation_mode=MODE_REBUILD):
     # Ensure git available (not strictly required for repair flow, but keep parity)
     require_tool("git", "Please install Git and ensure it is on your PATH.")
 
-    embedded_dir = basedir / "python_embedded"
+    embedded_dir = basedir / COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME
     is_embedded_present = embedded_dir.is_dir()
     venv_path=None
     venv_python=None
     venv_name=None
     # Validate portable/manual selection
     #GET teh python to be used
-    if repairportable:
+    if comfyui_portable_mode:
         if not is_embedded_present:
             abort("this is not a portable or manual installation")
         # Use embedded python executable (best effort cross-platform)
@@ -2315,12 +2292,8 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
     # Collect REQSCAN paths (process them after REQFILEs or as they appear? Spec: executed in order they appear. We'll execute in order.)
     for cmd, params in commands:        
         if cmd == CMD_PAUSE:
-            if install_mode:
-                continue
             task_pause()
         elif cmd == CMD_PRINT:
-            if install_mode:
-                continue
             task_print(params)
         elif cmd == CMD_PYTHON:
             continue
@@ -2399,17 +2372,41 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, repairportab
                     abort(f"Failed to exec command: {str(exec_command)}")
             
         elif cmd in (CMD_GITCLONE, CMD_GITCLONE_ALIAS1):
-            continue        
-        elif cmd == CMD_GETFILE:
+            mymode=None
+            if operation_mode==MODE_INSTALL:
+                #install mode
+                mymode=MODE_INSTALL
+            elif operation_mode==MODE_REBUILD:
+                #rebu mode
+                mymode=MODE_REBUILD
+            elif operation_mode==MODE_SENSOINSTALL:
+                mymode=MODE_SENSOINSTALL
+            else:
+                abort("mode unrecognized")
+                
+        
+                if len(params) != 2:
+                    abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
+                url, suffix = params
+                target = (basedir / suffix).resolve()
+                target = target / extract_project_name(url)
+                log_task(f"{cmd} cloning: {url}")
+                git_clone(url, target)
+            continue                
+            
+        elif cmd == CMD_GETFILE or cmd==CMD_GETBLOB:
+
             if len(params) != 2:
                 abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
             url, suffix = params
             targetdir = (basedir / suffix).resolve()
             
-            log_task(f"{cmd} Retrieving file: {url}")
-            if fileget_mode==False:
-                log_job(f"{cmd} Fileget option not present. ignoring download")    
+            log_task(f"{cmd}: retrieving file: {url}")
+
+            if noblob_mode and cmd==CMD_GETBLOB:
+                log_job(f"{cmd}: no-blob mode. ignoring download")    
                 continue
+
             if DRYRUN:
                 log_job(f"DRYRUM: {cmd}: would download {url}")
             else:
@@ -2469,7 +2466,7 @@ def main():
     global STARTER_NO_DESKTOP, DRYRUN, VERBOSE, BACKUP
 
     parser = argparse.ArgumentParser(description="Install or repair a Python project based on a instruction file.")
-    parser.add_argument("-a", dest="mode", choices=["install", "repair"], required=True,help="Main mode: install or repair")
+    parser.add_argument("-m", dest="mode", choices=[MODE_INSTALL, MODE_REBUILD, MODE_SENSOINSTALL], required=True,help=f"Main mode: {MODE_INSTALL}, {MODE_REBUILD} or {MODE_SENSOINSTALL}")
     parser.add_argument("--input", required=True, help="Path to inputfile (will be coerced to UTF-8 if needed)")
     parser.add_argument("--dir", required=True, help="Base directory for install/repair")
     parser.add_argument("--repairportable", action="store_true", help="(repair only) Treat installation as portable with 'python_embedded' folder")
@@ -2477,7 +2474,7 @@ def main():
     parser.add_argument("--dryrun", action="store_true", help="Simulate actions without changing files or installing")
     parser.add_argument("--verbose", action="store_true",help="Show subprocess output")
     parser.add_argument("--backup", action="store_true", help="Backup existing venv (or copy python_embedded) instead of deleting/replacing")
-    parser.add_argument("--fileget", action="store_true",help="Enable Filedownloads. This can consume high band width and is disabled by default")
+    parser.add_argument("--noblob", action="store_true",help="Enable Filedownloads. This can consume high band width and is disabled by default")
     parser.add_argument("--venv",type=str,default=None,help="Name of the custom virtual environment")
     args = parser.parse_args()
 
@@ -2517,9 +2514,10 @@ def main():
     validate_file(inputfile_path,allowed_keywords=allowed_keys,limited_keywords=restricted_keys)
     
     
+    
     fileget_text=""
-    if args.fileget:
-        fileget_text="(File Download enabled)"
+    if args.noblob:
+        fileget_text="(Large File Download disabled)"
     log_task(f"=== STARTING CROSSOS PYNST {fileget_text} ===")
     if not installdir.exists():
         if DRYRUN:
@@ -2527,6 +2525,9 @@ def main():
         else:
             log_job(f"Creating base directory: {installdir}")
             installdir.mkdir(parents=True, exist_ok=True)
+
+
+
 
     # Parse instructions
     commands = parse_inputfile(inputfile_path)
@@ -2536,14 +2537,20 @@ def main():
     # Confirm git availability early (install requires, repair may ignore clones but still good to check)
     require_tool("git", "Install Git from https://git-scm.com/ and ensure it's on PATH.")
 
-    if args.mode == "install":
-        log_task("=== INSTALL MODE ===")
-        do_install(commands=commands, basedir=installdir, custom_venv_name=args.venv, fileget_mode=args.fileget)
-        log_job("--- INSTALL COMPLETED ---")
-    else:
-        log_task("=== REPAIR MODE ===")
-        do_repair(commands=commands, basedir= installdir, repairportable= args.repairportable, custom_venv_name=args.venv, fileget_mode=args.fileget)
-        log_job("--- REPAIR COMPLETED ---")
+    operation_mode=None
+
+    if args.mode==MODE_SENSOINSTALL:
+        operation_mode=MODE_SENSOINSTALL
+    elif args.mode==MODE_INSTALL:
+        operation_mode=MODE_INSTALL
+    elif args.mode==MODE_REBUILD:
+        operation_mode=MODE_REBUILD
+        
+    
+    log_task(f"=== CrossOS {APP_NAME}: START ===")
+    do_repair(commands=commands, basedir= installdir, comfyui_portable_mode= args.repairportable, custom_venv_name=args.venv, noblob_mode=args.noblob, operation_mode=operation_mode)
+    log_task(f"=== CrossOS {APP_NAME}: END ===")
+
 if __name__ == "__main__":
     try:
         main()

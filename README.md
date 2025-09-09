@@ -6,7 +6,7 @@ Elements:
 
 Mode element  |  venv                     | repo                  | code in repo          | files
 ---           | ---                       | ---                   | ---                   | ---
-**Sensitive** | created if not existent   | cloned if not existent| untouched             | Downloaded if not existent
+**Sensitive** | created if not existent   | cloned if not existent| untouched, not updated| Downloaded if not existent
 **Install**   | created if not existent   | cloned if not existent| code update (no reset)| Downloaded if not existent 
 **Rebuild**   | deleted if exists,rebuilt | cloned if not exists  | reset and updated     | Check for integrity and redownload 
 
@@ -44,9 +44,12 @@ CMD_SHORTCUT_BASE_SCRIPT= "HOMEEXE" #|   | <- same |<- same
 x-TODO: code CMD_PIPEXEC. all arguments are fed into pip. RFILTER does not affect this command. sensoinstall does not safeguard this command.
   --TODO: issue warnin if running CMD_PIPEXEC in sensoinstall mode, also warn ifruning at all as this is advanced. disabled in settings.
 --TODO: code CMD_REQPACKAGE. It has has arguments of several wheels, which are passed to "pip install". RFILTER does not affect this command.
---TODO:on CMD_GITCLONE in rebuild mode: reset it first by running: git restore 
---TODO: implement CMD_GETBLOB, a copy of CMD_GETFILE
---TODO: implement --noblob. info: CMD_GETBLOB is a copy of getfile but meant for large files which are not mandatory (like models). a switch can be provided to not load these files. 
+--TODO:on CMD_GITCLONE in rebuild mode: reset it first by running: git restore .
+  --info: 
+    -a git repo where a file is changed by me but others are changed on server can be "pulled"
+    -a git where a file is changed by me and the sme file on server must be restore'd before hand
+x-TODO: implement CMD_GETBLOB, a copy of CMD_GETFILE
+x-TODO: implement --noblob. info: CMD_GETBLOB is a copy of getfile but meant for large files which are not mandatory (like models). a switch can be provided to not load these files. 
 
 #docu: CMD_REQSCAN command is affected by RFILTER
 

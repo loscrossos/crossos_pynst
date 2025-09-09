@@ -1,3 +1,4 @@
 PYTHON 3.13
 CLONEIT https://github.com/loscrossos/test_repo .
-RAWPIPCOMMAND install pycow
+# RAWPIPCOMMAND uninstall pycow
+PIPINST pycow 

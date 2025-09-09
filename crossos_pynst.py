@@ -1438,7 +1438,7 @@ COLOR_END = "\033[0m"
 CMD_COMMENTEDOUT_LINE=    "#"       #| comment                         | <- same |<- same
 CMD_PYTHON=               "PYTHON"  #| set python version              | <- same |<- same
 CMD_PIPREQFILE=           "REQFILE" #| install req file                | <- same |<- same
-CMD_PIPREQPACKAGE=        "REQWHLS" #| install req wheel or module     | <- same |<- same
+CMD_PIPREQPACKAGE=        "PIPINST" #| install req wheel or module     | <- same |<- same
 CMD_PIPEXEC=        "RAWPIPCOMMAND" #| Advanced: Raw command line passed to pip.      | <- same |<- same
 CMD_RFILTER=              "RFILTER" #| Filter out packages (from files and wheel)  | <- same |<- same
 CMD_GITCLONE=             "CLONEIT" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
@@ -1758,6 +1758,18 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
         rc = run_cmd([python_exec, "-m", "pip", "install", "-r", str(filtered)])
         if rc != 0:
             abort(f"Failed to install requirements from: {fail_label}")
+
+def pip_run_pip_install(python_exec: str, pip_command: list[str], fail_label: str="Pip command failed"):
+    """
+    run a command through pip install.
+    """       
+    if DRYRUN:
+        log_subsubtask(f"[DRYRUN] Would run: pip install {pip_command}")
+    else:
+        log_subsubtask(f"Running pip command: pip install {pip_command}")
+        rc = run_cmd([python_exec, "-m", "pip", "install" ] + pip_command)
+        if rc != 0:
+            abort(f"Failed to run pip command: {fail_label}")
 
 
 def pip_run_command(python_exec: str, pip_command: list[str], fail_label: str="Pip command failed"):
@@ -2431,7 +2443,12 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
             if len(params) < 1:
                 abort(f"{cmd} requires at least one parameter")
             pip_run_command(venv_python, pip_command= params)
-            
+
+        elif cmd ==CMD_PIPREQPACKAGE:
+            if len(params) < 1:
+                abort(f"{cmd} requires at least one parameter")
+            pip_run_pip_install(venv_python, pip_command= params)
+
         elif cmd == CMD_COMMENTEDOUT_LINE:
             continue
         elif cmd == CMD_CONFIRM_FILE_OR_ABORT:

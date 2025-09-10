@@ -2278,7 +2278,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
    
 
         venv_name= temp_venv_name
-        venv_python_exec =  Path(temp_venv_python_exec)
+        venv_python_exec =  temp_venv_python_exec
         venv_path =  temp_venv_path
        
        
@@ -2303,9 +2303,9 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
         elif cmd == CMD_PYTHON:
             continue
         elif cmd == CMD_RFILTER:
-            log_task(f"{cmd} filters set: {', '.join(rfilters)}")
             rfilters = params[:]
-            
+            log_task(f"{cmd} filters set: {', '.join(rfilters)}")
+
         elif cmd == CMD_PIPREQFILE:
             req_file_to_install = params[0]
             log_task(f"{cmd} installing: {req_file_to_install}")
@@ -2316,7 +2316,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
             else:
                 pip_install_requirements_file(python_exec=venv_python_exec, req_file=(basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install),current_filters= rfilters, fail_label=req_file_to_install)
         elif cmd == CMD_REQSCAN:
-            log_task(f"{cmd} searching for requirements in: {scan_root} (depth=1)")
+            log_task(f"{cmd} searching for requirements in: {basedir / params[0]} (depth=1)")
             #TODO: maybe its more efficient to collect all reqscans and copy all reqfiles and concatenate them into once command as in: pip install -r fiole1.txt -r file2.txt -r file3.txt
             
             # Search one level below basedir/suffix for requirements.txt (plus root-of-suffix)
@@ -2363,12 +2363,12 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
 
             log_subsubtask(f"{cmd} Created Starter Shortcut: '{shortcut_name}'")
         elif cmd == CMD_EXEC:
-            log_task(f"{cmd}: command: '{full_exec_line}', CWD='{exec_working_dir}'")
-            
             if not params:
                 abort(f"{cmd} requires parameters.")
+            log_task(f"{cmd}: will execute python command: {' '.join(params)}")
+                        
             exec_working_dir, full_exec_line, main_executable_file, params_as_list = get_executable_line_and_dir(basedir, venv_python_exec, params)
-            log_task(f"{cmd}: command: '{full_exec_line}', CWD='{exec_working_dir}'")
+            log_subsubtask(f"Full command line: '{full_exec_line}', CWD='{exec_working_dir}'")
             exec_command= [venv_python_exec] +  [main_executable_file] + params_as_list 
             rc = run_cmd(cmd = exec_command, cwd = exec_working_dir, task_description="executing command")
             if rc != 0:

@@ -2199,7 +2199,7 @@ def get_dir_name(path: Path, root_fallback: str = "ROOT") -> str:
  
 
 import os
-def confirm_file_exists(path: str):
+def assert_file_exists(path: str):
     """
     Check if the given path exists (file or directory).
     If not, prints an error message.
@@ -2424,7 +2424,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
             log_task(f"{cmd}: Checking for file existence: {str(path_to_confirm)}")
             
             target = (basedir / path_to_confirm).resolve()
-            confirm_file_exists(target)
+            assert_file_exists(target)
             
         else:
             abort(f"Unknown command in inputfile: {cmd}")

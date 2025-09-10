@@ -1,5 +1,5 @@
-PYTHON 3.12
-REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_lite_python312torch271cu129.txt
+PYTHON 3.13
+REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
 RFILTER torch torchvision torchaudio 
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes

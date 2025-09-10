@@ -1373,7 +1373,7 @@ driven by a .txt instruction file.
 - No external packages required (stdlib only).
 - Modes:
   * install
-  * repair (with --repairportable for embedded/portable distributions)
+  * repair (with --embedded for embedded/portable distributions)
 
 Implements commands (case-insensitive) from the .txt, in order:
   - PYTHON <version>
@@ -1436,24 +1436,24 @@ COLOR_END = "\033[0m"
 
 
 CMD_COMMENTEDOUT_LINE=    "#"       #| comment                         | <- same |<- same
-CMD_PYTHON=               "PYTHON"  #| set python version              | <- same |<- same
-CMD_PIPREQFILE=           "REQFILE" #| install req file                | <- same |<- same
+CMD_PYTHON=               "PYTHON"  #| set python version to be used for venvs. Script will abort if he existing venv has another version   | <- same |<- same but will delete existing venvs and create a new venv with the scpecified version
+CMD_PIPREQFILE=           "REQINST" #| install req file                | <- same |<- same
 CMD_PIPREQPACKAGE=        "PIPINST" #| install req wheel or module     | <- same |<- same
-CMD_PIPEXEC=        "RAWPIPCOMMAND" #| Advanced: Raw command line passed to pip.      | <- same |<- same
-CMD_RFILTER=              "RFILTER" #| Filter out packages (from files and wheel)  | <- same |<- same
+CMD_PIPEXEC=        "RUNPIPCOMMAND" #| Advanced: Raw command line passed to pip.      | <- same |<- same
+CMD_RFILTER=              "RFILTER" #| Filter out packages (from REQ* commands)  | <- same |<- same
 CMD_GITCLONE=             "CLONEIT" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
-CMD_GITCLONE_ALIAS1=      "GITCLON" #|   | <- same |<- same
-CMD_REQSCAN=              "REQSCAN" #|   | <- same |<- same
-CMD_GETFILE=              "GETFILE" #|   | <- same |<- same
-CMD_GETBLOB=              "GETBLOB" #|   | <- same |<- same
-CMD_PRINT=                "PRINTIT" #|   | <- same |<- same
-CMD_CONFIRM_FILE_OR_ABORT="CONFIRM" #|   | <- same |<- same
-CMD_PAUSE=                "PAUSEIT" #|   | <- same |<- same
-CMD_EXEC =                "EXECUTE" #|   | <- same |<- same
-CMD_SHORTCUT_DESK_ICON  = "DESKICO" #|   | <- same |<- same
-CMD_SHORTCUT_DESK_SCRIPT= "DESKEXE" #|   | <- same |<- same
-CMD_SHORTCUT_BASE_ICON  = "HOMEICO" #|   | <- same |<- same
-CMD_SHORTCUT_BASE_SCRIPT= "HOMEEXE" #|   | <- same |<- same
+CMD_GITCLONE_ALIAS1=      "GITCLON" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
+CMD_REQSCAN=              "REQSCAN" #| Specifies a directory to scan for subdirectories with "requirements.txt" to install. Will not update code in safe mode  | <- same but updates the repository code first|<- same but updates the repository code first
+CMD_GETFILE=              "GETFILE" #| Downloads a file to a directory.  | <- same |<- same
+CMD_GETBLOB=              "GETBLOB" #| Downloads a file to a directory. Used for large files (e.g. models)  | <- same |<- same
+CMD_PRINT=                "PRINTIT" #| Prints a message for the user to command line.  | <- same |<- same
+CMD_CONFIRM_FILE_OR_ABORT="CONFIRM" #| Checks that a file exists. Aborts run if it fails  | <- same |<- same
+CMD_PAUSE=                "PAUSEIT" #| Pauses the execution until user confirms  | <- same |<- same
+CMD_EXEC =          "RUNPYTHONFILE" #| Runs a python file (arguments and params allowed)  | <- same |<- same
+CMD_SHORTCUT_DESK_ICON  = "DESKICO" #| Creates a Desktop icon with a command line  | <- same |<- same
+CMD_SHORTCUT_DESK_SCRIPT= "DESKEXE" #| Creates a Desktop script with a command line  | <- same |<- same
+CMD_SHORTCUT_BASE_ICON  = "HOMEICO" #| Creates a Installdir icon with a command line  | <- same |<- same
+CMD_SHORTCUT_BASE_SCRIPT= "HOMEEXE" #| Creates a installdir script with a command line  | <- same |<- same
 
 
 
@@ -1636,7 +1636,7 @@ def ensure_venv_exists(venv_path: Path, venv_exec: str, version: str, do_backup:
             return
         if operation_mode==MODE_INSTALL:
             log_subsubtask("Will use existing venv and upgrade it to latest pip")
-            run_cmd(cmd=[venv_exec, "-m", "ensurepip", "--upgrade"],task_description="upgrading pip")
+            run_cmd(cmd=[venv_exec, "-m", "pip", "install", "--upgrade", "pip"],task_description="upgrading pip")
             return
         if operation_mode==MODE_REBUILD:
             if embedded_mode:
@@ -1652,7 +1652,7 @@ def ensure_venv_exists(venv_path: Path, venv_exec: str, version: str, do_backup:
                 if DRYRUN:
                     log_subsubtask(f"[DRYRUN] Would delete existing venv: {venv_path}")
                 else:
-                    log_subsubtask(f"Deleting existing venv to rebuild it: {venv_path}")
+                    log_subsubtask(f"Deleting existing venv to rebuild it")
                     shutil.rmtree(venv_path, ignore_errors=True)
    
     # Create new venv
@@ -1660,6 +1660,8 @@ def ensure_venv_exists(venv_path: Path, venv_exec: str, version: str, do_backup:
     rc = run_cmd(cmd=cmd, task_description=f"creating new venv: {venv_path}")
     if rc != 0:
         abort(f"Failed to create virtual environment at {venv_path}")
+    
+    run_cmd(cmd=[venv_exec, "-m", "pip", "install", "--upgrade", "pip"],task_description="upgrading pip")
     log_subsubtask(f"Created virtual environment: {venv_path}")
 
 
@@ -1869,8 +1871,7 @@ def do_git_pull( repo_path: Path, operating_mode=None):
         abort(f"Directory to perform git pull not found: {repo_path}")
 
     if operating_mode==MODE_REBUILD:
-        log_subtask("Repository: resetting code for update")
-        rc = run_cmd(cmd=["git", "restore", "." ],cwd=repo_path, task_description="Resetting repository")
+        rc = run_cmd(cmd=["git", "restore", "." ],cwd=repo_path, task_description="Resetting repository due to rebuild mode")
         if rc != 0:
             abort(f"Git reset failed. Repo broken or conflicting changes (force remove might be needed): {repo_path}")
                     
@@ -2227,7 +2228,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
 
     #GET PYTHON TO BE USED DEPENDING ON PORTABLE OR NORMAL INSTALL
     if comfyui_portable_mode:
-        
+        log_subtask("Running in embedded mode.")
         current_venv_name=COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME
         if custom_venv_name is not None:
             current_venv_name=custom_venv_name
@@ -2237,9 +2238,11 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
             abort(f"Venv not found! this is not a portable or manual installation. Missing: {embedded_dir}")
         # Use embedded python executable (best effort cross-platform)
         python_exec = str(embedded_dir / ("python.exe" if platform.system().lower() == "windows" else "python"))
+        log_subsubtask(f"attempting to search for {python_exec}")
         if not (Path(python_exec).exists()):
             # Fallback to 'python3' inside embedded_dir if present; else abort
             alt = str(embedded_dir / "python3")
+            log_subsubtask(f"failed. attempting to search for {alt}")
             if not Path(alt).exists():
                 abort(f"Directory exists but embedded Python executable not found in {embedded_dir}.")
             python_exec = alt
@@ -2281,7 +2284,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
        
         
     log_task(f"Ensuring existence of venv for Python {python_version}")
-    ensure_venv_exists(venv_path=venv_path,venv_exec=venv_python_exec, version=python_version, do_backup=BACKUP, operation_mode=operation_mode)
+    ensure_venv_exists(venv_path=venv_path,venv_exec=venv_python_exec, version=python_version, do_backup=BACKUP,embedded_mode=comfyui_portable_mode, operation_mode=operation_mode)
 
     if os.path.exists(venv_python_exec)==False:
         abort(f"PYthon executable was not found at {venv_python_exec}")
@@ -2465,13 +2468,13 @@ def main():
     parser.add_argument("-m", dest="mode", choices=[MODE_INSTALL, MODE_REBUILD, MODE_SENSOINSTALL], required=True,help=f"Main mode: {MODE_INSTALL}, {MODE_REBUILD} or {MODE_SENSOINSTALL}")
     parser.add_argument("--input", required=True, help="Path to inputfile (will be coerced to UTF-8 if needed)")
     parser.add_argument("--dir", required=True, help="Base directory for install/repair")
-    parser.add_argument("--repairportable", action="store_true", help="(repair only) Treat installation as portable with 'python_embedded' folder")
+    parser.add_argument("--embedded", action="store_true", help="(repair only) Treat installation as portable with 'python_embedded' folder")
     parser.add_argument("--nodesktop", action="store_true", help="Do not create STARTER scripts")
     parser.add_argument("--dryrun", action="store_true", help="Simulate actions without changing files or installing")
     parser.add_argument("--verbose", action="store_true",help="Show subprocess output")
     parser.add_argument("--backup", action="store_true", help="Backup existing venv (or copy python_embedded) instead of deleting/replacing")
     parser.add_argument("--noblob", action="store_true",help="Enable Filedownloads. This can consume high band width and is disabled by default")
-    parser.add_argument("--venv",type=str,default=None,help="Name of the custom virtual environment")
+    parser.add_argument("--venvname",type=str,default=None,help="Name of the custom virtual environment")
     args = parser.parse_args()
 
     STARTER_NO_DESKTOP = args.nodesktop
@@ -2544,7 +2547,7 @@ def main():
         
     
     log_task(f"=== CrossOS {APP_NAME}: START ===")
-    do_repair(commands=commands, basedir= installdir, comfyui_portable_mode= args.repairportable, custom_venv_name=args.venv, noblob_mode=args.noblob, operation_mode=operation_mode)
+    do_repair(commands=commands, basedir= installdir, comfyui_portable_mode= args.embedded, custom_venv_name=args.venvname, noblob_mode=args.noblob, operation_mode=operation_mode)
     log_task(f"=== CrossOS {APP_NAME}: END ===")
 
 if __name__ == "__main__":

@@ -1484,7 +1484,7 @@ def run_cmd(cmd, cwd=None, task_description=None) -> int:
     Returns the process return code.
     """
     if task_description is not None:
-        log_subsubtask(f"System call: {task_description}")
+        log_subsubtask(f"Executing task: {task_description}")
         
     if DRYRUN:
         log_subsubtask(f"[DRYRUN] Would run: {' '.join(map(str, cmd))} (cwd={cwd or os.getcwd()})")
@@ -1591,7 +1591,7 @@ def python_cmd_for_version(version: str) -> list[str]:
 
 def check_system_python_version_available(version: str):
     cmd = python_cmd_for_version(version) + ["--version"]
-    rc = run_cmd(cmd=cmd)
+    rc = run_cmd(cmd=cmd,task_description=f"checking system python version: {version}")
     if rc != 0:
         abort(f"Python {version} not available on this system. Please install it and try again.")
 
@@ -1619,6 +1619,7 @@ def ensure_venv_exists(venv_path: Path, venv_exec: str, version: str, do_backup:
 """
     #HANDLE BACKUP
     if venv_path.exists():
+        log_subsubtask("Found a venv at the location")
         if do_backup:
             bak = unique_bak_name(venv_path)
             if DRYRUN:
@@ -1631,16 +1632,15 @@ def ensure_venv_exists(venv_path: Path, venv_exec: str, version: str, do_backup:
                     venv_path.rename(bak)
                     
         if operation_mode==MODE_SENSOINSTALL:
+            log_subsubtask("Will use existing venv but will not upgrade it due to extra safe settings")
             return
         if operation_mode==MODE_INSTALL:
-            if DRYRUN:
-                log_subsubtask(f"[DRYRUN] Would upgrade pip")
-            else:
-                run_cmd(cmd=[venv_exec, "-m", "ensurepip", "--upgrade"])
+            log_subsubtask("Will use existing venv and upgrade it to latest pip")
+            run_cmd(cmd=[venv_exec, "-m", "ensurepip", "--upgrade"],task_description="upgrading pip")
             return
         if operation_mode==MODE_REBUILD:
-            
             if embedded_mode:
+                log_subsubtask("Will empty embedded venv to rebuild it")
                 # empty venv
                 uninstall_all_packages(venv_exec)
                 # Verify empty
@@ -1652,18 +1652,15 @@ def ensure_venv_exists(venv_path: Path, venv_exec: str, version: str, do_backup:
                 if DRYRUN:
                     log_subsubtask(f"[DRYRUN] Would delete existing venv: {venv_path}")
                 else:
-                    log_subsubtask(f"Deleting existing venv: {venv_path}")
+                    log_subsubtask(f"Deleting existing venv to rebuild it: {venv_path}")
                     shutil.rmtree(venv_path, ignore_errors=True)
    
     # Create new venv
-    if DRYRUN:
-        log_subsubtask(f"[DRYRUN] Would create new venv: {venv_path}")
-    else:
-        cmd = python_cmd_for_version(version) + ["-m", "venv", str(venv_path)]
-        rc = run_cmd(cmd=cmd)
-        if rc != 0:
-            abort(f"Failed to create virtual environment at {venv_path}")
-        log_subsubtask(f"Created virtual environment: {venv_path}")
+    cmd = python_cmd_for_version(version) + ["-m", "venv", str(venv_path)]
+    rc = run_cmd(cmd=cmd, task_description=f"creating new venv: {venv_path}")
+    if rc != 0:
+        abort(f"Failed to create virtual environment at {venv_path}")
+    log_subsubtask(f"Created virtual environment: {venv_path}")
 
 
 
@@ -1713,7 +1710,7 @@ def uninstall_all_packages(python_exec: str):
             tf.write(p + "\n")
         temp_list = tf.name
     try:
-        rc = run_cmd(cmd=[python_exec, "-m", "pip", "uninstall", "-y", "-r", temp_list])
+        rc = run_cmd(cmd=[python_exec, "-m", "pip", "uninstall", "-y", "-r", temp_list], task_description="uninstalling packages")
         if rc != 0:
             abort("Failed to uninstall some packages.")
     finally:
@@ -1787,22 +1784,18 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
     if current_filters:
        message_append=f"(package filter applied and installing as temp file)" 
        
-    if DRYRUN:
-        log_subsubtask(f"[DRYRUN] Would Install  requirements from file{message_append}: {req_file}")
-    else:
-        log_subsubtask(f"Installing requirements from file{message_append}: {req_file}")
-        rc = run_cmd(cmd=[python_exec, "-m", "pip", "install", "-r", str(filtered)] )
-        if rc != 0:
-            abort(f"Failed to install requirements from: {fail_label}")
+    rc = run_cmd(cmd=[python_exec, "-m", "pip", "install", "-r", str(filtered)], task_description=f"Installing requirements from file{message_append}: {req_file}" )
+    if rc != 0:
+        abort(f"Failed to install requirements from: {fail_label}")
 
 def pip_run_pip_install(python_exec: str, pip_command: list[str], fail_label: str="Pip command failed"):
     """
     run a command through pip install.
     """       
     if DRYRUN:
-        log_subsubtask(f"[DRYRUN] Would run: pip install {pip_command}")
+        log_subsubtask(f"[DRYRUN] Would run: pip install {" ".join(pip_command)}")
     else:
-        log_subsubtask(f"Running pip command: pip install {pip_command}")
+        log_subsubtask(f"Running pip command: pip install {" ".join(pip_command)}")
         rc = run_cmd(cmd=[python_exec, "-m", "pip", "install" ] + pip_command)
         if rc != 0:
             abort(f"Failed to run pip command: {fail_label}")
@@ -1812,13 +1805,9 @@ def pip_run_command(python_exec: str, pip_command: list[str], fail_label: str="P
     """
     run a command through pip.
     """       
-    if DRYRUN:
-        log_subsubtask(f"[DRYRUN] Would run: pip {pip_command}")
-    else:
-        log_subsubtask(f"Running pip command: pip {pip_command}")
-        rc = run_cmd(cmd=[python_exec, "-m", "pip" ]+pip_command)
-        if rc != 0:
-            abort(f"Failed to run pip command: {fail_label}")
+    rc = run_cmd(cmd=[python_exec, "-m", "pip" ]+pip_command,task_description=f"Running command: pip {" ".join(pip_command)}")
+    if rc != 0:
+        abort(f"Failed to run pip command: {fail_label}")
 
 
 
@@ -1853,7 +1842,7 @@ def remove_dir_force(target: Path):
                 shutil.rmtree(target, onerror=_force_remove_readonly)
 
 
-def git_clone(url: str, target: Path, operating_mode=None):
+def do_git_clone(url: str, target: Path, operating_mode=None):
     target.parent.mkdir(parents=True, exist_ok=True)
 
     if target.exists():
@@ -1862,12 +1851,11 @@ def git_clone(url: str, target: Path, operating_mode=None):
         else:
             log_subsubtask(f"Repository already exists. Not cloning...")
             if operating_mode==MODE_INSTALL or operating_mode==MODE_REBUILD:
-                log_subtask("Repository: updating code")
+                log_subsubtask("Repository: updating code")
                 do_git_pull(repo_path=target, operating_mode=operating_mode)
             return
 
-    log_subsubtask(f"Cloning repo...")
-    rc = run_cmd(cmd=["git", "clone", url, str(target)],cwd=str(target.parent))
+    rc = run_cmd(cmd=["git", "clone", url, str(target)],cwd=str(target.parent),task_description="Cloning repo...")
     if rc != 0:
         abort(f"Git clone failed for {url}")
     log_subsubtask(f"Cloned to: {target}")
@@ -1880,19 +1868,15 @@ def do_git_pull( repo_path: Path, operating_mode=None):
     if not repo_path.exists():
         abort(f"Directory to perform git pull not found: {repo_path}")
 
-    if DRYRUN:
-        log_subsubtask(f"[DRYRUN] Would update repository: git pull (cwd: {repo_path})")
-    else:
-        if operating_mode==MODE_REBUILD:
-            log_subtask("Repository: resetting code for update")
-            rc = run_cmd(cmd=["git", "restore", "." ],cwd=repo_path)
-            if rc != 0:
-                abort(f"Git reset failed. Repo broken or conflicting changes (force remove might be needed): {repo_path}")
-
-        log_subsubtask(f"Updating git repository: {repo_path}")
-        rc = run_cmd(cmd=["git", "pull"], cwd=repo_path)
+    if operating_mode==MODE_REBUILD:
+        log_subtask("Repository: resetting code for update")
+        rc = run_cmd(cmd=["git", "restore", "." ],cwd=repo_path, task_description="Resetting repository")
         if rc != 0:
-            abort(f"Failed to update repository (broken or not a repo) from: {str(repo_path)}")
+            abort(f"Git reset failed. Repo broken or conflicting changes (force remove might be needed): {repo_path}")
+                    
+    rc = run_cmd(cmd=["git", "pull"], cwd=repo_path, task_description=f"Updating git repository: {repo_path}")
+    if rc != 0:
+        abort(f"Failed to update repository (broken or not a repo) from: {str(repo_path)}")
         
 
 
@@ -2091,40 +2075,7 @@ def download_only_if_not_existent(url, directory_target_path, verbose=False, sho
         download_file(url, filepath, show_progress=True)
 
 
-
-
-import subprocess
-import os
-from urllib.parse import urlparse
-def download_with_wget(url: str, dest_dir: str, quiet: bool = True) -> str:
-    """
-    Downloads a file from `url` into `dest_dir` using wget.
-    Works on Windows, Linux, and macOS (requires wget installed).
-    
-    Args:
-        url (str): The URL of the file to download.
-        dest_dir (str): The destination directory.
-        quiet (bool): If True, suppress wget output (default False).
-    
-    Returns:
-        str: The full path of the downloaded file.
-    """
-    # Ensure destination directory exists
-    os.makedirs(dest_dir, exist_ok=True)
-    # Extract filename from URL
-    filename = os.path.basename(urlparse(url).path)
-    if not filename:  # if URL ends with /, fallback
-        filename = "downloaded_file"
-    dest_path = os.path.join(dest_dir, filename)
-    # Build wget command
-    cmd = ["wget", url, "-O", dest_path]
-    if quiet:
-        cmd.insert(1, "-q")  # insert -q after wget
-    # Run wget
-    subprocess.run(cmd, check=True)
-    return dest_path
-
-
+ 
 # ========= Starter helpers =========
 def crossos_make_starter_script(basedir: Path, venv_py: str, label: str, cmd_line: list[str], working_dir: str):
     """
@@ -2320,7 +2271,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
 
         temp_venv_path = basedir / temp_venv_name
 
-        temp_venv_python_exec = get_theoretic_venv_python_executable(venv_path=venv_path)
+        temp_venv_python_exec = get_theoretic_venv_python_executable(venv_path=temp_venv_path)
    
 
         venv_name= temp_venv_name
@@ -2349,17 +2300,20 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
         elif cmd == CMD_PYTHON:
             continue
         elif cmd == CMD_RFILTER:
+            log_task(f"{cmd} filters set: {', '.join(rfilters)}")
             rfilters = params[:]
-            log_task(f"{cmd} set: {', '.join(rfilters)}")
+            
         elif cmd == CMD_PIPREQFILE:
             req_file_to_install = params[0]
             log_task(f"{cmd} installing: {req_file_to_install}")
+            
             if re.match(r"^https?://", req_file_to_install, re.I):
                 downloaded_temp_fie = download_to_temp(req_file_to_install)
                 pip_install_requirements_file(python_exec=venv_python_exec, req_file=downloaded_temp_fie, current_filters=rfilters, fail_label=req_file_to_install)
             else:
                 pip_install_requirements_file(python_exec=venv_python_exec, req_file=(basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install),current_filters= rfilters, fail_label=req_file_to_install)
         elif cmd == CMD_REQSCAN:
+            log_task(f"{cmd} searching for requirements in: {scan_root} (depth=1)")
             #TODO: maybe its more efficient to collect all reqscans and copy all reqfiles and concatenate them into once command as in: pip install -r fiole1.txt -r file2.txt -r file3.txt
             
             # Search one level below basedir/suffix for requirements.txt (plus root-of-suffix)
@@ -2367,7 +2321,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
             if not scan_root.exists():
                 log_subsubtask(f"{cmd} path does not exist, skipping: {scan_root}")
                 continue
-            log_task(f"{cmd} searching for requirements in: {scan_root} (depth=1)")
+            
             reqs = scan_requirements_one_level(scan_root)
             if not reqs:
                 log_subsubtask("No requirements.txt files found at the specified depth.")
@@ -2378,7 +2332,7 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
                 do_git_pull(git_dir)
                 pip_install_requirements_file(python_exec=venv_python_exec, req_file=req, current_filters=rfilters, fail_label=str(req))
         elif  cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :
-            
+            log_task(f"{cmd}: creating start shortcuts")
             if not params:
                 abort(f"{cmd} requires parameters.")
             #the first param is the shortcut name
@@ -2406,57 +2360,37 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
 
             log_subsubtask(f"{cmd} Created Starter Shortcut: '{shortcut_name}'")
         elif cmd == CMD_EXEC:
-             
+            log_task(f"{cmd}: command: '{full_exec_line}', CWD='{exec_working_dir}'")
+            
             if not params:
                 abort(f"{cmd} requires parameters.")
-                        
             exec_working_dir, full_exec_line, main_executable_file, params_as_list = get_executable_line_and_dir(basedir, venv_python_exec, params)
- 
             log_task(f"{cmd}: command: '{full_exec_line}', CWD='{exec_working_dir}'")
-                
             exec_command= [venv_python_exec] +  [main_executable_file] + params_as_list 
-            if DRYRUN:
-                log_subsubtask(f"{cmd}: would run: {exec_command}")
-            else:
-                rc = run_cmd(cmd = exec_command, cwd = exec_working_dir)
-                if rc != 0:
-                    abort(f"Failed to exec command: {str(exec_command)}")
+            rc = run_cmd(cmd = exec_command, cwd = exec_working_dir, task_description="executing command")
+            if rc != 0:
+                abort(f"Failed to exec command: {str(exec_command)}")
             
         elif cmd in (CMD_GITCLONE, CMD_GITCLONE_ALIAS1):
-            mymode=None
-            if operation_mode==MODE_INSTALL:
-                #install mode
-                mymode=MODE_INSTALL
-            elif operation_mode==MODE_REBUILD:
-                #rebu mode
-                mymode=MODE_REBUILD
-            elif operation_mode==MODE_SENSOINSTALL:
-                mymode=MODE_SENSOINSTALL
-            else:
-                abort("mode unrecognized")
-                
-        
             if len(params) != 2:
                 abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
             url, suffix = params
+            log_task(f"{cmd} cloning: {url}")
+                        
             target = (basedir / suffix).resolve()
             target = target / extract_project_name(url)
-            log_task(f"{cmd} cloning: {url}")
-            git_clone(url=url, target=target,operating_mode=operation_mode)
+            do_git_clone(url=url, target=target,operating_mode=operation_mode)
             
         elif cmd == CMD_GETFILE or cmd==CMD_GETBLOB:
-
             if len(params) != 2:
                 abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
             url, suffix = params
-            targetdir = (basedir / suffix).resolve()
-            
             log_task(f"{cmd}: retrieving file: {url}")
-
+            
+            targetdir = (basedir / suffix).resolve()
             if noblob_mode and cmd==CMD_GETBLOB:
                 log_subsubtask(f"{cmd}: no-blob mode. ignoring download")    
                 continue
-
             if DRYRUN:
                 log_subsubtask(f"DRYRUM: {cmd}: would download {url}")
             else:
@@ -2464,24 +2398,31 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
                 #url = "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/wan2.2-i2v-rapid-aio-example.json"
                 #path = "d:/resources/"
                 download_only_if_not_existent(url=url, directory_target_path=targetdir, verbose=VERBOSE, show_progress=True)
-                #quietmode= not VERBOSE
-                #download_with_wget(url=url,dest_dir=targetdir, quiet=quietmode)
+                
         elif cmd ==CMD_PIPEXEC:
             if len(params) < 1:
                 abort(f"{cmd} requires at least one parameter")
+            log_task(f"{cmd}: executing pip command: {" ".join(params)}")
+            
+            
             pip_run_command(venv_python_exec, pip_command= params)
 
         elif cmd ==CMD_PIPREQPACKAGE:
             if len(params) < 1:
                 abort(f"{cmd} requires at least one parameter")
+            log_task(f"{cmd}: installing pip packages: {" ".join(params)}")
+            
             pip_run_pip_install(venv_python_exec, pip_command= params)
 
         elif cmd == CMD_COMMENTEDOUT_LINE:
             continue
         elif cmd == CMD_CONFIRM_FILE_OR_ABORT:
             path_to_confirm = params[0]
+            log_task(f"{cmd}: Checking for file existence: {str(path_to_confirm)}")
+            
             target = (basedir / path_to_confirm).resolve()
             confirm_file_exists(target)
+            
         else:
             abort(f"Unknown command in inputfile: {cmd}")
 

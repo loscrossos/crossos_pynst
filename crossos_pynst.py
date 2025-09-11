@@ -1944,7 +1944,7 @@ def remove_dir_force(target: Path):
                 shutil.rmtree(target, onerror=_force_remove_readonly)
 
 
-def do_git_clone(url: str, target: Path, operating_mode=None):
+def do_git_clone(url: str, target: Path, operating_mode=None, force_mode=False):
     target.parent.mkdir(parents=True, exist_ok=True)
 
     if target.exists():
@@ -1954,7 +1954,7 @@ def do_git_clone(url: str, target: Path, operating_mode=None):
             log_subsubtask(f"Repository already exists. Not cloning...")
             if operating_mode==MODE_INSTALL or operating_mode==MODE_REBUILD:
                 log_subsubtask("Repository: updating code")
-                do_git_pull(repo_path=target, operating_mode=operating_mode)
+                do_git_pull(repo_path=target, operating_mode=operating_mode, force_mode=force_mode)
             return
 
     rc = run_cmd(cmd=["git", "clone", url, str(target)],cwd=str(target.parent),task_description="Cloning repo...")
@@ -1963,7 +1963,8 @@ def do_git_clone(url: str, target: Path, operating_mode=None):
     log_subsubtask(f"Cloned to: {target}")
 
 
-def do_git_pull( repo_path: Path, operating_mode=None):
+
+def do_git_pull( repo_path: Path, operating_mode=None, force_mode=False):
     """
     Perform a git pull on a directory
     """     
@@ -1977,6 +1978,14 @@ def do_git_pull( repo_path: Path, operating_mode=None):
                     
     rc = run_cmd(cmd=["git", "pull"], cwd=repo_path, task_description=f"Updating git repository: {repo_path}")
     if rc != 0:
+        if force_mode==True:
+            if operating_mode==MODE_INSTALL or operating_mode==MODE_REBUILD:
+                log_subtask("git pull failed, trying force-pull")
+                if do_force_git_pull_on_repository(repo_path):
+                    log_subsubtask("Repository was succesfully force-updated!")
+                    return
+            if operating_mode==MODE_SENSOINSTALL:
+                log_subtask("Forcemode was cancelled by extra safe install mode")            
         abort(f"Failed to update repository (broken or not a repo) from: {str(repo_path)}")
         
 
@@ -1986,6 +1995,142 @@ def do_git_command(target: Path, params):
     if rc != 0:
         abort(f"Git command failed for {target}")
  
+
+import os
+import subprocess
+from pathlib import Path
+
+def do_force_git_pull_on_repository(directory: str) -> bool:
+    """
+    Checks if a directory is a Git repository and ensures it is in a state to run 'git pull' on main or master.
+    If not, attempts to put it in a pullable state (e.g., switch to main/master, stash changes).
+    
+    Args:
+        directory (str): Path to the directory to check.
+        
+    Returns:
+        bool: True if the repository is ready and git pull succeeds, False otherwise.
+    """
+    # Convert directory to Path object and ensure it exists
+    dir_path = Path(directory)
+    if not dir_path.is_dir():
+        print(f"Error: {directory} is not a valid directory")
+        return False
+
+    # Change to the directory
+    original_dir = os.getcwd()
+    try:
+        os.chdir(dir_path)
+
+        # Check if it's a Git repository
+        result = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            capture_output=True, text=True
+        )
+        if result.returncode != 0 or result.stdout.strip() != "true":
+            print(f"Error: {directory} is not a Git repository")
+            return False
+        print("is git dir!")
+        # Check current branch or detached HEAD state
+        result = subprocess.run(
+            ["git", "symbolic-ref", "--short", "HEAD"],
+            capture_output=True, text=True
+        )
+        current_branch = result.stdout.strip() if result.returncode == 0 else None
+
+        # Determine target branch (try main, then master)
+        target_branch = None
+        result = subprocess.run(
+            ["git", "fetch", "--all"],
+            capture_output=True, text=True
+        )
+
+        result = subprocess.run(
+            ["git", "branch", "-r"],
+            capture_output=True, text=True
+        )
+        remote_branches = result.stdout.splitlines()
+        if "origin/main" in [b.strip() for b in remote_branches]:
+            target_branch = "main"
+        elif "origin/master" in [b.strip() for b in remote_branches]:
+            target_branch = "master"
+        else:
+            print("Error: Neither main nor master branch found in remote")
+            return False
+
+        # If not on the target branch or in detached HEAD, switch to it
+        if current_branch != target_branch:
+            if current_branch is None:  # Detached HEAD
+                print(f"Switching from detached HEAD to {target_branch}")
+            else:
+                print(f"Switching from {current_branch} to {target_branch}")
+            
+            # Check for local branch existence
+            result = subprocess.run(
+                ["git", "branch", "--list", target_branch],
+                capture_output=True, text=True
+            )
+            if target_branch not in result.stdout:
+                # Create local branch tracking remote
+                result = subprocess.run(
+                    ["git", "checkout", "-b", target_branch, f"origin/{target_branch}"],
+                    capture_output=True, text=True
+                )
+            else:
+                result = subprocess.run(
+                    ["git", "checkout", target_branch],
+                    capture_output=True, text=True
+                )
+            
+            if result.returncode != 0:
+                print(f"Error switching to {target_branch}: {result.stderr}")
+                return False
+
+        # Check for uncommitted changes
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True, text=True
+        )
+        if result.stdout.strip():
+            print("Uncommitted changes detected, stashing them")
+            result = subprocess.run(
+                ["git", "stash", "push", "-m", "Auto-stash for git pull"],
+                capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                print(f"Error stashing changes: {result.stderr}")
+                return False
+
+        # Ensure branch is tracking remote
+        result = subprocess.run(
+            ["git", "branch", "--set-upstream-to", f"origin/{target_branch}", target_branch],
+            capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            print(f"Error setting upstream to origin/{target_branch}: {result.stderr}")
+            return False
+
+        # Perform git pull
+        print(f"Running git pull on {target_branch}")
+        result = subprocess.run(
+            ["git", "pull"],
+            capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            print(f"Error during git pull: {result.stderr}")
+            return False
+
+        print(f"Successfully pulled latest changes on {target_branch}")
+        return True
+
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return False
+    finally:
+        # Restore original working directory
+        os.chdir(original_dir)
+
+
 
 
 def task_print(text_tokens):
@@ -2323,7 +2468,13 @@ def assert_file_exists(path: str):
 
 
 # ========= MAIN PROCESS =========
-def process_input_script(commands: list[tuple[str, list[str]]], basedir: Path, python_embedded_mode: bool,  noblob_mode=False,install_mode=False, custom_venv_name=None, operation_mode=MODE_REBUILD):
+def process_input_script(commands: list[tuple[str, list[str]]], 
+                         basedir: Path, 
+                         python_embedded_mode: bool,  
+                         noblob_mode=False,
+                         force_build_mode=False, 
+                         custom_venv_name=None, 
+                         operation_mode=MODE_REBUILD):
     # Ensure git available (not strictly required for repair flow, but keep parity)
     require_tool("git", "Please install Git and ensure it is on your PATH.")
 
@@ -2343,18 +2494,19 @@ def process_input_script(commands: list[tuple[str, list[str]]], basedir: Path, p
             embedded_dir = basedir / current_venv_name
             is_embedded_present = embedded_dir.is_dir()
         else:
-            log_subsubtask(f"embedded mode: guessing name to be: {current_venv_name}")
             embedded_dir = basedir / current_venv_name
             is_embedded_present = embedded_dir.is_dir()
             if is_embedded_present == False:
                 current_venv_name=COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME_FALLBACK
-                log_subsubtask(f"embedded mode: Guess failed. trying with typo: {current_venv_name}")
                 embedded_dir = basedir / current_venv_name
                 is_embedded_present = embedded_dir.is_dir()
-                
+            
             
         if not is_embedded_present:
             abort(f"Venv not found! this is not a portable or manual installation. Missing: {embedded_dir}")
+        else:
+            log_subsubtask(f"embedded mode: found embedded dir at: {current_venv_name}")
+            
         # Use embedded python executable (best effort cross-platform)
         python_exec = str(embedded_dir / ("python.exe" if platform.system().lower() == "windows" else "python"))
         log_subsubtask(f"attempting to search for {python_exec}")
@@ -2461,7 +2613,7 @@ def process_input_script(commands: list[tuple[str, list[str]]], basedir: Path, p
                 path = Path(req)
                 git_dir=path.parent
                 log_subtask(f"{cmd} Repository found: {git_dir}")
-                do_git_pull(git_dir)
+                do_git_pull(git_dir, operating_mode=operation_mode, force_mode=force_build_mode)
                 pip_install_requirements_file(python_exec=venv_python_exec, req_file=req, current_filters=rfilters, fail_label=str(req))
         elif  cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :
             log_task(f"{cmd}: creating start shortcuts")
@@ -2511,7 +2663,7 @@ def process_input_script(commands: list[tuple[str, list[str]]], basedir: Path, p
                         
             target = (basedir / suffix).resolve()
             target = target / extract_project_name(url)
-            do_git_clone(url=url, target=target,operating_mode=operation_mode)
+            do_git_clone(url=url, target=target,operating_mode=operation_mode, force_mode=force_build_mode)
             
         elif cmd == CMD_GETFILE or cmd==CMD_GETBLOB:
             if len(params) != 2:
@@ -2616,6 +2768,7 @@ def main():
     parser.add_argument("--backup", action="store_true", help="Backup existing venv (or copy python_embedded) instead of deleting/replacing")
     parser.add_argument("--noblob", action="store_true",help="Enable Filedownloads. This can consume high band width and is disabled by default")
     parser.add_argument("--venvname",type=str,default=None,help="Name of the custom virtual environment")
+    parser.add_argument("--force", action="store_true",help="Force builds")
     args = parser.parse_args()
 
     STARTER_NO_DESKTOP = args.nodesktop
@@ -2689,7 +2842,7 @@ def main():
         
     
     log_task(f"=== CrossOS {APP_NAME}: START ===")
-    process_input_script(commands=commands, basedir= installdir, python_embedded_mode= args.embedded, custom_venv_name=args.venvname, noblob_mode=args.noblob, operation_mode=operation_mode)
+    process_input_script(commands=commands, basedir= installdir, python_embedded_mode= args.embedded, custom_venv_name=args.venvname, noblob_mode=args.noblob, operation_mode=operation_mode, force_build_mode=args.force)
     log_task(f"=== CrossOS {APP_NAME}: END ===")
 
 if __name__ == "__main__":

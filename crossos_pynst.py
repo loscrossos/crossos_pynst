@@ -1980,6 +1980,12 @@ def do_git_pull( repo_path: Path, operating_mode=None):
         abort(f"Failed to update repository (broken or not a repo) from: {str(repo_path)}")
         
 
+def do_git_command(target: Path, params):
+
+    rc = run_cmd(cmd=["git"]+ params,cwd=str(target),task_description="running git command...")
+    if rc != 0:
+        abort(f"Git command failed for {target}")
+ 
 
 
 def task_print(text_tokens):
@@ -2548,6 +2554,18 @@ def process_input_script(commands: list[tuple[str, list[str]]], basedir: Path, p
             
             target = (basedir / path_to_confirm).resolve()
             assert_file_exists(target)
+        elif cmd ==CMD_XRUNGITCOMMAND:
+            git_command_path = params[0]
+            #the params follow
+            git_command_params = params[1:]
+            git_command_target = (basedir / git_command_path).resolve()
+            assert_file_exists(git_command_target)
+            
+            log_task(f"{cmd}: executing git command on: {git_command_path}")
+            
+            do_git_command(target=Path(git_command_target), params=git_command_params)
+            
+            
             
         else:
             abort(f"Unknown command in inputfile: {cmd}")

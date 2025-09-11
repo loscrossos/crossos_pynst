@@ -1,6 +1,6 @@
 PYTHON 3.13
 CONFIRM ComfyUI/main.py
-XRUNGITCOMMAND ComfyUI git checkout -b master --track origin/master
+XRUNGITCOMMAND ComfyUI checkout -b master --track origin/master
 REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
 RFILTER torch torchvision torchaudio 
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes

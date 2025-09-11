@@ -1410,6 +1410,7 @@ MODE_REBUILD="rebuild"
 
 DEFAULT_PYTHON_VERSION = "3.12"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
+COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME_FALLBACK="python_embeded"
 
 STARTER_NO_DESKTOP = False
 DRYRUN = False
@@ -1435,27 +1436,26 @@ COLOR_ERROR = RED
 COLOR_END = "\033[0m"
 
 
-CMD_COMMENTEDOUT_LINE=    "#"       #| comment                         | <- same |<- same
-CMD_PYTHON=               "PYTHON"  #| set python version to be used for venvs. Script will abort if he existing venv has another version   | <- same |<- same but will delete existing venvs and create a new venv with the scpecified version
-CMD_PIPREQFILE=           "REQINST" #| install req file                | <- same |<- same
-CMD_PIPREQPACKAGE=        "PIPINST" #| install req wheel or module     | <- same |<- same
-CMD_PIPEXEC=        "RUNPIPCOMMAND" #| Advanced: Raw command line passed to pip.      | <- same |<- same
-CMD_RFILTER=              "RFILTER" #| Filter out packages (from REQ* commands)  | <- same |<- same
-CMD_GITCLONE=             "CLONEIT" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
-CMD_GITCLONE_ALIAS1=      "GITCLON" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
-CMD_REQSCAN=              "REQSCAN" #| Specifies a directory to scan for subdirectories with "requirements.txt" to install. Will not update code in safe mode  | <- same but updates the repository code first|<- same but updates the repository code first
-CMD_GETFILE=              "GETFILE" #| Downloads a file to a directory.  | <- same |<- same
-CMD_GETBLOB=              "GETBLOB" #| Downloads a file to a directory. Used for large files (e.g. models)  | <- same |<- same
-CMD_PRINT=                "PRINTIT" #| Prints a message for the user to command line.  | <- same |<- same
-CMD_CONFIRM_FILE_OR_ABORT="CONFIRM" #| Checks that a file exists. Aborts run if it fails  | <- same |<- same
-CMD_PAUSE=                "PAUSEIT" #| Pauses the execution until user confirms  | <- same |<- same
-CMD_EXEC =          "RUNPYTHONFILE" #| Runs a python file (arguments and params allowed)  | <- same |<- same
-CMD_SHORTCUT_DESK_ICON  = "DESKICO" #| Creates a Desktop icon with a command line  | <- same |<- same
-CMD_SHORTCUT_DESK_SCRIPT= "DESKEXE" #| Creates a Desktop script with a command line  | <- same |<- same
-CMD_SHORTCUT_BASE_ICON  = "HOMEICO" #| Creates a Installdir icon with a command line  | <- same |<- same
-CMD_SHORTCUT_BASE_SCRIPT= "HOMEEXE" #| Creates a installdir script with a command line  | <- same |<- same
-
-
+CMD_COMMENTEDOUT_LINE=     "#"       #| comment                         | <- same |<- same
+CMD_PYTHON=                "PYTHON"  #| set python version to be used for venvs. Script will abort if he existing venv has another version   | <- same |<- same but will delete existing venvs and create a new venv with the scpecified version
+CMD_PIPREQFILE=            "REQINST" #| install req file                | <- same |<- same
+CMD_PIPREQPACKAGE=         "PIPINST" #| install req wheel or module     | <- same |<- same
+CMD_RFILTER=               "RFILTER" #| Filter out packages (from REQ* commands)  | <- same |<- same
+CMD_GITCLONE=              "CLONEIT" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
+CMD_GITCLONE_ALIAS1=       "GITCLON" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
+CMD_REQSCAN=               "REQSCAN" #| Specifies a directory to scan for subdirectories with "requirements.txt" to install. Will not update code in safe mode  | <- same but updates the repository code first|<- same but updates the repository code first
+CMD_GETFILE=               "GETFILE" #| Downloads a file to a directory.  | <- same |<- same
+CMD_GETBLOB=               "GETBLOB" #| Downloads a file to a directory. Used for large files (e.g. models)  | <- same |<- same
+CMD_PRINT=                 "PRINTIT" #| Prints a message for the user to command line.  | <- same |<- same
+CMD_CONFIRM_FILE_OR_ABORT= "CONFIRM" #| Checks that a file exists. Aborts run if it fails  | <- same |<- same
+CMD_PAUSE=                 "PAUSEIT" #| Pauses the execution until user confirms  | <- same |<- same
+CMD_SHORTCUT_DESK_ICON  =  "DESKICO" #| Creates a Desktop icon with a command line  | <- same |<- same
+CMD_SHORTCUT_DESK_SCRIPT=  "DESKEXE" #| Creates a Desktop script with a command line  | <- same |<- same
+CMD_SHORTCUT_BASE_ICON  =  "HOMEICO" #| Creates a Installdir icon with a command line  | <- same |<- same
+CMD_SHORTCUT_BASE_SCRIPT=  "HOMEEXE" #| Creates a installdir script with a command line  | <- same |<- same
+CMD_XRUNGITCOMMAND ="XRUNGITCOMMAND"#| Runs a git command directly | <-same | <-same
+CMD_PIPEXEC =       "XRUNPIPCOMMAND" #| Advanced: Raw command line passed to pip.      | <- same |<- same
+CMD_EXEC =          "XRUNPYTHONFILE" #| Runs a python file (arguments and params allowed)  | <- same |<- same
 
 
 TOKEN_PRINT_PREFIX="Info: "
@@ -1476,6 +1476,8 @@ def log_error(msg: str):
 def abort(msg: str, code: int = 1):
     log_error(msg)
     sys.exit(code)
+
+
 
 import io
 def run_cmd(cmd, cwd=None, task_description=None) -> int:
@@ -1515,6 +1517,35 @@ def run_cmd(cmd, cwd=None, task_description=None) -> int:
                 stderr=subprocess.DEVNULL
             )
             return p.returncode
+
+def is_valid_version_format(version: str) -> bool:
+    """
+    Validates if a string is formatted like a software version number.
+    Examples: '3', '3.22', '3.22.22'
+    
+    Args:
+        version (str): The string to validate
+        
+    Returns:
+        bool: True if the string is a valid version number format, False otherwise
+    """
+    # Check if string is empty or contains non-numeric/non-dot characters
+    if not version or not all(c.isdigit() or c == '.' for c in version):
+        return False
+    
+    # Split by dots
+    parts = version.split('.')
+    
+    # Check if there's at least one part and no empty parts
+    if not parts or '' in parts:
+        return False
+        
+    # Check if all parts are numeric
+    try:
+        return all(part.isdigit() for part in parts)
+    except ValueError:
+        return False
+
 
 def ensure_utf8(path: Path):
     """
@@ -1589,13 +1620,76 @@ def python_cmd_for_version(version: str) -> list[str]:
     else:
         return [f"python{version if version.startswith('3.') else '3.' + version.split('.')[-1]}"]
 
+
+import subprocess
+import re
+import os
+
+def check_python_version(exec_path: str, desired_version: str) -> bool:
+    """
+    Check if the Python executable at exec_path matches the desired version.
+    
+    Args:
+        exec_path (str): Path to the Python executable
+        desired_version (str): Desired version (e.g., '3', '3.12', '3.12.1')
+    
+    Returns:
+        bool: True if version matches, False otherwise
+    
+    Raises:
+        FileNotFoundError: If the executable path doesn't exist
+        PermissionError: If the executable cannot be run
+        RuntimeError: If version cannot be determined
+    """
+    # Validate executable path
+    if not os.path.isfile(exec_path):
+        abort(f"Python executable not found at: {exec_path}")
+    
+    # Ensure executable is accessible
+    if not os.access(exec_path, os.X_OK):
+        abort(f"No executable permissions for: {exec_path}")
+    
+    try:
+        # Run python --version command
+        result = subprocess.run(
+            [exec_path, "--version"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        # Extract version from output (stdout or stderr)
+        output = result.stdout or result.stderr
+        version_match = re.search(r"Python (\d+(?:\.\d+)*)", output)
+        
+        if not version_match:
+            abort("Could not determine Python version")
+        
+        actual_version = version_match.group(1)
+        
+        # Escape desired_version for regex and replace dots with literal dots
+        desired_version_escaped = re.escape(desired_version)
+        
+        # Create regex pattern to match desired version
+        pattern = f"^{desired_version_escaped}(?:\\.\\d+)*$"
+        
+        # Check if actual version matches the desired version pattern
+        return bool(re.match(pattern, actual_version))
+    
+    except subprocess.CalledProcessError:
+        abort(f"Failed to execute {exec_path} --version")
+    except Exception as e:
+        abort(f"Error checking Python version: {str(e)}")
+    
+    
+
 def check_system_python_version_available(version: str):
     cmd = python_cmd_for_version(version) + ["--version"]
-    rc = run_cmd(cmd=cmd,task_description=f"checking system python version: {version}")
+    rc = run_cmd(cmd=cmd,task_description=f"checking availability of system python version: {version}")
     if rc != 0:
         abort(f"Python {version} not available on this system. Please install it and try again.")
 
-def ensure_venv_exists(venv_path: Path, venv_exec: str, version: str, do_backup: bool, operation_mode=None, embedded_mode=False):
+def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_version: str=None, do_backup: bool=False, operation_mode=None, embedded_mode=False):
     """
     ensure a venv exists:
     if venv exists based on OP_mode: 
@@ -1630,21 +1724,21 @@ def ensure_venv_exists(venv_path: Path, venv_exec: str, version: str, do_backup:
                     shutil.copytree(venv_path, bak)
                 else:
                     venv_path.rename(bak)
-                    
+        
         if operation_mode==MODE_SENSOINSTALL:
             log_subsubtask("Will use existing venv but will not upgrade it due to extra safe settings")
             return
         if operation_mode==MODE_INSTALL:
             log_subsubtask("Will use existing venv and upgrade it to latest pip")
-            run_cmd(cmd=[venv_exec, "-m", "pip", "install", "--upgrade", "pip"],task_description="upgrading pip")
+            run_cmd(cmd=[venv_python_exec, "-m", "pip", "install", "--upgrade", "pip"],task_description="upgrading pip")
             return
         if operation_mode==MODE_REBUILD:
             if embedded_mode:
                 log_subsubtask("Will empty embedded venv to rebuild it")
                 # empty venv
-                uninstall_all_packages(venv_exec)
+                uninstall_all_packages(venv_python_exec)
                 # Verify empty
-                if not is_venv_empty(venv_exec):
+                if not is_venv_empty(venv_python_exec):
                     abort("Embedded environment is not empty after uninstalling all packages. Aborting.")
                 return
             else:
@@ -1654,14 +1748,20 @@ def ensure_venv_exists(venv_path: Path, venv_exec: str, version: str, do_backup:
                 else:
                     log_subsubtask(f"Deleting existing venv to rebuild it")
                     shutil.rmtree(venv_path, ignore_errors=True)
-   
+                    
+    #at this point there is no venv.
+    if required_python_version is None:
+        log_subsubtask(f"setting Python version to {APP_NAME}-default: {required_python_version}")
+        required_python_version = DEFAULT_PYTHON_VERSION
+        check_system_python_version_available(required_python_version)
+
     # Create new venv
-    cmd = python_cmd_for_version(version) + ["-m", "venv", str(venv_path)]
+    cmd = python_cmd_for_version(required_python_version) + ["-m", "venv", str(venv_path)]
     rc = run_cmd(cmd=cmd, task_description=f"creating new venv: {venv_path}")
     if rc != 0:
         abort(f"Failed to create virtual environment at {venv_path}")
     
-    run_cmd(cmd=[venv_exec, "-m", "pip", "install", "--upgrade", "pip"],task_description="upgrading pip")
+    run_cmd(cmd=[venv_python_exec, "-m", "pip", "install", "--upgrade", "pip"],task_description="upgrading pip")
     log_subsubtask(f"Created virtual environment: {venv_path}")
 
 
@@ -1693,7 +1793,7 @@ def uninstall_all_packages(python_exec: str):
     """
     Uninstall all installed packages from the environment represented by python_exec.
     """
-    log_task("Uninstalling all packages from current environment (pip freeze -> pip uninstall -y) ...")
+    log_subtask("Uninstalling all packages from current environment (pip freeze -> pip uninstall -y) ...")
     if DRYRUN:
         log_subsubtask("[DRYRUN] Would run 'pip freeze' and uninstall all packages.")
         return
@@ -2216,8 +2316,8 @@ def assert_file_exists(path: str):
 
 
 
-# ========= Mode: REPAIR =========
-def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_portable_mode: bool,  noblob_mode=False,install_mode=False, custom_venv_name=None, operation_mode=MODE_REBUILD):
+# ========= MAIN PROCESS =========
+def process_input_script(commands: list[tuple[str, list[str]]], basedir: Path, python_embedded_mode: bool,  noblob_mode=False,install_mode=False, custom_venv_name=None, operation_mode=MODE_REBUILD):
     # Ensure git available (not strictly required for repair flow, but keep parity)
     require_tool("git", "Please install Git and ensure it is on your PATH.")
 
@@ -2226,14 +2326,27 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
     venv_python_exec=None
     venv_name=None
 
+    log_subtask(f"Ensuring Python is accesible")
     #GET PYTHON TO BE USED DEPENDING ON PORTABLE OR NORMAL INSTALL
-    if comfyui_portable_mode:
+    if python_embedded_mode:
         log_subtask("Running in embedded mode.")
         current_venv_name=COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME
+        is_embedded_present=False
         if custom_venv_name is not None:
-            current_venv_name=custom_venv_name
-        embedded_dir = basedir / current_venv_name
-        is_embedded_present = embedded_dir.is_dir()
+            current_venv_name = custom_venv_name
+            embedded_dir = basedir / current_venv_name
+            is_embedded_present = embedded_dir.is_dir()
+        else:
+            log_subsubtask(f"embedded mode: guessing name to be: {current_venv_name}")
+            embedded_dir = basedir / current_venv_name
+            is_embedded_present = embedded_dir.is_dir()
+            if is_embedded_present == False:
+                current_venv_name=COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME_FALLBACK
+                log_subsubtask(f"embedded mode: Guess failed. trying with typo: {current_venv_name}")
+                embedded_dir = basedir / current_venv_name
+                is_embedded_present = embedded_dir.is_dir()
+                
+            
         if not is_embedded_present:
             abort(f"Venv not found! this is not a portable or manual installation. Missing: {embedded_dir}")
         # Use embedded python executable (best effort cross-platform)
@@ -2252,15 +2365,6 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
         venv_python_exec = python_exec
         venv_path = embedded_dir
     else:
-        # Build/rebuild a new venv with the requested/implicit Python version
-        # Determine PYTHON version from commands (default 3.12 if absent)
-        python_version = DEFAULT_PYTHON_VERSION
-
-        for cmd, params in commands:
-            if cmd == CMD_PYTHON:
-                python_version = params[0]
-                break
-        check_system_python_version_available(python_version)
 
         # OS-specific venv name
         system = platform.system().lower()
@@ -2282,16 +2386,35 @@ def do_repair(commands: list[tuple[str, list[str]]], basedir: Path, comfyui_port
         venv_path =  temp_venv_path
        
        
-        
-    log_task(f"Ensuring existence of venv for Python {python_version}")
-    ensure_venv_exists(venv_path=venv_path,venv_exec=venv_python_exec, version=python_version, do_backup=BACKUP,embedded_mode=comfyui_portable_mode, operation_mode=operation_mode)
+       
+    # Build/rebuild a new venv with the requested/implicit Python version
+    # Determine PYTHON version from commands (default 3.12 if absent)
+    required_python_version = None
+
+    for cmd, params in commands:
+        if cmd == CMD_PYTHON:
+            required_python_version = params[0]
+            if is_valid_version_format(required_python_version)==False:
+                abort(f"Provided version is invalid or not properly formatted: {required_python_version}")
+            log_task(f"{cmd}: This pynst requires a python version of: {required_python_version}. Will check for it.")
+            if python_embedded_mode:
+                log_subsubtask("Embedded mode: checking version of embedded python")     
+                check_python_version(venv_python_exec, required_python_version) 
+            else:
+                log_subsubtask(f"checking if System has python{required_python_version} installed")
+                check_system_python_version_available(required_python_version)
+            break
+
+
+    log_subtask(f"Ensuring existence of venv")
+    ensure_venv_exists(venv_path=venv_path,venv_python_exec=venv_python_exec, required_python_version=required_python_version, do_backup=BACKUP,embedded_mode=python_embedded_mode, operation_mode=operation_mode)
 
     if os.path.exists(venv_python_exec)==False:
         abort(f"PYthon executable was not found at {venv_python_exec}")
 
      
     
-
+    log_subtask(f"Processing Input file")
     # Now process commands permitted in REPAIR mode: PYTHON (already handled), RFILTER, REQFILE, STARTER, REQSCAN
     rfilters: list[str] = []
     # Collect REQSCAN paths (process them after REQFILEs or as they appear? Spec: executed in order they appear. We'll execute in order.)
@@ -2507,7 +2630,8 @@ def main():
         CMD_SHORTCUT_BASE_SCRIPT,
         CMD_COMMENTEDOUT_LINE,
         CMD_CONFIRM_FILE_OR_ABORT,
-        CMD_EXEC
+        CMD_EXEC,
+        CMD_XRUNGITCOMMAND
         }
     restricted_keys={CMD_PYTHON: 1, CMD_PAUSE: 10}
     validate_file(inputfile_path,allowed_keywords=allowed_keys,limited_keywords=restricted_keys)
@@ -2547,7 +2671,7 @@ def main():
         
     
     log_task(f"=== CrossOS {APP_NAME}: START ===")
-    do_repair(commands=commands, basedir= installdir, comfyui_portable_mode= args.embedded, custom_venv_name=args.venvname, noblob_mode=args.noblob, operation_mode=operation_mode)
+    process_input_script(commands=commands, basedir= installdir, python_embedded_mode= args.embedded, custom_venv_name=args.venvname, noblob_mode=args.noblob, operation_mode=operation_mode)
     log_task(f"=== CrossOS {APP_NAME}: END ===")
 
 if __name__ == "__main__":

@@ -160,13 +160,14 @@ DESKICO "Hillobar Rope" Rope/Rope.py
 
 # ROADMAP
 - works: install: windows, linux, mac
-- todo: write starters: ideally clickable
-- todo: test rebuild
-- todo: git pull on rebuild for comfy and for every node
+- works: write starters: ideally clickable
+- works: test rebuild
+- works: git pull on rebuild for comfy and for every node
 
 **Upcoming Feature pipeline**
-These might come but are still not in the works
-- todo: data migration: safely move your models, nodes, workflows from an existing installation (e.g. Desktop install) to a new location
-- todo: data separation and organisatiom: separation data from code (e.g. models are saved on a faster drive and code on the system drive)
+
+- Nunchaku:
+https://www.reddit.com/r/StableDiffusion/comments/1n8xyc1/nunchaku_v100_officially_released/
+https://nunchaku.tech/docs/nunchaku/installation/installation.html#installation-installation
 
 

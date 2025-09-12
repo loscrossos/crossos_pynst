@@ -1674,7 +1674,10 @@ def check_python_version(exec_path: str, desired_version: str) -> bool:
         pattern = f"^{desired_version_escaped}(?:\\.\\d+)*$"
         
         # Check if actual version matches the desired version pattern
-        return bool(re.match(pattern, actual_version))
+        result_matches=bool(re.match(pattern, actual_version))
+        if result_matches==False:
+            log_subsubtask(f"Version does not match: need '{desired_version}' but got '{actual_version}'")
+        return result_matches
     
     except subprocess.CalledProcessError:
         abort(f"Failed to execute {exec_path} --version")
@@ -1974,7 +1977,7 @@ def do_git_pull( repo_path: Path, operating_mode=None, force_mode=False):
     if operating_mode==MODE_REBUILD:
         rc = run_cmd(cmd=["git", "restore", "." ],cwd=repo_path, task_description="Resetting repository due to rebuild mode")
         if rc != 0:
-            abort(f"Git reset failed. Repo broken or conflicting changes (force remove might be needed): {repo_path}")
+            log_subsubtask(f"Warning: 'Git restore .' failed. Repo could be broken or conflicting changes (force remove might be needed): {repo_path}. Ignore this if no further ERROR appears!")
                     
     rc = run_cmd(cmd=["git", "pull"], cwd=repo_path, task_description=f"Updating git repository: {repo_path}")
     if rc != 0:
@@ -2557,7 +2560,8 @@ def process_input_script(commands: list[tuple[str, list[str]]],
             log_task(f"{cmd}: This pynst requires a python version of: {required_python_version}. Will check for it.")
             if python_embedded_mode:
                 log_subsubtask("Embedded mode: checking version of embedded python")     
-                check_python_version(venv_python_exec, required_python_version) 
+                if check_python_version(venv_python_exec, required_python_version)==False:
+                    abort(f"Embedded Python version does not match to needed version! You can solve it by creating a new venv in normal mode (need to have pyhon {required_python_version} installed on your system)") 
             else:
                 log_subsubtask(f"checking if System has python{required_python_version} installed")
                 check_system_python_version_available(required_python_version)

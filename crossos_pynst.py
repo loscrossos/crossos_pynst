@@ -1888,8 +1888,8 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
     message_append=""
     if current_filters:
        message_append=f"(package filter applied and installing as temp file)" 
-       
-    rc = run_cmd(cmd=[python_exec, "-m", "pip", "install", "-r", str(filtered)], task_description=f"Installing requirements from file{message_append}: {req_file}" )
+    #pip install --upgrade --force-reinstall -r requirements.txt
+    rc = run_cmd(cmd=[python_exec, "-m", "pip", "install", "--upgrade", "--force-reinstall", "-r", str(filtered)], task_description=f"Installing requirements from file{message_append}: {req_file}" )
     if rc != 0:
         abort(f"Failed to install requirements from: {fail_label}")
 

@@ -1,8 +1,14 @@
 PYTHON 3.13
+CLONEIT https://github.com/comfyanonymous/ComfyUI .
+#TODO: this creates or uses an existing venv. the venv is from now on the used venv for all following commands until its set again. if ussing the embedded option, the first intsance is ignored and an embedded folder on root assumed. unless the venvname option is used.
+#TODO decide on name
+NEWVENV ComfyUI 
+# SETVENV ComfyUI
 REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
 RFILTER torch torchvision torchaudio 
-CLONEIT https://github.com/comfyanonymous/ComfyUI .
+
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
+CLONEIT https://github.com/kijai/ComfyUI-KJNodes ComfyUI/custom_nodes
 REQSCAN .
 REQSCAN ComfyUI/custom_nodes
 HOMEEXE "ComfyUI_cpu" ComfyUI/main.py --cpu --auto-launch 

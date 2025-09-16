@@ -171,3 +171,4 @@ https://www.reddit.com/r/StableDiffusion/comments/1n8xyc1/nunchaku_v100_official
 https://nunchaku.tech/docs/nunchaku/installation/installation.html#installation-installation
 
 
+https://www.reddit.com/r/StableDiffusion/comments/1nd7rvf/nunchaku_qwen_image_edit_is_out/

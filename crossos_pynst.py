@@ -1363,6 +1363,67 @@ def crossos_make_icon_artsy(text: str,
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # -*- coding: utf-8 -*-
 
 """
@@ -1412,6 +1473,11 @@ DEFAULT_PYTHON_VERSION = "3.12"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME_FALLBACK="python_embeded"
 
+DEFAULT_VENV_NAME_MAC=".env_mac"
+DEFAULT_VENV_NAME_WINDOWS=".env_win"
+DEFAULT_VENV_NAME_LINUX=".env_lin"
+DEFAULT_REQUIREMENTS_FILENAME="requirements.txt"
+
 STARTER_NO_DESKTOP = False
 DRYRUN = False
 VERBOSE = False
@@ -1436,18 +1502,19 @@ COLOR_ERROR = RED
 COLOR_END = "\033[0m"
 
 
-CMD_COMMENTEDOUT_LINE=     "#"       #| comment                         | <- same |<- same
+CMD_COMMENTEDOUT_LINE=     "#"       #| comment                                     | <- same   |<- same
 CMD_PYTHON=                "PYTHON"  #| set python version to be used for venvs. Script will abort if he existing venv has another version   | <- same |<- same but will delete existing venvs and create a new venv with the scpecified version
-CMD_PIPREQFILE=            "REQINST" #| install req file                | <- same |<- same
-CMD_PIPREQPACKAGE=         "PIPINST" #| install req wheel or module     | <- same |<- same
-CMD_RFILTER=               "RFILTER" #| Filter out packages (from REQ* commands)  | <- same |<- same
-CMD_GITCLONE=              "CLONEIT" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
-CMD_GITCLONE_ALIAS1=       "GITCLON" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
+CMD_SETVENV=               "SETVENV" #| sets the venv path to be used or created.   | <-same    | Venv to build or rebuild the venv
+CMD_PIPREQFILE=            "REQINST" #| install req file                            | <- same   |<- same
+CMD_PIPREQPACKAGE=         "PIPINST" #| install req wheel or module                 | <- same   |<- same
+CMD_RFILTER=               "RFILTER" #| Filter out packages (from REQ* commands)    | <- same   |<- same
+CMD_GITCLONE=              "CLONEIT" #| clone a repo into a dir. no code update if it exists    | <- same but updates code | same but updates code
+CMD_GITCLONE_ALIAS1=       "GITCLON" #| clone a repo into a dir. no code update if it exists    | <- same but updates code | same but updates code
 CMD_REQSCAN=               "REQSCAN" #| Specifies a directory to scan for subdirectories with "requirements.txt" to install. Will not update code in safe mode  | <- same but updates the repository code first|<- same but updates the repository code first
 CMD_GETFILE=               "GETFILE" #| Downloads a file to a directory.  | <- same |<- same
 CMD_GETBLOB=               "GETBLOB" #| Downloads a file to a directory. Used for large files (e.g. models)  | <- same |<- same
 CMD_PRINT=                 "PRINTIT" #| Prints a message for the user to command line.  | <- same |<- same
-CMD_CONFIRM_FILE_OR_ABORT= "CONFIRM" #| Checks that a file exists. Aborts run if it fails  | <- same |<- same
+CMD_CONFIRM_FILE_OR_ABORT= "HASFILE" #| Checks that a file exists. Aborts run if it fails  | <- same |<- same
 CMD_PAUSE=                 "PAUSEIT" #| Pauses the execution until user confirms  | <- same |<- same
 CMD_SHORTCUT_DESK_ICON  =  "DESKICO" #| Creates a Desktop icon with a command line  | <- same |<- same
 CMD_SHORTCUT_DESK_SCRIPT=  "DESKEXE" #| Creates a Desktop script with a command line  | <- same |<- same
@@ -1692,7 +1759,7 @@ def check_system_python_version_available(version: str):
     if rc != 0:
         abort(f"Python {version} not available on this system. Please install it and try again.")
 
-def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_version: str=None, do_backup: bool=False, operation_mode=None, embedded_mode=False):
+def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_version: str=None, do_backup: bool=False, operation_mode=None, embedded_mode=False, path_for_requirementstxt=None, current_filters: list[str]=None ):
     """
     ensure a venv exists:
     if venv exists based on OP_mode: 
@@ -1714,9 +1781,20 @@ def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_v
         else:
             -create one
 """
-    #HANDLE BACKUP
+
+    #ENSURE A VENV EXISTS
+    #PRE-Existing VENV
     if venv_path.exists():
         log_subsubtask("Found a venv at the location")
+        
+
+        #precheck
+        if operation_mode==MODE_SENSOINSTALL or operation_mode == MODE_INSTALL:
+            if os.path.exists(venv_python_exec)==False:
+                abort(f"Python executable does not exist or corrupted. Maybe run in rebuild mode to fix: {venv_python_exec}")
+        
+        
+        #First: HANDLE BACKUP
         if do_backup:
             bak = unique_bak_name(venv_path)
             if DRYRUN:
@@ -1727,7 +1805,8 @@ def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_v
                     shutil.copytree(venv_path, bak)
                 else:
                     venv_path.rename(bak)
-        
+
+        #now handle existing venv
         if operation_mode==MODE_SENSOINSTALL:
             log_subsubtask("Will use existing venv but will not upgrade it due to extra safe settings")
             return
@@ -1743,6 +1822,8 @@ def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_v
                 # Verify empty
                 if not is_venv_empty(venv_python_exec):
                     abort("Embedded environment is not empty after uninstalling all packages. Aborting.")
+                if path_for_requirementstxt is not None:
+                    pip_install_requirements_file(python_exec=venv_python_exec, req_file=path_for_requirementstxt, current_filters=current_filters, fail_label=str(path_for_requirementstxt))
                 return
             else:
                 #delete venv
@@ -1751,7 +1832,7 @@ def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_v
                 else:
                     log_subsubtask(f"Deleting existing venv to rebuild it")
                     shutil.rmtree(venv_path, ignore_errors=True)
-                    
+                
     #at this point there is no venv.
     if required_python_version is None:
         log_subsubtask(f"setting Python version to {APP_NAME}-default: {required_python_version}")
@@ -1764,7 +1845,13 @@ def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_v
     if rc != 0:
         abort(f"Failed to create virtual environment at {venv_path}")
     
+    #upgrade pip
     run_cmd(cmd=[venv_python_exec, "-m", "pip", "install", "--upgrade", "pip"],task_description="upgrading pip")
+
+    #install requirements
+    if path_for_requirementstxt is not None:
+        pip_install_requirements_file(python_exec=venv_python_exec, req_file=path_for_requirementstxt, current_filters=current_filters, fail_label=str(path_for_requirementstxt))
+
     log_subsubtask(f"Created virtual environment: {venv_path}")
 
 
@@ -1880,10 +1967,10 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
     """
     Install requirements from a (possibly remote) file with RFILTER applied.
     """
-    src = req_file
-    if not src.exists():
-        abort(f"Requirements file not found: {src}")
-    filtered = apply_rfilter_to_file(src, current_filters)
+   
+    if not os.path.exists(req_file):
+        abort(f"Requirements file not found: {req_file}")
+    filtered = apply_rfilter_to_file(req_file, current_filters)
     
     message_append=""
     if current_filters:
@@ -2379,12 +2466,12 @@ def scan_requirements_one_level(root: Path) -> list[Path]:
     """
     results: list[Path] = []
     if root.is_dir():
-        root_req = root / "requirements.txt"
+        root_req = root / DEFAULT_REQUIREMENTS_FILENAME
         if root_req.is_file():
             results.append(root_req)
         for entry in root.iterdir():
             if entry.is_dir():
-                p = entry / "requirements.txt"
+                p = entry / DEFAULT_REQUIREMENTS_FILENAME
                 if p.is_file():
                     results.append(p)
     return results
@@ -2467,49 +2554,29 @@ def assert_file_exists(path: str):
 
 
 
-
-
-
-# ========= MAIN PROCESS =========
-def process_input_script(commands: list[tuple[str, list[str]]], 
-                         basedir: Path, 
-                         python_embedded_mode: bool,  
-                         noblob_mode=False,
-                         force_build_mode=False, 
-                         custom_venv_name=None, 
-                         operation_mode=MODE_REBUILD):
-    # Ensure git available (not strictly required for repair flow, but keep parity)
-    require_tool("git", "Please install Git and ensure it is on your PATH.")
-
-
-    venv_path=None
-    venv_python_exec=None
-    venv_name=None
-
-    log_subtask(f"Ensuring Python is accesible")
+def get_exec_variables(in_python_embedded_mode:bool=False,in_custom_venv_name:str=None, in_basedir:Path=None, required_venv_path:str=None ):
     #GET PYTHON TO BE USED DEPENDING ON PORTABLE OR NORMAL INSTALL
-    if python_embedded_mode:
-        log_subtask("Running in embedded mode.")
+    if in_python_embedded_mode:
+        log_subtask("Running in embedded mode. Will check if paths exist")
         current_venv_name=COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME
         is_embedded_present=False
-        if custom_venv_name is not None:
-            current_venv_name = custom_venv_name
-            embedded_dir = basedir / current_venv_name
+        if in_custom_venv_name is not None:
+            current_venv_name = in_custom_venv_name
+            embedded_dir = in_basedir / current_venv_name
             is_embedded_present = embedded_dir.is_dir()
         else:
-            embedded_dir = basedir / current_venv_name
+            embedded_dir = in_basedir / current_venv_name
             is_embedded_present = embedded_dir.is_dir()
             if is_embedded_present == False:
                 current_venv_name=COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME_FALLBACK
-                embedded_dir = basedir / current_venv_name
+                embedded_dir = in_basedir / current_venv_name
                 is_embedded_present = embedded_dir.is_dir()
-            
-            
+
         if not is_embedded_present:
             abort(f"Venv not found! this is not a portable or manual installation. Missing: {embedded_dir}")
         else:
             log_subsubtask(f"embedded mode: found embedded dir at: {current_venv_name}")
-            
+
         # Use embedded python executable (best effort cross-platform)
         python_exec = str(embedded_dir / ("python.exe" if platform.system().lower() == "windows" else "python"))
         log_subsubtask(f"attempting to search for {python_exec}")
@@ -2526,39 +2593,76 @@ def process_input_script(commands: list[tuple[str, list[str]]],
         venv_python_exec = python_exec
         venv_path = embedded_dir
     else:
-
         # OS-specific venv name
         system = platform.system().lower()
         temp_venv_name = {
-            "windows": ".env_windows",
-            "linux": ".env_linux",
-            "darwin": ".env_macos"
+            "windows":  DEFAULT_VENV_NAME_WINDOWS,
+            "linux":    DEFAULT_VENV_NAME_LINUX,
+            "darwin":   DEFAULT_VENV_NAME_MAC
         }.get(system, ".env")
-        if custom_venv_name is not None:
-            temp_venv_name=custom_venv_name
-
-        temp_venv_path = basedir / temp_venv_name
-
+        if in_custom_venv_name is not None:
+            temp_venv_name=in_custom_venv_name
+        temp_venv_path = in_basedir / required_venv_path / temp_venv_name
         temp_venv_python_exec = get_theoretic_venv_python_executable(venv_path=temp_venv_path)
-   
-
+        
         venv_name= temp_venv_name
         venv_python_exec =  temp_venv_python_exec
         venv_path =  temp_venv_path
-       
+        
+    return venv_name, venv_python_exec, venv_path
+
+def check_that_file_exists_or_abort(file_path, file_description=None):
+    
+    file_desc="requested file"
+    if file_description is not None:
+        file_desc=file_description
+    
+    if DRYRUN:
+        log_subsubtask(f"[DRYRUN] Would run: an existece check for {file_desc}: {file_path}")
+    else:
+        if os.path.exists(file_path)==False:
+            abort(f"{file_desc} was not found at {file_path}")
+
+
+# ========= MAIN PROCESS =========
+def process_input_script(in_commands: list[tuple[str, list[str]]], 
+                         in_basedir: Path, 
+                         in_python_embedded_mode: bool,  
+                         noblob_mode=False,
+                         in_force_build_mode=False, 
+                         in_custom_venv_name=None, 
+                         in_operation_mode=MODE_REBUILD):
+    # Ensure git available (not strictly required for repair flow, but keep parity)
+    require_tool("git", "Please install Git and ensure it is on your PATH.")
+
+
+    venv_path=None
+    venv_python_exec=None
+    venv_name=None
+
+
        
        
     # Build/rebuild a new venv with the requested/implicit Python version
     # Determine PYTHON version from commands (default 3.12 if absent)
     required_python_version = None
 
-    for cmd, params in commands:
+    #pre-check to see that all required versions in the input are present
+
+    #pre-set the paths to a venv on the basedir. for embeddedd check existence
+    venv_name, venv_python_exec, venv_path = get_exec_variables(in_python_embedded_mode=in_python_embedded_mode,in_custom_venv_name=in_custom_venv_name, in_basedir=in_basedir, required_venv_path="." )
+
+    #TODO: DEcision if a venv is ensured made in any case. or novenv must be provided.
+    #idea: per. default no venv is created but assumeed. on use of functions var are checked for None
+    
+    for cmd, params in in_commands:
         if cmd == CMD_PYTHON:
             required_python_version = params[0]
+            log_task(f"Pre-Check:{cmd}: Pre-checking that version is valid and exists in system: {required_python_version}")
             if is_valid_version_format(required_python_version)==False:
                 abort(f"Provided version is invalid or not properly formatted: {required_python_version}")
             log_task(f"{cmd}: This pynst requires a python version of: {required_python_version}. Will check for it.")
-            if python_embedded_mode:
+            if in_python_embedded_mode:
                 log_subsubtask("Embedded mode: checking version of embedded python")     
                 if check_python_version(venv_python_exec, required_python_version)==False:
                     abort(f"Embedded Python version does not match to needed version! You can solve it by creating a new venv in normal mode (need to have pyhon {required_python_version} installed on your system)") 
@@ -2568,11 +2672,6 @@ def process_input_script(commands: list[tuple[str, list[str]]],
             break
 
 
-    log_subtask(f"Ensuring existence of venv")
-    ensure_venv_exists(venv_path=venv_path,venv_python_exec=venv_python_exec, required_python_version=required_python_version, do_backup=BACKUP,embedded_mode=python_embedded_mode, operation_mode=operation_mode)
-
-    if os.path.exists(venv_python_exec)==False:
-        abort(f"PYthon executable was not found at {venv_python_exec}")
 
      
     
@@ -2580,13 +2679,31 @@ def process_input_script(commands: list[tuple[str, list[str]]],
     # Now process commands permitted in REPAIR mode: PYTHON (already handled), RFILTER, REQFILE, STARTER, REQSCAN
     rfilters: list[str] = []
     # Collect REQSCAN paths (process them after REQFILEs or as they appear? Spec: executed in order they appear. We'll execute in order.)
-    for cmd, params in commands:        
+    for cmd, params in in_commands:
         if cmd == CMD_PAUSE:
             task_pause()
         elif cmd == CMD_PRINT:
             task_print(params)
         elif cmd == CMD_PYTHON:
+            required_python_version = params[0]
+            log_task(f"{cmd}: setting version to be used as: {required_python_version}")
             continue
+        elif cmd == CMD_SETVENV:
+            required_venv_path = params[0]
+            log_task(f"{cmd}: Ensuring existence of venv at path {required_venv_path}")
+
+            venv_name, venv_python_exec, venv_path = get_exec_variables(in_python_embedded_mode=in_python_embedded_mode,in_custom_venv_name=in_custom_venv_name, in_basedir=in_basedir, required_venv_path=required_venv_path )
+            
+            path_to_req_file=None            
+            req_temp_path= in_basedir / required_venv_path / DEFAULT_REQUIREMENTS_FILENAME
+            if os.path.exists(req_temp_path):
+                path_to_req_file= str(req_temp_path)
+                log_subsubtask(f"{DEFAULT_REQUIREMENTS_FILENAME} found.")
+                        
+            ensure_venv_exists(venv_path=venv_path,venv_python_exec=venv_python_exec, required_python_version=required_python_version, do_backup=BACKUP,embedded_mode=in_python_embedded_mode, operation_mode=in_operation_mode,current_filters=rfilters,path_for_requirementstxt=path_to_req_file)
+
+            check_that_file_exists_or_abort(venv_python_exec,"python executable")
+
         elif cmd == CMD_RFILTER:
             rfilters = params[:]
             log_task(f"{cmd} filters set: {', '.join(rfilters)}")
@@ -2595,64 +2712,68 @@ def process_input_script(commands: list[tuple[str, list[str]]],
             req_file_to_install = params[0]
             log_task(f"{cmd} installing: {req_file_to_install}")
             
+            check_that_file_exists_or_abort(venv_python_exec,"python executable")
+            
             if re.match(r"^https?://", req_file_to_install, re.I):
                 downloaded_temp_fie = download_to_temp(req_file_to_install)
                 pip_install_requirements_file(python_exec=venv_python_exec, req_file=downloaded_temp_fie, current_filters=rfilters, fail_label=req_file_to_install)
             else:
-                pip_install_requirements_file(python_exec=venv_python_exec, req_file=(basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install),current_filters= rfilters, fail_label=req_file_to_install)
+                pip_install_requirements_file(python_exec=venv_python_exec, req_file=(in_basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install),current_filters= rfilters, fail_label=req_file_to_install)
+
         elif cmd == CMD_REQSCAN:
-            log_task(f"{cmd} searching for requirements in: {basedir / params[0]} (depth=1)")
+            log_task(f"{cmd} searching for requirements in: {in_basedir / params[0]} (depth=1)")
             #TODO: maybe its more efficient to collect all reqscans and copy all reqfiles and concatenate them into once command as in: pip install -r fiole1.txt -r file2.txt -r file3.txt
-            
+            check_that_file_exists_or_abort(venv_python_exec,"python executable")
             # Search one level below basedir/suffix for requirements.txt (plus root-of-suffix)
-            scan_root = (basedir / params[0]).resolve()
+            scan_root = (in_basedir / params[0]).resolve()
             if not scan_root.exists():
                 log_subsubtask(f"{cmd} path does not exist, skipping: {scan_root}")
                 continue
-            
             reqs = scan_requirements_one_level(scan_root)
             if not reqs:
-                log_subsubtask("No requirements.txt files found at the specified depth.")
+                log_subsubtask(f"No {DEFAULT_REQUIREMENTS_FILENAME} files found at the specified depth.")
             for req in reqs:
                 path = Path(req)
                 git_dir=path.parent
                 log_subtask(f"{cmd} Repository found: {git_dir}")
-                do_git_pull(git_dir, operating_mode=operation_mode, force_mode=force_build_mode)
+                do_git_pull(git_dir, operating_mode=in_operation_mode, force_mode=in_force_build_mode)
                 pip_install_requirements_file(python_exec=venv_python_exec, req_file=req, current_filters=rfilters, fail_label=str(req))
+                
         elif  cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :
             log_task(f"{cmd}: creating start shortcuts")
             if not params:
                 abort(f"{cmd} requires parameters.")
+            check_that_file_exists_or_abort(venv_python_exec,"python executable")
             #the first param is the shortcut name
             shortcut_name = params[0]
             #the params follow
             actual_params = params[1:]
             fill_gap=" "
-            base_name=get_dir_name(basedir)
+            base_name=get_dir_name(in_basedir)
             shortcut_name= f"{shortcut_name}{fill_gap}{base_name}{fill_gap}{venv_name}"
 
-            exec_working_dir, full_exec_line, main_executable_file, executable_as_list = get_executable_line_and_dir(basedir, venv_python_exec, actual_params) 
+            exec_working_dir, full_exec_line, main_executable_file, executable_as_list = get_executable_line_and_dir(in_basedir, venv_python_exec, actual_params) 
             
             if cmd == CMD_SHORTCUT_BASE_SCRIPT:
-                crossos_make_starter_script(basedir, venv_python_exec, shortcut_name, full_exec_line, working_dir=exec_working_dir)
+                crossos_make_starter_script(in_basedir, venv_python_exec, shortcut_name, full_exec_line, working_dir=exec_working_dir)
             elif cmd == CMD_SHORTCUT_BASE_ICON:
                 if DRYRUN:
-                    log_subsubtask(f"DRY_RUN: would create a homedir shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{basedir}'. Exec line: '{full_exec_line}'")
+                    log_subsubtask(f"DRY_RUN: would create a homedir shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{in_basedir}'. Exec line: '{full_exec_line}'")
                 else:
-                    crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=basedir,env_path=venv_path, onDesktop=False, working_dir=exec_working_dir)
+                    crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=in_basedir,env_path=venv_path, onDesktop=False, working_dir=exec_working_dir)
             elif cmd == CMD_SHORTCUT_DESK_ICON:
                 if DRYRUN:
-                    log_subsubtask(f"DRY_RUN: would create a Desktop shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{basedir}'. Exec line: '{full_exec_line}'")
+                    log_subsubtask(f"DRY_RUN: would create a Desktop shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{in_basedir}'. Exec line: '{full_exec_line}'")
                 else:
-                    crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=basedir,env_path=venv_path, onDesktop=True, working_dir=exec_working_dir)
+                    crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=in_basedir,env_path=venv_path, onDesktop=True, working_dir=exec_working_dir)
 
             log_subsubtask(f"{cmd} Created Starter Shortcut: '{shortcut_name}'")
         elif cmd == CMD_EXEC:
             if not params:
                 abort(f"{cmd} requires parameters.")
             log_task(f"{cmd}: will execute python command: {' '.join(params)}")
-                        
-            exec_working_dir, full_exec_line, main_executable_file, params_as_list = get_executable_line_and_dir(basedir, venv_python_exec, params)
+            check_that_file_exists_or_abort(venv_python_exec,"python executable")
+            exec_working_dir, full_exec_line, main_executable_file, params_as_list = get_executable_line_and_dir(in_basedir, venv_python_exec, params)
             log_subsubtask(f"Full command line: '{full_exec_line}', CWD='{exec_working_dir}'")
             exec_command= [venv_python_exec] +  [main_executable_file] + params_as_list 
             rc = run_cmd(cmd = exec_command, cwd = exec_working_dir, task_description="executing command")
@@ -2665,9 +2786,9 @@ def process_input_script(commands: list[tuple[str, list[str]]],
             url, suffix = params
             log_task(f"{cmd} cloning: {url}")
                         
-            target = (basedir / suffix).resolve()
+            target = (in_basedir / suffix).resolve()
             target = target / extract_project_name(url)
-            do_git_clone(url=url, target=target,operating_mode=operation_mode, force_mode=force_build_mode)
+            do_git_clone(url=url, target=target,operating_mode=in_operation_mode, force_mode=in_force_build_mode)
             
         elif cmd == CMD_GETFILE or cmd==CMD_GETBLOB:
             if len(params) != 2:
@@ -2675,7 +2796,7 @@ def process_input_script(commands: list[tuple[str, list[str]]],
             url, suffix = params
             log_task(f"{cmd}: retrieving file: {url}")
             
-            targetdir = (basedir / suffix).resolve()
+            targetdir = (in_basedir / suffix).resolve()
             if noblob_mode and cmd==CMD_GETBLOB:
                 log_subsubtask(f"{cmd}: no-blob mode. ignoring download")    
                 continue
@@ -2691,15 +2812,14 @@ def process_input_script(commands: list[tuple[str, list[str]]],
             if len(params) < 1:
                 abort(f"{cmd} requires at least one parameter")
             log_task(f"{cmd}: executing pip command: {" ".join(params)}")
-            
-            
+            check_that_file_exists_or_abort(venv_python_exec,"python executable")            
             pip_run_command(venv_python_exec, pip_command= params)
 
         elif cmd ==CMD_PIPREQPACKAGE:
             if len(params) < 1:
                 abort(f"{cmd} requires at least one parameter")
             log_task(f"{cmd}: installing pip packages: {" ".join(params)}")
-            
+            check_that_file_exists_or_abort(venv_python_exec,"python executable")
             pip_run_pip_install(venv_python_exec, pip_command= params)
 
         elif cmd == CMD_COMMENTEDOUT_LINE:
@@ -2708,21 +2828,20 @@ def process_input_script(commands: list[tuple[str, list[str]]],
             path_to_confirm = params[0]
             log_task(f"{cmd}: Checking for file existence: {str(path_to_confirm)}")
             
-            target = (basedir / path_to_confirm).resolve()
+            target = (in_basedir / path_to_confirm).resolve()
             assert_file_exists(target)
+            
         elif cmd ==CMD_XRUNGITCOMMAND:
             git_command_path = params[0]
             #the params follow
             git_command_params = params[1:]
-            git_command_target = (basedir / git_command_path).resolve()
+            git_command_target = (in_basedir / git_command_path).resolve()
             assert_file_exists(git_command_target)
             
             log_task(f"{cmd}: executing git command on: {git_command_path}")
             
             do_git_command(target=Path(git_command_target), params=git_command_params)
-            
-            
-            
+
         else:
             abort(f"Unknown command in inputfile: {cmd}")
 
@@ -2788,6 +2907,7 @@ def main():
         abort(f"inputfile file not found: {inputfile_path}")
     allowed_keys={
         CMD_PYTHON,
+        CMD_SETVENV,
         CMD_PIPREQFILE,
         CMD_PIPREQPACKAGE,
         CMD_PIPEXEC,
@@ -2846,7 +2966,7 @@ def main():
         
     
     log_task(f"=== CrossOS {APP_NAME}: START ===")
-    process_input_script(commands=commands, basedir= installdir, python_embedded_mode= args.embedded, custom_venv_name=args.venvname, noblob_mode=args.noblob, operation_mode=operation_mode, force_build_mode=args.force)
+    process_input_script(in_commands=commands, in_basedir= installdir, in_python_embedded_mode= args.embedded, in_custom_venv_name=args.venvname, noblob_mode=args.noblob, in_operation_mode=operation_mode, in_force_build_mode=args.force)
     log_task(f"=== CrossOS {APP_NAME}: END ===")
 
 if __name__ == "__main__":

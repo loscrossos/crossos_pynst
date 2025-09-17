@@ -1,6 +1,6 @@
 PYTHON 3.13
-CONFIRM ComfyUI/main.py
-CONFIRM python_embeded/python.exe
+HASFILE ComfyUI/main.py
+HASFILE python_embeded/python.exe
 # XRUNGITCOMMAND ComfyUI checkout -b master --track origin/master
 XRUNGITCOMMAND ComfyUI status
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes

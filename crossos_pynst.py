@@ -1755,8 +1755,11 @@ def check_python_version(exec_path: str, desired_version: str) -> bool:
 
 def check_system_python_version_available(version: str):
     cmd = python_cmd_for_version(version) + ["--version"]
-    rc = run_cmd(cmd=cmd,task_description=f"checking availability of system python version: {version}")
-    if rc != 0:
+    try:
+        rc = run_cmd(cmd=cmd,task_description=f"checking availability of system python version: {version}")
+        if rc != 0:
+                abort(f"Python {version} not available on this system. Please install it and try again.")
+    except Exception as e:
         abort(f"Python {version} not available on this system. Please install it and try again.")
 
 def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_version: str=None, do_backup: bool=False, operation_mode=None, embedded_mode=False, path_for_requirementstxt=None, current_filters: list[str]=None ):
@@ -2593,6 +2596,7 @@ def get_exec_variables(in_python_embedded_mode:bool=False,in_custom_venv_name:st
         venv_python_exec = python_exec
         venv_path = embedded_dir
     else:
+        #normal mode: non-embedded 
         # OS-specific venv name
         system = platform.system().lower()
         temp_venv_name = {
@@ -2621,7 +2625,7 @@ def check_that_file_exists_or_abort(file_path, file_description=None):
         log_subsubtask(f"[DRYRUN] Would run: an existece check for {file_desc}: {file_path}")
     else:
         if os.path.exists(file_path)==False:
-            abort(f"{file_desc} was not found at {file_path}")
+            abort(f"{file_desc}. Missing: {file_path}")
 
 
 # ========= MAIN PROCESS =========
@@ -2649,7 +2653,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
 
     #pre-check to see that all required versions in the input are present
 
-    #pre-set the paths to a venv on the basedir. for embeddedd check existence
+    #pre-set the theoretical paths to a venv on the basedir. for embeddedd check existence
     venv_name, venv_python_exec, venv_path = get_exec_variables(in_python_embedded_mode=in_python_embedded_mode,in_custom_venv_name=in_custom_venv_name, in_basedir=in_basedir, required_venv_path="." )
 
     #TODO: DEcision if a venv is ensured made in any case. or novenv must be provided.
@@ -2670,7 +2674,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 log_subsubtask(f"checking if System has python{required_python_version} installed")
                 check_system_python_version_available(required_python_version)
             break
-
+        
 
 
      

@@ -18,14 +18,15 @@ repair: rebuilds a venv. deletes and reinstalls repos to latest code.
 
 
 commmand                              | sensitive                       | Install   | Rebuild
----                                   | ---                             |---        | ---   
-CMD_COMMENTEDOUT_LINE=     "#"       #| comment                         | <- same |<- same
+---                                   | ---                             |---        | ---
+CMD_COMMENTEDOUT_LINE=     "#"       #| comment                                     | <- same   |<- same
 CMD_PYTHON=                "PYTHON"  #| set python version to be used for venvs. Script will abort if he existing venv has another version   | <- same |<- same but will delete existing venvs and create a new venv with the scpecified version
-CMD_PIPREQFILE=            "REQINST" #| install req file                | <- same |<- same
-CMD_PIPREQPACKAGE=         "PIPINST" #| install req wheel or module     | <- same |<- same
-CMD_RFILTER=               "RFILTER" #| Filter out packages (from REQ* commands)  | <- same |<- same
-CMD_GITCLONE=              "CLONEIT" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
-CMD_GITCLONE_ALIAS1=       "GITCLON" #| clone a repo into a dir. no code update if it exists  | <- same but updates code | same but updates code
+CMD_SETVENV=               "SETVENV" #| sets the venv path to be used or created.   | <-same    | Venv to build or rebuild the venv
+CMD_PIPREQFILE=            "REQINST" #| install req file                            | <- same   |<- same
+CMD_PIPREQPACKAGE=         "PIPINST" #| install req wheel or module                 | <- same   |<- same
+CMD_RFILTER=               "RFILTER" #| Filter out packages (from REQ* commands)    | <- same   |<- same
+CMD_GITCLONE=              "CLONEIT" #| clone a repo into a dir. no code update if it exists    | <- same but updates code | same but updates code
+CMD_GITCLONE_ALIAS1=       "GITCLON" #| clone a repo into a dir. no code update if it exists    | <- same but updates code | same but updates code
 CMD_REQSCAN=               "REQSCAN" #| Specifies a directory to scan for subdirectories with "requirements.txt" to install. Will not update code in safe mode  | <- same but updates the repository code first|<- same but updates the repository code first
 CMD_GETFILE=               "GETFILE" #| Downloads a file to a directory.  | <- same |<- same
 CMD_GETBLOB=               "GETBLOB" #| Downloads a file to a directory. Used for large files (e.g. models)  | <- same |<- same
@@ -39,7 +40,6 @@ CMD_SHORTCUT_BASE_SCRIPT=  "HOMEEXE" #| Creates a installdir script with a comma
 CMD_XRUNGITCOMMAND ="XRUNGITCOMMAND"#| Runs a git command directly | <-same | <-same
 CMD_PIPEXEC =       "XRUNPIPCOMMAND" #| Advanced: Raw command line passed to pip.      | <- same |<- same
 CMD_EXEC =          "XRUNPYTHONFILE" #| Runs a python file (arguments and params allowed)  | <- same |<- same
-
 
 
 

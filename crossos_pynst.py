@@ -2728,7 +2728,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif cmd == CMD_RFILTER:
             rfilters = params[:]
             if len(params) == 0:
-                abort(f"{cmd} Filters cleared! {rfilters}")
+                log_task(f"{cmd} Filters cleared! {rfilters}")
             else:
                 log_task(f"{cmd} filters set: {', '.join(rfilters)}")
 

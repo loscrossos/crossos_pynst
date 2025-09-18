@@ -2,10 +2,11 @@ PYTHON 3.13
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
 # TODO: this creates or uses an existing venv. the venv is from now on the used venv for all following commands until its set again. if ussing the embedded option, the first intsance is ignored and an embedded folder on root assumed. unless the venvname option is used.
 HASFILE ComfyUI/main.py
+RFILTER torch torchvision torchaudio
 SETVENV ComfyUI
+RFILTER 
 PRINTIT This step may take some time depending on your connection.
 REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
-RFILTER torch torchvision torchaudio 
 
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
 CLONEIT https://github.com/kijai/ComfyUI-KJNodes ComfyUI/custom_nodes
@@ -16,3 +17,4 @@ REQSCAN ComfyUI/custom_nodes
 HOMEEXE "ComfyUI_cpu" ComfyUI/main.py --cpu --auto-launch 
 DESKICO "ComfyUI GPU Mode" ComfyUI/main.py --gpu --use-sage-attention --auto-launch 
 DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch 
+XRUNPIPCOMMAND show torch

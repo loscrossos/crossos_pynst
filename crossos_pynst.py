@@ -1815,7 +1815,7 @@ def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_v
             return
         if operation_mode==MODE_INSTALL:
             log_subsubtask("Will use existing venv and upgrade it to latest pip")
-            run_cmd(cmd=[venv_python_exec, "-m", "pip", "install", "--upgrade", "pip"],task_description="upgrading pip")
+            pip_upgrade_pip(venv_python_exec)
             return
         if operation_mode==MODE_REBUILD:
             if embedded_mode:
@@ -1849,7 +1849,7 @@ def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_v
         abort(f"Failed to create virtual environment at {venv_path}")
     
     #upgrade pip
-    run_cmd(cmd=[venv_python_exec, "-m", "pip", "install", "--upgrade", "pip"],task_description="upgrading pip")
+    pip_upgrade_pip(venv_python_exec)
 
     #install requirements
     if path_for_requirementstxt is not None:
@@ -1966,7 +1966,16 @@ def download_to_temp(url: str) -> Path:
 
 
 
-def pip_install_requirements_file(python_exec: str, req_file: Path, current_filters: list[str], fail_label: str):
+def pip_upgrade_pip(python_exec: str):
+    """
+    Install requirements from a (possibly remote) file with RFILTER applied.
+    """
+    #not effective
+    #run_cmd(cmd=[python_exec, "-m", "pip", "ensurepip", "--upgrade"],task_description="upgrading pip")
+    #python.exe -m pip install --upgrade pip
+    run_cmd(cmd=[python_exec, "-m", "pip", "install",   "--upgrade", "pip"],task_description="upgrading pip")
+
+def pip_install_requirements_file(python_exec: str, req_file: Path, current_filters: list[str], fail_label: str, force_reinstall=False):
     """
     Install requirements from a (possibly remote) file with RFILTER applied.
     """
@@ -1978,8 +1987,14 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
     message_append=""
     if current_filters:
        message_append=f"(package filter applied and installing as temp file)" 
-    #pip install --upgrade --force-reinstall -r requirements.txt
-    rc = run_cmd(cmd=[python_exec, "-m", "pip", "install", "--upgrade", "--force-reinstall", "-r", str(filtered)], task_description=f"Installing requirements from file{message_append}: {req_file}" )
+    #pip install --upgrade --force-reinstall --no-warn-script-location -r requirements.txt
+    cmd=[python_exec, "-m", "pip", "install", "--upgrade"]
+    
+    if force_reinstall:
+        cmd.extend([ "--force-reinstall"])
+    cmd.extend(["--no-warn-script-location", "-r", str(filtered)])
+    
+    rc = run_cmd(cmd, task_description=f"Installing requirements from file{message_append}: {req_file}" )
     if rc != 0:
         abort(f"Failed to install requirements from: {fail_label}")
 
@@ -2065,10 +2080,12 @@ def do_git_pull( repo_path: Path, operating_mode=None, force_mode=False):
         abort(f"Directory to perform git pull not found: {repo_path}")
 
     if operating_mode==MODE_REBUILD:
-        rc = run_cmd(cmd=["git", "restore", "." ],cwd=repo_path, task_description="Resetting repository due to rebuild mode")
-        if rc != 0:
-            log_subsubtask(f"Warning: 'Git restore .' failed. Repo could be broken or conflicting changes (force remove might be needed): {repo_path}. Ignore this if no further ERROR appears!")
-                    
+        try:
+            rc = run_cmd(cmd=["git", "restore", "." ],cwd=repo_path, task_description="Resetting repository due to rebuild mode")
+            if rc != 0:
+                log_subsubtask(f"Warning: 'Git restore .' failed. Repo could be broken or conflicting changes (force remove might be needed): {repo_path}. Ignore this if no further ERROR appears!")
+        except Exception as e:
+                abort(f"Warning(exception): 'Git restore .' failed. Repo could be broken or conflicting changes (try adding argument '--force'): {repo_path}.")
     rc = run_cmd(cmd=["git", "pull"], cwd=repo_path, task_description=f"Updating git repository: {repo_path}")
     if rc != 0:
         if force_mode==True:
@@ -2079,7 +2096,7 @@ def do_git_pull( repo_path: Path, operating_mode=None, force_mode=False):
                     return
             if operating_mode==MODE_SENSOINSTALL:
                 log_subtask("Forcemode was cancelled by extra safe install mode")            
-        abort(f"Failed to update repository (broken or not a repo) from: {str(repo_path)}")
+        abort(f"Failed to update repository (broken or not a repo) (try adding argument '--force'): {str(repo_path)}")
         
 
 def do_git_command(target: Path, params):
@@ -2107,7 +2124,7 @@ def do_force_git_pull_on_repository(directory: str) -> bool:
     # Convert directory to Path object and ensure it exists
     dir_path = Path(directory)
     if not dir_path.is_dir():
-        print(f"Error: {directory} is not a valid directory")
+        abort(f"Force-pull: Fatal Error: {directory} is not a valid directory")
         return False
 
     # Change to the directory
@@ -2123,7 +2140,7 @@ def do_force_git_pull_on_repository(directory: str) -> bool:
         if result.returncode != 0 or result.stdout.strip() != "true":
             print(f"Error: {directory} is not a Git repository")
             return False
-        print("is git dir!")
+        log_subsubtask("Force-pull: Git directory detected. attempting to move code version to 'nightly'")
         # Check current branch or detached HEAD state
         result = subprocess.run(
             ["git", "symbolic-ref", "--short", "HEAD"],
@@ -2154,9 +2171,9 @@ def do_force_git_pull_on_repository(directory: str) -> bool:
         # If not on the target branch or in detached HEAD, switch to it
         if current_branch != target_branch:
             if current_branch is None:  # Detached HEAD
-                print(f"Switching from detached HEAD to {target_branch}")
+                log_subsubtask(f"Force-pull: Switching from detached HEAD to {target_branch}")
             else:
-                print(f"Switching from {current_branch} to {target_branch}")
+                log_subsubtask(f"Force-pull: Switching from {current_branch} to {target_branch}")
             
             # Check for local branch existence
             result = subprocess.run(
@@ -2176,7 +2193,7 @@ def do_force_git_pull_on_repository(directory: str) -> bool:
                 )
             
             if result.returncode != 0:
-                print(f"Error switching to {target_branch}: {result.stderr}")
+                abort(f"Force-pull:Fatal error: Repo might be broken. Error switching to {target_branch}: {result.stderr}")
                 return False
 
         # Check for uncommitted changes
@@ -2185,13 +2202,13 @@ def do_force_git_pull_on_repository(directory: str) -> bool:
             capture_output=True, text=True
         )
         if result.stdout.strip():
-            print("Uncommitted changes detected, stashing them")
+            log_subsubtask(f"Force-pull: Uncommitted changes detected, stashing them")
             result = subprocess.run(
                 ["git", "stash", "push", "-m", "Auto-stash for git pull"],
                 capture_output=True, text=True
             )
             if result.returncode != 0:
-                print(f"Error stashing changes: {result.stderr}")
+                abort(f"Force-pull:Fatal error: Error stashing changes: {result.stderr}")
                 return False
 
         # Ensure branch is tracking remote
@@ -2200,24 +2217,24 @@ def do_force_git_pull_on_repository(directory: str) -> bool:
             capture_output=True, text=True
         )
         if result.returncode != 0:
-            print(f"Error setting upstream to origin/{target_branch}: {result.stderr}")
+            abort(f"Force-pull:Fatal error: Error setting upstream to origin/{target_branch}: {result.stderr}")
             return False
 
         # Perform git pull
-        print(f"Running git pull on {target_branch}")
+        log_subsubtask(f"Force-pull: Running git pull on {target_branch}")
         result = subprocess.run(
             ["git", "pull"],
             capture_output=True, text=True
         )
         if result.returncode != 0:
-            print(f"Error during git pull: {result.stderr}")
+            abort(f"Force-pull:Fatal Error: Error during git pull: {result.stderr}")
             return False
 
-        print(f"Successfully pulled latest changes on {target_branch}")
+        log_subsubtask(f"Force-pull: Successfully pulled latest changes on {target_branch}")
         return True
 
     except Exception as e:
-        print(f"Unexpected error: {str(e)}")
+        abort(f"Force-pull:Fatal error: Unexpected error: {str(e)}")
         return False
     finally:
         # Restore original working directory
@@ -2710,7 +2727,10 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
 
         elif cmd == CMD_RFILTER:
             rfilters = params[:]
-            log_task(f"{cmd} filters set: {', '.join(rfilters)}")
+            if len(params) == 0:
+                abort(f"{cmd} Filters cleared! {rfilters}")
+            else:
+                log_task(f"{cmd} filters set: {', '.join(rfilters)}")
 
         elif cmd == CMD_PIPREQFILE:
             req_file_to_install = params[0]
@@ -2718,11 +2738,13 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             
             check_that_file_exists_or_abort(venv_python_exec,"python executable")
             
+            
             if re.match(r"^https?://", req_file_to_install, re.I):
-                downloaded_temp_fie = download_to_temp(req_file_to_install)
-                pip_install_requirements_file(python_exec=venv_python_exec, req_file=downloaded_temp_fie, current_filters=rfilters, fail_label=req_file_to_install)
+                req_file_to_install = download_to_temp(req_file_to_install)
             else:
-                pip_install_requirements_file(python_exec=venv_python_exec, req_file=(in_basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install),current_filters= rfilters, fail_label=req_file_to_install)
+                req_file_to_install=(in_basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install)
+            #TODO decide if force reinstall: for now yes
+            pip_install_requirements_file(python_exec=venv_python_exec, req_file=req_file_to_install,current_filters= rfilters, fail_label=req_file_to_install,force_reinstall=True)
 
         elif cmd == CMD_REQSCAN:
             log_task(f"{cmd} searching for requirements in: {in_basedir / params[0]} (depth=1)")

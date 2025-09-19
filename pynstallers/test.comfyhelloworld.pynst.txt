@@ -1,0 +1,5 @@
+CLONEIT https://github.com/comfyanonymous/ComfyUI .
+RFILTER torch torchvision torchaudio
+SETVENV ComfyUI
+RFILTER
+DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch

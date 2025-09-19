@@ -1943,6 +1943,7 @@ def apply_rfilter_to_file(src_path: Path, filters: list[str]) -> Path:
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".txt")
     os.close(tmp_fd)
     tmp = Path(tmp_path)
+    src_path = Path(src_path)
     with src_path.open("r", encoding="utf-8", errors="replace") as src, tmp.open("w", encoding="utf-8") as dst:
         for line in src:
             # Preserve comments and blank lines as-is unless they match (they won't)

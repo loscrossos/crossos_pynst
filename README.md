@@ -2,6 +2,23 @@
 
 A **cross-platform** (Windows, Linux, macOS) single-file Python tool to install or rebuild&repair pretty much any python project!
 
+
+
+# Usage
+
+
+```bash
+python crossos_pynst.py [pynstfile] [directory]
+```
+
+
+TODO: make default python crossos_pynst.py [pynstfile] [directory] with: install mode
+  -modes are optional. default install. check if senso can affect rebuild
+TODO: add --precheck
+TODO: check desktopmode comfy
+
+
+
 Elements:
 
 Mode element  |  venv                     | repo                  | code in repo          | files

@@ -189,3 +189,18 @@ https://nunchaku.tech/docs/nunchaku/installation/installation.html#installation-
 
 
 https://www.reddit.com/r/StableDiffusion/comments/1nd7rvf/nunchaku_qwen_image_edit_is_out/
+
+guide:
+https://nunchaku.tech/docs/nunchaku/installation/setup_windows.html
+
+custom node:
+
+https://github.com/nunchaku-tech/ComfyUI-nunchaku.git
+
+
+
+windows:
+https://github.com/nunchaku-tech/nunchaku/releases/download/v1.0.0/nunchaku-1.0.0+torch2.8-cp313-cp313-win_amd64.whl
+
+Linux 
+https://github.com/nunchaku-tech/nunchaku/releases/download/v1.0.0/nunchaku-1.0.0+torch2.8-cp313-cp313-linux_x86_64.whl  ; sys_platform  == 'linux'

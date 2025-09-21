@@ -12,10 +12,26 @@ python crossos_pynst.py [pynstfile] [directory]
 ```
 
 
-TODO: make default python crossos_pynst.py [pynstfile] [directory] with: install mode
+TOTEST: make default python crossos_pynst.py [pynstfile] [directory] with: install mode
   -modes are optional. default install. check if senso can affect rebuild
-TODO: add --precheck
-TODO: check desktopmode comfy
+
+TODO: on repair
+  -delete ~ folders from site-packages in rebuild embedded mode
+
+TODO: add precheck
+  -checks if files to be downloaded are existent AND have different sizes than existent files. issue warning
+
+
+TODO: add --preexist
+  -pre-checks that filechecks alrady exist. 
+  -This way an installation shold be existent already else we install a fully new intance neighboring an existent one.
+
+
+
+DONE: check if desktopmode comfy woudl work:
+  -for code yes
+  -for env yes.
+  -not for models
 
 
 
@@ -82,10 +98,9 @@ Install visomaster but i want my own models: install --noblob
 install a workflow: install
 
 options:
-to overwrite: --force
-code: 
 --gitsafe (default)
 --gitlatest
+TODO: --gitrelease
 
 provide venvname:
 --venvname

@@ -1,8 +1,12 @@
 Initial base prompt for Crossos_Pynst
+---
+
+
+i need a python code that uses only standard libraries (no extra modules to be installed) and works on mac, Linux and Windows. The requirements are as follows:
 
 i want a single python file that installs and manages a python repository project, the virtual environment (venv) and all related repositories contained in it. 
 The definition of what is to be done is contained in input files.
-No extra packages shall be needed. All code is to use standard python. The code runs on windows, linux and macOS. All commands are case-insensitive.
+
 
 -Arguments-
 

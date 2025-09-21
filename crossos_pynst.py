@@ -1465,10 +1465,22 @@ APP_NAME="Pynst"
 
 #main modes of operation
 
-MODE_SENSOINSTALL="sensoinstall"
-MODE_INSTALL="install"
-MODE_REBUILD="rebuild"
+STARTOPTION_MODE_SENSOINSTALL="sensoinstall"
+STARTOPTION_MODE_INSTALL="install"
+STARTOPTION_MODE_REBUILD="rebuild"
+STARTOPTION_INPUTFILE="inputfile"
+STARTOPTION_INPUTDIR="targetdirectory"
+STARTOPTION_EMBEDDED="embedded"
+STARTOPTION_NODESKTOP="nodesktop"
+STARTOPTION_DRYRUN="dryrun"
+STARTOPTION_VERBOSE="verbose"
+STARTOPTION_BACKUP="backup"
+STARTOPTION_NOBLOB="noblob"
+STARTOPTION_VENVNAME="venvname"
+STARTOPTION_FORCELATESTPULL="forcegitlatest"
+STARTOPTION_SHOWOP="debugopt"
 
+    
 DEFAULT_PYTHON_VERSION = "3.13"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME_FALLBACK="python_embeded"
@@ -1792,7 +1804,7 @@ def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_v
         
 
         #precheck
-        if operation_mode==MODE_SENSOINSTALL or operation_mode == MODE_INSTALL:
+        if operation_mode==STARTOPTION_MODE_SENSOINSTALL or operation_mode == STARTOPTION_MODE_INSTALL:
             if os.path.exists(venv_python_exec)==False:
                 abort(f"Python executable does not exist or corrupted. Maybe run in rebuild mode to fix: {venv_python_exec}")
         
@@ -1810,14 +1822,14 @@ def ensure_venv_exists(venv_path: Path, venv_python_exec: str, required_python_v
                     venv_path.rename(bak)
 
         #now handle existing venv
-        if operation_mode==MODE_SENSOINSTALL:
+        if operation_mode==STARTOPTION_MODE_SENSOINSTALL:
             log_subsubtask("Will use existing venv but will not upgrade it due to extra safe settings")
             return
-        if operation_mode==MODE_INSTALL:
+        if operation_mode==STARTOPTION_MODE_INSTALL:
             log_subsubtask("Will use existing venv and upgrade it to latest pip")
             pip_upgrade_pip(venv_python_exec)
             return
-        if operation_mode==MODE_REBUILD:
+        if operation_mode==STARTOPTION_MODE_REBUILD:
             if embedded_mode:
                 log_subsubtask("Will empty embedded venv to rebuild it")
                 # empty venv
@@ -2053,7 +2065,7 @@ def remove_dir_force(target: Path):
                 shutil.rmtree(target, onerror=_force_remove_readonly)
 
 
-def do_git_clone(url: str, target: Path, operating_mode=None, force_mode=False):
+def do_git_clone(url: str, target: Path, operating_mode=None, force_gitpull_mode=False):
     target.parent.mkdir(parents=True, exist_ok=True)
 
     if target.exists():
@@ -2061,9 +2073,9 @@ def do_git_clone(url: str, target: Path, operating_mode=None, force_mode=False):
             remove_dir_force(target)
         else:
             log_subsubtask(f"Repository already exists. Not cloning...")
-            if operating_mode==MODE_INSTALL or operating_mode==MODE_REBUILD:
+            if operating_mode==STARTOPTION_MODE_INSTALL or operating_mode==STARTOPTION_MODE_REBUILD:
                 log_subsubtask("Repository: updating code")
-                do_git_pull(repo_path=target, operating_mode=operating_mode, force_mode=force_mode)
+                do_git_pull(repo_path=target, operating_mode=operating_mode, force_gitpull_mode=force_gitpull_mode)
             return
 
     rc = run_cmd(cmd=["git", "clone", url, str(target)],cwd=str(target.parent),task_description="Cloning repo...")
@@ -2073,31 +2085,31 @@ def do_git_clone(url: str, target: Path, operating_mode=None, force_mode=False):
 
 
 
-def do_git_pull( repo_path: Path, operating_mode=None, force_mode=False):
+def do_git_pull( repo_path: Path, operating_mode=None, force_gitpull_mode=False):
     """
     Perform a git pull on a directory
     """     
     if not repo_path.exists():
         abort(f"Directory to perform git pull not found: {repo_path}")
 
-    if operating_mode==MODE_REBUILD:
+    if operating_mode==STARTOPTION_MODE_REBUILD:
         try:
             rc = run_cmd(cmd=["git", "restore", "." ],cwd=repo_path, task_description="Resetting repository due to rebuild mode")
             if rc != 0:
                 log_subsubtask(f"Warning: 'Git restore .' failed. Repo could be broken or conflicting changes (force remove might be needed): {repo_path}. Ignore this if no further ERROR appears!")
         except Exception as e:
-                abort(f"Warning(exception): 'Git restore .' failed. Repo could be broken or conflicting changes (try adding argument '--force'): {repo_path}.")
+                abort(f"Warning(exception): 'Git restore .' failed. Repo could be broken or conflicting changes (try adding argument '--{STARTOPTION_FORCELATESTPULL}'): {repo_path}.")
     rc = run_cmd(cmd=["git", "pull"], cwd=repo_path, task_description=f"Updating git repository: {repo_path}")
     if rc != 0:
-        if force_mode==True:
-            if operating_mode==MODE_INSTALL or operating_mode==MODE_REBUILD:
+        if force_gitpull_mode==True:
+            if operating_mode==STARTOPTION_MODE_INSTALL or operating_mode==STARTOPTION_MODE_REBUILD:
                 log_subtask("git pull failed, trying force-pull")
                 if do_force_git_pull_on_repository(repo_path):
                     log_subsubtask("Repository was succesfully force-updated!")
                     return
-            if operating_mode==MODE_SENSOINSTALL:
+            if operating_mode==STARTOPTION_MODE_SENSOINSTALL:
                 log_subtask("Forcemode was cancelled by extra safe install mode")            
-        abort(f"Failed to update repository (broken or not a repo) (try adding argument '--force'): {str(repo_path)}")
+        abort(f"Failed to update repository (broken or not a repo) (try adding argument '--{STARTOPTION_FORCELATESTPULL}'): {str(repo_path)}")
         
 
 def do_git_command(target: Path, params):
@@ -2651,9 +2663,9 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                          in_basedir: Path, 
                          in_python_embedded_mode: bool,  
                          noblob_mode=False,
-                         in_force_build_mode=False, 
+                         force_gitpull_mode=False, 
                          in_custom_venv_name=None, 
-                         in_operation_mode=MODE_REBUILD):
+                         in_operation_mode=STARTOPTION_MODE_REBUILD):
     # Ensure git available (not strictly required for repair flow, but keep parity)
     require_tool("git", "Please install Git and ensure it is on your PATH.")
 
@@ -2763,7 +2775,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 path = Path(req)
                 git_dir=path.parent
                 log_subtask(f"{cmd} Repository found: {git_dir}")
-                do_git_pull(git_dir, operating_mode=in_operation_mode, force_mode=in_force_build_mode)
+                do_git_pull(git_dir, operating_mode=in_operation_mode, force_gitpull_mode=force_gitpull_mode)
                 pip_install_requirements_file(python_exec=venv_python_exec, req_file=req, current_filters=rfilters, fail_label=str(req))
                 
         elif  cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :
@@ -2815,7 +2827,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                         
             target = (in_basedir / suffix).resolve()
             target = target / extract_project_name(url)
-            do_git_clone(url=url, target=target,operating_mode=in_operation_mode, force_mode=in_force_build_mode)
+            do_git_clone(url=url, target=target,operating_mode=in_operation_mode, force_gitpull_mode=force_gitpull_mode)
             
         elif cmd == CMD_GETFILE or cmd==CMD_GETBLOB:
             if len(params) != 2:
@@ -2895,10 +2907,31 @@ def get_executable_line_and_dir(basedir, venv_python, params):
     
 
 
+import os
+def is_file(path):
+    """
+    Check if the given path is an existing file.
+    Args: path (str): The path to check
+    Returns:  bool: True if path exists and is a file, False otherwise
+    """
+    return os.path.exists(path) and os.path.isfile(path)
+
+def is_directory(path):
+    """
+    Check if the given path is an existing directory.
+    Args:  path (str): The path to check
+    Returns:  bool: True if path exists and is a directory, False otherwise
+    """
+    return os.path.exists(path) and os.path.isdir(path)
 
 
 
 
+# ========= Helper =========
+def printargs(args):
+    """Print all parsed arguments with their values."""
+    for k, v in vars(args).items():
+        print(f"{k}: {v}")
 
 
 
@@ -2906,32 +2939,48 @@ def get_executable_line_and_dir(basedir, venv_python, params):
 # ========= Main =========
 def main():
     global STARTER_NO_DESKTOP, DRYRUN, VERBOSE, BACKUP
+    
 
-    parser = argparse.ArgumentParser(description="Install or repair a Python project based on a instruction file.")
-    parser.add_argument("-m", dest="mode", choices=[MODE_INSTALL, MODE_REBUILD, MODE_SENSOINSTALL], required=True,help=f"Main mode: {MODE_INSTALL}, {MODE_REBUILD} or {MODE_SENSOINSTALL}")
-    parser.add_argument("--input", required=True, help="Path to inputfile (will be coerced to UTF-8 if needed)")
-    parser.add_argument("--dir", required=True, help="Base directory for install/repair")
-    parser.add_argument("--embedded", action="store_true", help="(repair only) Treat installation as portable with 'python_embedded' folder")
-    parser.add_argument("--nodesktop", action="store_true", help="Do not create STARTER scripts")
-    parser.add_argument("--dryrun", action="store_true", help="Simulate actions without changing files or installing")
-    parser.add_argument("--verbose", action="store_true",help="Show subprocess output")
-    parser.add_argument("--backup", action="store_true", help="Backup existing venv (or copy python_embedded) instead of deleting/replacing")
-    parser.add_argument("--noblob", action="store_true",help="Enable Filedownloads. This can consume high band width and is disabled by default")
-    parser.add_argument("--venvname",type=str,default=None,help="Name of the custom virtual environment")
-    parser.add_argument("--force", action="store_true",help="Force builds")
+    
+
+    parser = argparse.ArgumentParser(description="Install or repair a Python project based on a instruction file.", epilog="Have fun!")
+    parser.add_argument(f"--{STARTOPTION_MODE_REBUILD}", action="store_true",help=f"rebuilds the venv from zero")
+    parser.add_argument(f"--{STARTOPTION_MODE_SENSOINSTALL}",action="store_true", help=f"adds extra care not to change/replace any existing code or file and only add new elements.")
+
+
+    
+    parser.add_argument(STARTOPTION_INPUTFILE,  help="Path to inputfile (will be coerced to UTF-8 if needed)")
+    parser.add_argument(STARTOPTION_INPUTDIR,  help="Base directory for install/repair")
+
+    parser.add_argument(f"--{STARTOPTION_EMBEDDED}", action="store_true", help="(repair only) Treat installation as portable with 'python_embedded' folder")
+    parser.add_argument(f"--{STARTOPTION_NODESKTOP}", action="store_true", help="Do not create STARTER scripts")
+    parser.add_argument(f"--{STARTOPTION_DRYRUN}", action="store_true", help="Simulate actions without changing files or installing")
+    parser.add_argument(f"--{STARTOPTION_VERBOSE}", action="store_true",help="Show subprocess output")
+    parser.add_argument(f"--{STARTOPTION_BACKUP}", action="store_true", help="Backup existing venv (or copy python_embedded) instead of deleting/replacing")
+    parser.add_argument(f"--{STARTOPTION_NOBLOB}", action="store_true",help="Enable Filedownloads. This can consume high band width and is disabled by default")
+    parser.add_argument(f"--{STARTOPTION_VENVNAME}",type=str,default=None,help="Name of the custom virtual environment")
+    parser.add_argument(f"--{STARTOPTION_FORCELATESTPULL}", action="store_true",help="Force repository code to the newest version on the main/master branch (sometimes calles 'nightly')")
+    parser.add_argument(f"--{STARTOPTION_SHOWOP}", action="store_true",help="Show input options and quit")
     args = parser.parse_args()
 
-    STARTER_NO_DESKTOP = args.nodesktop
-    DRYRUN = args.dryrun
-    VERBOSE = args.verbose
-    BACKUP = args.backup
+    if  getattr(args, STARTOPTION_SHOWOP):
+        printargs(args=args)
+        abort("end")
 
-    inputfile_path = Path(args.input).expanduser().resolve()
-    installdir = Path(args.dir).expanduser().resolve()
+    STARTER_NO_DESKTOP = getattr(args, STARTOPTION_NODESKTOP)
+    DRYRUN = getattr(args, STARTOPTION_DRYRUN)
+    VERBOSE = getattr(args, STARTOPTION_VERBOSE)
+    BACKUP = getattr(args, STARTOPTION_BACKUP)
+
+    inputfile_path = Path(getattr(args, STARTOPTION_INPUTFILE)).expanduser().resolve()
+    installdir = Path(getattr(args, STARTOPTION_INPUTDIR)).expanduser().resolve()
 
     # Basic validations for compatibility
     if not inputfile_path.is_file():
-        abort(f"inputfile file not found: {inputfile_path}")
+        abort(f"PRE_CHECK: input file not found: {inputfile_path}")
+    if not installdir.is_dir():
+        abort(f"PRE_CHECK: Input directory not found: {installdir}")
+        
     allowed_keys={
         CMD_PYTHON,
         CMD_SETVENV,
@@ -2961,7 +3010,7 @@ def main():
     
     
     fileget_text=""
-    if args.noblob:
+    if getattr(args, STARTOPTION_NOBLOB):
         fileget_text="(Large File Download disabled)"
     log_task(f"=== STARTING CROSSOS PYNST {fileget_text} ===")
     if not installdir.exists():
@@ -2982,18 +3031,27 @@ def main():
     # Confirm git availability early (install requires, repair may ignore clones but still good to check)
     require_tool("git", "Install Git from https://git-scm.com/ and ensure it's on PATH.")
 
-    operation_mode=None
+    operation_mode=STARTOPTION_MODE_INSTALL
 
-    if args.mode==MODE_SENSOINSTALL:
-        operation_mode=MODE_SENSOINSTALL
-    elif args.mode==MODE_INSTALL:
-        operation_mode=MODE_INSTALL
-    elif args.mode==MODE_REBUILD:
-        operation_mode=MODE_REBUILD
-        
+    if args.mode==STARTOPTION_MODE_SENSOINSTALL:
+        operation_mode=STARTOPTION_MODE_SENSOINSTALL
+    elif args.mode==STARTOPTION_MODE_INSTALL:
+        operation_mode=STARTOPTION_MODE_INSTALL
+    elif args.mode==STARTOPTION_MODE_REBUILD:
+        operation_mode=STARTOPTION_MODE_REBUILD
+    
+    
+    
     
     log_task(f"=== CrossOS {APP_NAME}: START ===")
-    process_input_script(in_commands=commands, in_basedir= installdir, in_python_embedded_mode= args.embedded, in_custom_venv_name=args.venvname, noblob_mode=args.noblob, in_operation_mode=operation_mode, in_force_build_mode=args.force)
+    process_input_script(
+        in_commands=commands, 
+        in_basedir= installdir, 
+        in_python_embedded_mode= getattr(args, STARTOPTION_EMBEDDED), 
+        in_custom_venv_name=getattr(args, STARTOPTION_VENVNAME), 
+        noblob_mode=getattr(args, STARTOPTION_NOBLOB), 
+        in_operation_mode=operation_mode, 
+        force_gitpull_mode=getattr(args, STARTOPTION_FORCELATESTPULL))
     log_task(f"=== CrossOS {APP_NAME}: END ===")
 
 if __name__ == "__main__":

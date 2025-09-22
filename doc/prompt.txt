@@ -168,5 +168,23 @@ then the venv will be rebuilt like this:
 5. If any file gives an error abort with a message displaying which custom node is the cause of error.
 
 
+
+
+VENV Repair:
+
+in rebuild mode the venv of an embedded project might be corrupted by faulty entries in the pip freeze list. the list looks like this:
+torch
+torchaudio
+WARNING: Ignoring invalid distribution ~orchsd (D:\gh_test\ComfyUI_windows_portable7\python_embeded\Lib\site-packages)
+WARNING: Ignoring invalid distribution ~orch (D:\gh_test\ComfyUI_windows_portable7\python_embeded\Lib\site-packages)
+torchvision
+
+i want to clean it from the WARNING entries. but also repair the errors if those are found.
+The path at the end is a directory and the entries "~orchad" or "~orch" are faulty directories under it.
+On each WARNING entry the path will be used and all directories on that path that start with a tilde "~" shall be deleted.
+
+
 before coding: do you have any questions for clarification?
+
+
 

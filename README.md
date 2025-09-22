@@ -15,7 +15,7 @@ python crossos_pynst.py [pynstfile] [directory]
 TOTEST: make default python crossos_pynst.py [pynstfile] [directory] with: install mode
   -modes are optional. default install. check if senso can affect rebuild
 
-TODO: on repair
+DONE: on repair
   -delete ~ folders from site-packages in rebuild embedded mode
 
 TODO: add precheck

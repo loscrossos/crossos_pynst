@@ -1894,6 +1894,60 @@ def is_venv_empty(python_exec: str) -> bool:
     except Exception:
         return False
 
+
+import os
+import re
+import shutil
+import subprocess
+def repair_venv_package_list(python_exec):
+    """
+    This function will scan the venv for oprhaned temp directories and delete them
+    From pip source code:
+    https://github.com/pypa/pip/blob/19.2.2/src/pip/_internal/utils/temp_dir.py#L87-L106
+    directories starting with tilde are temp dirs and can be deleted.    
+    """
+    MODULENAME_REPAIR="VENVREPAIR"
+    if DRYRUN:
+        log_subsubtask(f"[DRYRUN] {MODULENAME_REPAIR}: Would run 'pip freeze' and repair broken packages.")
+        return
+    try:
+        out = subprocess.check_output([python_exec, "-m", "pip", "freeze"], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        abort("Failed to query installed packages via 'pip freeze'.")
+    pkgs = [l.strip() for l in out.decode("utf-8", errors="replace").splitlines() if l.strip()]
+    # Regular expression to match WARNING entries
+    warning_pattern = re.compile(r'WARNING: Ignoring invalid distribution ~(\w+) \((.+)\)')
+    # Set to store base directories from WARNINGs
+    base_dir=None
+    
+    # First pass: process WARNING entries and collect base directory
+    for entry in pkgs:
+        match = warning_pattern.match(entry)
+        if match:
+            # Extract faulty package name and directory path
+            dir_path = match.group(2)
+            base_dir = dir_path
+            log_subtask(f"{MODULENAME_REPAIR}: Found broken package in venv. Will attempt repair.")
+            break
+    # Second pass: if delete_all_tilde_dirs is True, remove all directories starting with ~
+    if base_dir is not None:
+        try:
+            # List all items in the base directory
+            for item in os.listdir(base_dir):
+                if item.startswith('~'):
+                    item_path = os.path.join(base_dir, item)
+                    if os.path.isdir(item_path):
+                        try:
+                            shutil.rmtree(item_path)
+                            log_subsubtask(f"Deleted temp directory: {item_path}")
+                        except Exception as e:
+                            abort(f"{MODULENAME_REPAIR}: Error deleting {item_path}: {e}")
+        except Exception as e:
+            abort(f"{MODULENAME_REPAIR}: Error accessing base directory {base_dir}: {e}")
+
+
+
+
 def uninstall_all_packages(python_exec: str):
     """
     Uninstall all installed packages from the environment represented by python_exec.
@@ -1907,6 +1961,8 @@ def uninstall_all_packages(python_exec: str):
     except subprocess.CalledProcessError as e:
         abort("Failed to query installed packages via 'pip freeze'.")
 
+    repair_venv_package_list(python_exec=python_exec)
+
     pkgs = [l.strip() for l in out.decode("utf-8", errors="replace").splitlines() if l.strip()]
     if not pkgs:
         log_subsubtask("No packages installed.")
@@ -1914,6 +1970,7 @@ def uninstall_all_packages(python_exec: str):
     # Write to temp file to avoid command-line length limits
     with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8", suffix=".txt") as tf:
         for p in pkgs:
+            
             tf.write(p + "\n")
         temp_list = tf.name
     try:

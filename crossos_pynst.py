@@ -1467,7 +1467,7 @@ APP_NAME="Pynst"
 
 STARTOPTION_MODE_SENSOINSTALL="sensoinstall"
 STARTOPTION_MODE_INSTALL="install"
-STARTOPTION_MODE_REBUILD="rebuild"
+STARTOPTION_MODE_REBUILD="revenv"
 STARTOPTION_INPUTFILE="inputfile"
 STARTOPTION_INPUTDIR="targetdirectory"
 STARTOPTION_EMBEDDED="embedded"
@@ -1497,25 +1497,40 @@ BACKUP = False
 GLOBAL_OPTION_FORCE_REINSTALL =False 
 
 
-PURPLE = '\033[95m'
-CYAN = '\033[96m'
-DARKCYAN = '\033[36m'
-BLUE = '\033[94m'
-GREEN = '\033[92m'
-YELLOW = '\033[93m'
-RED = '\033[91m'
+ 
+
+# Standard colors
+BLACK   = '\033[30m'
+RED     = '\033[31m'
+GREEN   = '\033[32m'
+YELLOW  = '\033[33m'
+BLUE    = '\033[34m'
+MAGENTA = '\033[35m'   # aka PURPLE
+CYAN    = '\033[36m'
+WHITE   = '\033[37m'
+
+# Bright colors
+BRIGHT_BLACK   = '\033[90m'   # often appears as GRAY
+BRIGHT_RED     = '\033[91m'
+BRIGHT_GREEN   = '\033[92m'
+BRIGHT_YELLOW  = '\033[93m'
+BRIGHT_BLUE    = '\033[94m'
+BRIGHT_MAGENTA = '\033[95m'   # aka PURPLE
+BRIGHT_CYAN    = '\033[96m'
+BRIGHT_WHITE   = '\033[97m'
+
 BOLD = '\033[1m'
 UNDERLINE = '\033[4m'
 
-COLOR_APP_SECTION=BOLD
+COLOR_APP_SECTION=BRIGHT_MAGENTA
 COLOR_TASK = GREEN     
 COLOR_SUBTASK = BLUE
-COLOR_SUBSUBTASK = DARKCYAN
+COLOR_SUBSUBTASK = CYAN
 COLOR_ERROR = RED
-
 COLOR_WARNING=YELLOW
+COLOR_SYSCALL=BLACK
 
-COLOR_END = "\033[0m"
+COLOR_RESET = "\033[0m"
 
 
 CMD_COMMENTEDOUT_LINE=     "#"       #| comment                                     | <- same   |<- same
@@ -1542,33 +1557,50 @@ CMD_EXEC =          "XRUNPYTHONFILE" #| Runs a python file (arguments and params
 
 
 TOKEN_PRINT_PREFIX="Info: "
-
-
 # ========= Utility logging =========
 
-def log_app_section(msg: str):
-    print(f"{UNDERLINE}{COLOR_APP_SECTION}{msg}{COLOR_END}")
 
+def show_ansi_colors():
+    reset = "\033[0m"
+    colors = {
+        30: "Black", 31: "Red", 32: "Green", 33: "Yellow",
+        34: "Blue", 35: "Magenta", 36: "Cyan", 37: "White",
+        90: "Bright Black (Gray)", 91: "Bright Red", 92: "Bright Green",
+        93: "Bright Yellow", 94: "Bright Blue", 95: "Bright Magenta",
+        96: "Bright Cyan", 97: "Bright White"
+    }
+    
+    for code, name in colors.items():
+        print(f"\033[{code}m{code} - {name}{reset}")
+        
+        
+ 
+    
+    
+def log_app_section(msg: str):
+    print(f"{UNDERLINE}{BOLD}{COLOR_APP_SECTION}{msg}{COLOR_RESET}")
 
 def log_task(msg: str):
-    print(f"{COLOR_TASK}{msg}{COLOR_END}")
+    print(f"{COLOR_TASK}{msg}{COLOR_RESET}")
 
 def log_subsubtask(msg: str):
-    print(f"{COLOR_SUBSUBTASK}{msg}{COLOR_END}")
+    print(f"{COLOR_SUBSUBTASK}{msg}{COLOR_RESET}")
+
 def log_subtask(msg: str):
-    print(f"{COLOR_SUBTASK}{msg}{COLOR_END}")
+    print(f"{COLOR_SUBTASK}{msg}{COLOR_RESET}")
 
 def log_warning(msg: str):
-    print(f"{COLOR_WARNING}{msg}{COLOR_END}")
+    print(f"{COLOR_WARNING}{msg}{COLOR_RESET}")
 
-
+def log_syscall(msg: str, cmd:str):
+    print(f"{COLOR_SUBSUBTASK}{msg}: {COLOR_SYSCALL}{str(cmd)}{COLOR_RESET}")
+    
 def log_error(msg: str):
-    print(f"{COLOR_ERROR}{msg}{COLOR_END}")
+    print(f"{COLOR_ERROR}{msg}{COLOR_RESET}")
 
 def abort(msg: str, code: int = 1):
     log_error(msg)
     sys.exit(code)
-
 
 
 import io
@@ -1581,7 +1613,7 @@ def run_cmd(cmd, cwd=None, task_description=None) -> int:
         log_subsubtask(f"Executing task: {task_description}")
         
     if DRYRUN:
-        log_subsubtask(f"[DRYRUN] Would run: {' '.join(map(str, cmd))} (cwd={cwd or os.getcwd()})")
+        log_syscall(f"[DRYRUN] would run (workdir={cwd or os.getcwd()})",' '.join(map(str, cmd)))
         return 0
     
     if VERBOSE:
@@ -2328,7 +2360,7 @@ def do_force_git_pull_on_repository(directory: str) -> bool:
 
 def task_print(text_tokens):
     text = " ".join([quote_arg(x) for x in text_tokens])
-    print(f"{COLOR_SUBSUBTASK}{TOKEN_PRINT_PREFIX}{COLOR_END}{text}")
+    print(f"{COLOR_SUBSUBTASK}{TOKEN_PRINT_PREFIX}{COLOR_RESET}{text}")
  
 def task_pause(message:str = None):
     """
@@ -2530,7 +2562,7 @@ def crossos_make_starter_script(basedir: Path, venv_py: str, label: str, cmd_lin
     Resolve any relative path to absolute under basedir if it exists there.
     """
     if STARTER_NO_DESKTOP:
-        log_subsubtask("STARTER creation skipped due to --nodesktop.")
+        log_subsubtask(f"STARTER creation skipped due to --{STARTOPTION_NODESKTOP}.")
         return
 
     system = platform.system().lower()
@@ -2724,7 +2756,7 @@ def check_that_file_exists_or_abort(file_path, file_description=None):
         file_desc=file_description
     
     if DRYRUN:
-        log_subsubtask(f"[DRYRUN] Would run: an existece check for {file_desc}: {file_path}")
+        log_subsubtask(f"[DRYRUN] Would run: check for existence of {file_desc}: {file_path}")
     else:
         if os.path.exists(file_path)==False:
             abort(f"{file_desc}. Missing: {file_path}")
@@ -2817,7 +2849,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
 
      
     
-    log_subtask(f"Processing Input file")
+    log_app_section(f"Processing Input file")
     # Now process commands permitted in REPAIR mode: PYTHON (already handled), RFILTER, REQFILE, STARTER, REQSCAN
     rfilters: list[str] = []
     # Collect REQSCAN paths (process them after REQFILEs or as they appear? Spec: executed in order they appear. We'll execute in order.)
@@ -3090,21 +3122,22 @@ def main():
     parser.add_argument(STARTOPTION_INPUTDIR,  help="Base directory for install/repair")
 
     parser.add_argument(f"--{STARTOPTION_EMBEDDED}", action="store_true", help="(repair only) Treat installation as portable with 'python_embedded' folder")
-    parser.add_argument(f"--{STARTOPTION_NODESKTOP}", action="store_true", help="Do not create STARTER scripts")
-    parser.add_argument(f"--{STARTOPTION_DRYRUN}", action="store_true", help="Simulate actions without changing files or installing")
-    parser.add_argument(f"--{STARTOPTION_VERBOSE}", action="store_true",help="Show subprocess output")
-    parser.add_argument(f"--{STARTOPTION_BACKUP}", action="store_true", help="Backup existing venv (or copy python_embedded) instead of deleting/replacing")
-    parser.add_argument(f"--{STARTOPTION_NOBLOB}", action="store_true",help="Enable Filedownloads. This can consume high band width and is disabled by default")
-    parser.add_argument(f"--{STARTOPTION_VENVNAME}",type=str,default=None,help="Name of the custom virtual environment")
-    parser.add_argument(f"--{STARTOPTION_FORCELATESTPULL}", action="store_true",help="Force repository code to the newest version on the main/master branch (sometimes calles 'nightly')")
-    parser.add_argument(f"--{STARTOPTION_UPDATEMODE}", action="store_true",help="Show input options and quit")
-    parser.add_argument(f"--{STARTOPTION_DEBUGTEST}", action="store_true",help="Show input options and quit")
+    parser.add_argument(f"--{STARTOPTION_NODESKTOP}", action="store_true", help="Do not create Dekstop shortcuts even when defined in the input file")
+    parser.add_argument(f"--{STARTOPTION_DRYRUN}", action="store_true", help="Simulate actions without changing files or installing anything on the drive")
+    parser.add_argument(f"--{STARTOPTION_VERBOSE}", action="store_true",help="Show full subprocess output")
+    parser.add_argument(f"--{STARTOPTION_BACKUP}", action="store_true", help="Backup existing venv before deleting/replacing or changing anything")
+    parser.add_argument(f"--{STARTOPTION_NOBLOB}", action="store_true",help="Disable Filedownloads marked as blobs. This can reduce high band width")
+    parser.add_argument(f"--{STARTOPTION_VENVNAME}",type=str,default=None,help="Provide a custom name for the virtual environment")
+    parser.add_argument(f"--{STARTOPTION_FORCELATESTPULL}", action="store_true",help="Force git repository code to the newest version on the main/master branch (sometimes calles 'nightly')")
+    parser.add_argument(f"--{STARTOPTION_UPDATEMODE}", action="store_true",help="Check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one.")
+    parser.add_argument(f"--{STARTOPTION_DEBUGTEST}", action="store_true",help="Show debug info and quit")
     args = parser.parse_args()
 
 
     if  getattr(args, STARTOPTION_DEBUGTEST):
+        show_ansi_colors()
         log_app_section("test App Section")
-        log_task("test App Section")
+        log_task("test Task Section")
         log_subtask("Subtask")
         log_subsubtask("Sub-sub-task")
         log_warning("test warning")
@@ -3155,7 +3188,7 @@ def main():
     fileget_text=""
     if getattr(args, STARTOPTION_NOBLOB):
         fileget_text="(Large File Download disabled)"
-    log_task(f"=== STARTING CROSSOS PYNST {fileget_text} ===")
+    log_app_section(f"=== STARTING CROSSOS {APP_NAME} {fileget_text} ===")
     if not installdir.exists():
         if DRYRUN:
             log_subsubtask(f"[DRYRUN] Would create base directory: {installdir}")
@@ -3183,7 +3216,6 @@ def main():
     
     
     
-    log_task(f"=== CrossOS {APP_NAME}: START ===")
     process_input_script(
         in_commands=commands, 
         in_basedir= installdir, 
@@ -3193,7 +3225,7 @@ def main():
         in_operation_mode=operation_mode, 
         force_gitpull_mode=getattr(args, STARTOPTION_FORCELATESTPULL),
         precheck_updatemode=getattr(args, STARTOPTION_UPDATEMODE))
-    log_task(f"=== CrossOS {APP_NAME}: END ===")
+    log_app_section(f"=== CrossOS {APP_NAME}: END ===")
 
 if __name__ == "__main__":
     try:

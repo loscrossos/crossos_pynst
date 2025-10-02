@@ -1,5 +1,12 @@
+PYTHON 3.13
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
-RFILTER torch torchvision torchaudio
+# RFILTER torch torchvision torchaudio
+
 SETVENV ComfyUI
-RFILTER
-DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch
+# RFILTER
+
+CLONEIT https://github.com/city96/ComfyUI-GGUF ComfyUI/custom_nodes
+
+REQSCAN ComfyUI/custom_nodes
+
+# DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch

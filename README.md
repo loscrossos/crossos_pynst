@@ -12,11 +12,8 @@ python crossos_pynst.py [pynstfile] [directory]
 ```
 
 
-TOTEST: make default python crossos_pynst.py [pynstfile] [directory] with: install mode
-  -modes are optional. default install. check if senso can affect rebuild
 
-DONE: on repair
-  -delete ~ folders from site-packages in rebuild embedded mode
+on repair: Pynst will delete stale folders from the venvs site-packages in rebuild embedded mode. Stale packages are packages orphaned after a failes install or deinstall and often start with a tilde.
 
 TODO: add precheck
   -checks if files to be downloaded are existent AND have different sizes than existent files. issue warning

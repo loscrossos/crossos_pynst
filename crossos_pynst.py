@@ -1478,8 +1478,8 @@ STARTOPTION_BACKUP="backup"
 STARTOPTION_NOBLOB="noblob"
 STARTOPTION_VENVNAME="venvname"
 STARTOPTION_FORCELATESTPULL="forcegitlatest"
-STARTOPTION_SHOWOP="debugopt"
-
+STARTOPTION_DEBUGTEST="debugtest"
+STARTOPTION_UPDATEMODE="updatemode"
     
 DEFAULT_PYTHON_VERSION = "3.13"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
@@ -1507,10 +1507,14 @@ RED = '\033[91m'
 BOLD = '\033[1m'
 UNDERLINE = '\033[4m'
 
+COLOR_APP_SECTION=BOLD
 COLOR_TASK = GREEN     
 COLOR_SUBTASK = BLUE
 COLOR_SUBSUBTASK = DARKCYAN
 COLOR_ERROR = RED
+
+COLOR_WARNING=YELLOW
+
 COLOR_END = "\033[0m"
 
 
@@ -1539,7 +1543,13 @@ CMD_EXEC =          "XRUNPYTHONFILE" #| Runs a python file (arguments and params
 
 TOKEN_PRINT_PREFIX="Info: "
 
+
 # ========= Utility logging =========
+
+def log_app_section(msg: str):
+    print(f"{UNDERLINE}{COLOR_APP_SECTION}{msg}{COLOR_END}")
+
+
 def log_task(msg: str):
     print(f"{COLOR_TASK}{msg}{COLOR_END}")
 
@@ -1547,6 +1557,9 @@ def log_subsubtask(msg: str):
     print(f"{COLOR_SUBSUBTASK}{msg}{COLOR_END}")
 def log_subtask(msg: str):
     print(f"{COLOR_SUBTASK}{msg}{COLOR_END}")
+
+def log_warning(msg: str):
+    print(f"{COLOR_WARNING}{msg}{COLOR_END}")
 
 
 def log_error(msg: str):
@@ -2317,13 +2330,15 @@ def task_print(text_tokens):
     text = " ".join([quote_arg(x) for x in text_tokens])
     print(f"{COLOR_SUBSUBTASK}{TOKEN_PRINT_PREFIX}{COLOR_END}{text}")
  
-def task_pause():
+def task_pause(message:str = None):
     """
     Pause execution until the user presses Enter to continue
     or Ctrl+C to abort. Works on Windows, Linux, and macOS.
     """
+    if message is None:
+        message="Press Enter to continue or Ctrl+C to abort... "
     try:
-        input("Press Enter to continue or Ctrl+C to abort... ")
+        input(message)
     except KeyboardInterrupt:
         abort("\nAborted by user.")
         raise  # re-raise so caller can handle it if needed
@@ -2722,7 +2737,8 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                          noblob_mode=False,
                          force_gitpull_mode=False, 
                          in_custom_venv_name=None, 
-                         in_operation_mode=STARTOPTION_MODE_REBUILD):
+                         in_operation_mode=STARTOPTION_MODE_REBUILD,
+                         precheck_updatemode=False):
     # Ensure git available (not strictly required for repair flow, but keep parity)
     require_tool("git", "Please install Git and ensure it is on your PATH.")
 
@@ -2731,21 +2747,16 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
     venv_python_exec=None
     venv_name=None
 
-
-       
-       
     # Build/rebuild a new venv with the requested/implicit Python version
     # Determine PYTHON version from commands (default 3.12 if absent)
     required_python_version = None
 
     #pre-check to see that all required versions in the input are present
-
     #pre-set the theoretical paths to a venv on the basedir. for embeddedd check existence
     venv_name, venv_python_exec, venv_path = get_exec_variables(in_python_embedded_mode=in_python_embedded_mode,in_custom_venv_name=in_custom_venv_name, in_basedir=in_basedir, required_venv_path="." )
 
-    #TODO: DEcision if a venv is ensured made in any case. or novenv must be provided.
-    #idea: per. default no venv is created but assumeed. on use of functions var are checked for None
-    
+
+    #PRECHECK1: if a python version is required ensure it is installed (emmbedded or system)
     for cmd, params in in_commands:
         if cmd == CMD_PYTHON:
             required_python_version = params[0]
@@ -2761,6 +2772,46 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 log_subsubtask(f"checking if System has python{required_python_version} installed")
                 check_system_python_version_available(required_python_version)
             break
+
+    
+    #PRECHECK2: if in check existing install mode then check that repo dirs already exist and issue a warning if not
+    if precheck_updatemode:
+        log_task(f"PRECHECK:{STARTOPTION_UPDATEMODE}: will search for repository requirements and check if the repositories exist")
+        #if this is set show a warning that some repos are not existent
+        precheckwarning=False
+        elements_to_check_exist=False
+        for cmd, params in in_commands:
+            if cmd == CMD_GITCLONE:
+                elements_to_check_exist=True
+                if len(params) != 2:
+                    abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
+                url, suffix = params
+                targetparentdir = (in_basedir / suffix).resolve()
+                repo_project_name=extract_project_name(url)
+                targetrepo = targetparentdir / repo_project_name
+                
+                if os.path.exists(targetrepo)==False:
+                    #on first violation show header
+                    if not precheckwarning:
+                        log_subtask(f"{STARTOPTION_UPDATEMODE}:PRECHECK Possible errors found")
+                    precheckwarning=True
+
+                    #show failed repo
+                    log_subsubtask(f"WARNING: Repo not found. Will re-install: {targetrepo}")
+                else:
+                    log_subsubtask(f"CHECKOK: Repo found at target. Will keep: {targetrepo}")
+
+        pc2_message=f"{STARTOPTION_UPDATEMODE}:"
+
+        if elements_to_check_exist==False:
+            pc2_message= pc2_message + "No Check Elements were found. No Check was performed."
+        elif precheckwarning==True:
+            pc2_message= pc2_message + "There were warnings. Press Enter to continue or Crtl+c to abort"
+        else:
+            pc2_message= pc2_message + "Precheck Succesful. Tt is safe to continue. Press Enter to continue or Crtl+c to abort"    
+        task_pause(pc2_message)
+        #do_git_clone(url=url, target=target,operating_mode=in_operation_mode, force_gitpull_mode=force_gitpull_mode)
+                
         
 
 
@@ -2773,27 +2824,30 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
     for cmd, params in in_commands:
         if cmd == CMD_PAUSE:
             task_pause()
+            
+
         elif cmd == CMD_PRINT:
             task_print(params)
+            
+    
         elif cmd == CMD_PYTHON:
             required_python_version = params[0]
             log_task(f"{cmd}: setting version to be used as: {required_python_version}")
             continue
+        
+        
         elif cmd == CMD_SETVENV:
             required_venv_path = params[0]
             log_task(f"{cmd}: Ensuring existence of venv at path {required_venv_path}")
-
             venv_name, venv_python_exec, venv_path = get_exec_variables(in_python_embedded_mode=in_python_embedded_mode,in_custom_venv_name=in_custom_venv_name, in_basedir=in_basedir, required_venv_path=required_venv_path )
-            
             path_to_req_file=None            
             req_temp_path= in_basedir / required_venv_path / DEFAULT_REQUIREMENTS_FILENAME
             if os.path.exists(req_temp_path):
                 path_to_req_file= str(req_temp_path)
                 log_subsubtask(f"{DEFAULT_REQUIREMENTS_FILENAME} found.")
-                        
             ensure_venv_exists(venv_path=venv_path,venv_python_exec=venv_python_exec, required_python_version=required_python_version, do_backup=BACKUP,embedded_mode=in_python_embedded_mode, operation_mode=in_operation_mode,current_filters=rfilters,path_for_requirementstxt=path_to_req_file)
-
             check_that_file_exists_or_abort(venv_python_exec,"python executable")
+
 
         elif cmd == CMD_RFILTER:
             rfilters = params[:]
@@ -2802,19 +2856,18 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             else:
                 log_task(f"{cmd} filters set: {', '.join(rfilters)}")
 
+
         elif cmd == CMD_PIPREQFILE:
             req_file_to_install = params[0]
             log_task(f"{cmd} installing: {req_file_to_install}")
-            
             check_that_file_exists_or_abort(venv_python_exec,"python executable")
-            
-            
             if re.match(r"^https?://", req_file_to_install, re.I):
                 req_file_to_install = download_to_temp(req_file_to_install)
             else:
                 req_file_to_install=(in_basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install)
             #TODO decide if force reinstall: for now yes
             pip_install_requirements_file(python_exec=venv_python_exec, req_file=req_file_to_install,current_filters= rfilters, fail_label=req_file_to_install,force_reinstall=True)
+
 
         elif cmd == CMD_REQSCAN:
             log_task(f"{cmd} searching for requirements in: {in_basedir / params[0]} (depth=1)")
@@ -2835,6 +2888,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 do_git_pull(git_dir, operating_mode=in_operation_mode, force_gitpull_mode=force_gitpull_mode)
                 pip_install_requirements_file(python_exec=venv_python_exec, req_file=req, current_filters=rfilters, fail_label=str(req))
                 
+
         elif  cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :
             log_task(f"{cmd}: creating start shortcuts")
             if not params:
@@ -2847,9 +2901,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             fill_gap=" "
             base_name=get_dir_name(in_basedir)
             shortcut_name= f"{shortcut_name}{fill_gap}{base_name}{fill_gap}{venv_name}"
-
             exec_working_dir, full_exec_line, main_executable_file, executable_as_list = get_executable_line_and_dir(in_basedir, venv_python_exec, actual_params) 
-            
             if cmd == CMD_SHORTCUT_BASE_SCRIPT:
                 crossos_make_starter_script(in_basedir, venv_python_exec, shortcut_name, full_exec_line, working_dir=exec_working_dir)
             elif cmd == CMD_SHORTCUT_BASE_ICON:
@@ -2862,8 +2914,9 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                     log_subsubtask(f"DRY_RUN: would create a Desktop shortcut file: '{shortcut_name}' venv: '{venv_path}', basedir: '{in_basedir}'. Exec line: '{full_exec_line}'")
                 else:
                     crossos_make_shortcut(app_name=shortcut_name, exec_line=full_exec_line, installpath=in_basedir,env_path=venv_path, onDesktop=True, working_dir=exec_working_dir)
-
             log_subsubtask(f"{cmd} Created Starter Shortcut: '{shortcut_name}'")
+
+
         elif cmd == CMD_EXEC:
             if not params:
                 abort(f"{cmd} requires parameters.")
@@ -2875,7 +2928,8 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             rc = run_cmd(cmd = exec_command, cwd = exec_working_dir, task_description="executing command")
             if rc != 0:
                 abort(f"Failed to exec command: {str(exec_command)}")
-            
+
+
         elif cmd in (CMD_GITCLONE, CMD_GITCLONE_ALIAS1):
             if len(params) != 2:
                 abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
@@ -2885,6 +2939,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             target = (in_basedir / suffix).resolve()
             target = target / extract_project_name(url)
             do_git_clone(url=url, target=target,operating_mode=in_operation_mode, force_gitpull_mode=force_gitpull_mode)
+            
             
         elif cmd == CMD_GETFILE or cmd==CMD_GETBLOB:
             if len(params) != 2:
@@ -2903,13 +2958,15 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 #url = "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/wan2.2-i2v-rapid-aio-example.json"
                 #path = "d:/resources/"
                 download_only_if_not_existent(url=url, directory_target_path=targetdir, verbose=VERBOSE, show_progress=True)
-                
+        
+        
         elif cmd ==CMD_PIPEXEC:
             if len(params) < 1:
                 abort(f"{cmd} requires at least one parameter")
             log_task(f"{cmd}: executing pip command: {" ".join(params)}")
             check_that_file_exists_or_abort(venv_python_exec,"python executable")            
             pip_run_command(venv_python_exec, pip_command= params)
+
 
         elif cmd ==CMD_PIPREQPACKAGE:
             if len(params) < 1:
@@ -2918,8 +2975,11 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             check_that_file_exists_or_abort(venv_python_exec,"python executable")
             pip_run_pip_install(venv_python_exec, pip_command= params)
 
+
         elif cmd == CMD_COMMENTEDOUT_LINE:
             continue
+        
+
         elif cmd == CMD_CONFIRM_FILE_OR_ABORT:
             path_to_confirm = params[0]
             log_task(f"{cmd}: Checking for file existence: {str(path_to_confirm)}")
@@ -2927,6 +2987,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             target = (in_basedir / path_to_confirm).resolve()
             assert_file_exists(target)
             
+        
         elif cmd ==CMD_XRUNGITCOMMAND:
             git_command_path = params[0]
             #the params follow
@@ -2993,6 +3054,25 @@ def printargs(args):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # ========= Main =========
 def main():
     global STARTER_NO_DESKTOP, DRYRUN, VERBOSE, BACKUP
@@ -3017,10 +3097,17 @@ def main():
     parser.add_argument(f"--{STARTOPTION_NOBLOB}", action="store_true",help="Enable Filedownloads. This can consume high band width and is disabled by default")
     parser.add_argument(f"--{STARTOPTION_VENVNAME}",type=str,default=None,help="Name of the custom virtual environment")
     parser.add_argument(f"--{STARTOPTION_FORCELATESTPULL}", action="store_true",help="Force repository code to the newest version on the main/master branch (sometimes calles 'nightly')")
-    parser.add_argument(f"--{STARTOPTION_SHOWOP}", action="store_true",help="Show input options and quit")
+    parser.add_argument(f"--{STARTOPTION_UPDATEMODE}", action="store_true",help="Show input options and quit")
+    parser.add_argument(f"--{STARTOPTION_DEBUGTEST}", action="store_true",help="Show input options and quit")
     args = parser.parse_args()
 
-    if  getattr(args, STARTOPTION_SHOWOP):
+
+    if  getattr(args, STARTOPTION_DEBUGTEST):
+        log_app_section("test App Section")
+        log_task("test App Section")
+        log_subtask("Subtask")
+        log_subsubtask("Sub-sub-task")
+        log_warning("test warning")
         printargs(args=args)
         abort("end")
 
@@ -3035,8 +3122,8 @@ def main():
     # Basic validations for compatibility
     if not inputfile_path.is_file():
         abort(f"PRE_CHECK: input file not found: {inputfile_path}")
-    if not installdir.is_dir():
-        abort(f"PRE_CHECK: Input directory not found: {installdir}")
+    if not installdir.parent.is_dir():
+        abort(f"PRE_CHECK: Input directory not found: {installdir.parent}")
         
     allowed_keys={
         CMD_PYTHON,
@@ -3065,7 +3152,6 @@ def main():
     validate_file(inputfile_path,allowed_keywords=allowed_keys,limited_keywords=restricted_keys)
     
     
-    
     fileget_text=""
     if getattr(args, STARTOPTION_NOBLOB):
         fileget_text="(Large File Download disabled)"
@@ -3090,13 +3176,10 @@ def main():
 
     operation_mode=STARTOPTION_MODE_INSTALL
 
-    if args.mode==STARTOPTION_MODE_SENSOINSTALL:
+    if getattr(args, STARTOPTION_MODE_SENSOINSTALL):
         operation_mode=STARTOPTION_MODE_SENSOINSTALL
-    elif args.mode==STARTOPTION_MODE_INSTALL:
-        operation_mode=STARTOPTION_MODE_INSTALL
-    elif args.mode==STARTOPTION_MODE_REBUILD:
+    elif getattr(args, STARTOPTION_MODE_REBUILD):
         operation_mode=STARTOPTION_MODE_REBUILD
-    
     
     
     
@@ -3108,7 +3191,8 @@ def main():
         in_custom_venv_name=getattr(args, STARTOPTION_VENVNAME), 
         noblob_mode=getattr(args, STARTOPTION_NOBLOB), 
         in_operation_mode=operation_mode, 
-        force_gitpull_mode=getattr(args, STARTOPTION_FORCELATESTPULL))
+        force_gitpull_mode=getattr(args, STARTOPTION_FORCELATESTPULL),
+        precheck_updatemode=getattr(args, STARTOPTION_UPDATEMODE))
     log_task(f"=== CrossOS {APP_NAME}: END ===")
 
 if __name__ == "__main__":

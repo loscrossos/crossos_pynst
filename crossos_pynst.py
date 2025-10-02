@@ -1528,7 +1528,7 @@ COLOR_SUBTASK = BLUE
 COLOR_SUBSUBTASK = CYAN
 COLOR_ERROR = RED
 COLOR_WARNING=YELLOW
-COLOR_SYSCALL=BLACK
+COLOR_SYSCALL=BRIGHT_BLACK
 
 COLOR_RESET = "\033[0m"
 
@@ -2168,7 +2168,11 @@ def remove_dir_force(target: Path):
 
 
 def do_git_clone(url: str, target: Path, operating_mode=None, force_gitpull_mode=False):
-    target.parent.mkdir(parents=True, exist_ok=True)
+
+    if DRYRUN:
+        log_subsubtask(f"[DRYRUN]: would ensure repo parent dir exists: {target.parent}")
+    else:
+        target.parent.mkdir(parents=True, exist_ok=True)
 
     if target.exists():
         if GLOBAL_OPTION_FORCE_REINSTALL:

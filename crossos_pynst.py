@@ -1465,7 +1465,7 @@ APP_NAME="Pynst"
 
 #main modes of operation
 
-STARTOPTION_MODE_SENSOINSTALL="sensoinstall"
+STARTOPTION_MODE_SENSOINSTALL="senso"
 STARTOPTION_MODE_INSTALL="install"
 STARTOPTION_MODE_REBUILD="revenv"
 STARTOPTION_INPUTFILE="inputfile"
@@ -2194,7 +2194,7 @@ def do_git_pull( repo_path: Path, operating_mode=None, force_gitpull_mode=False)
     if not repo_path.exists():
         abort(f"Directory to perform git pull not found: {repo_path}")
 
-    if operating_mode==STARTOPTION_MODE_REBUILD:
+    if force_gitpull_mode==True:
         try:
             rc = run_cmd(cmd=["git", "restore", "." ],cwd=repo_path, task_description="Resetting repository due to rebuild mode")
             if rc != 0:
@@ -2204,13 +2204,16 @@ def do_git_pull( repo_path: Path, operating_mode=None, force_gitpull_mode=False)
     rc = run_cmd(cmd=["git", "pull"], cwd=repo_path, task_description=f"Updating git repository: {repo_path}")
     if rc != 0:
         if force_gitpull_mode==True:
-            if operating_mode==STARTOPTION_MODE_INSTALL or operating_mode==STARTOPTION_MODE_REBUILD:
-                log_subtask("git pull failed, trying force-pull")
-                if do_force_git_pull_on_repository(repo_path):
-                    log_subsubtask("Repository was succesfully force-updated!")
-                    return
             if operating_mode==STARTOPTION_MODE_SENSOINSTALL:
-                log_subtask("Forcemode was cancelled by extra safe install mode")            
+                log_subtask(f"{STARTOPTION_FORCELATESTPULL}-mode was cancelled out by {STARTOPTION_MODE_SENSOINSTALL}-mode")
+                return
+            log_subtask("git pull failed, trying force-pull")
+            if do_force_git_pull_on_repository(repo_path):
+                log_subsubtask("Repository was succesfully force-updated!")
+                return
+            else:
+                abort(f"Force-pull failed. Aborting to not break further. Broken repo?: {repo_path}")
+                return
         abort(f"Failed to update repository (broken or not a repo) (try adding argument '--{STARTOPTION_FORCELATESTPULL}'): {str(repo_path)}")
         
 
@@ -3113,7 +3116,7 @@ def main():
     
 
     parser = argparse.ArgumentParser(description="Install or repair a Python project based on a instruction file.", epilog="Have fun!")
-    parser.add_argument(f"--{STARTOPTION_MODE_REBUILD}", action="store_true",help=f"rebuilds the venv from zero")
+    parser.add_argument(f"--{STARTOPTION_MODE_REBUILD}", action="store_true",help=f"rebuilds the venv from zero. Can be used to repair an installation with a broken venv.")
     parser.add_argument(f"--{STARTOPTION_MODE_SENSOINSTALL}",action="store_true", help=f"adds extra care not to change/replace any existing code or file and only add new elements.")
 
 
@@ -3121,15 +3124,15 @@ def main():
     parser.add_argument(STARTOPTION_INPUTFILE,  help="Path to inputfile (will be coerced to UTF-8 if needed)")
     parser.add_argument(STARTOPTION_INPUTDIR,  help="Base directory for install/repair")
 
-    parser.add_argument(f"--{STARTOPTION_EMBEDDED}", action="store_true", help="(repair only) Treat installation as portable with 'python_embedded' folder")
+    parser.add_argument(f"--{STARTOPTION_EMBEDDED}", action="store_true", help="Treat venv installation as portable with a 'python_embedded' folder (or name defined with custom venv option)")
     parser.add_argument(f"--{STARTOPTION_NODESKTOP}", action="store_true", help="Do not create Dekstop shortcuts even when defined in the input file")
-    parser.add_argument(f"--{STARTOPTION_DRYRUN}", action="store_true", help="Simulate actions without changing files or installing anything on the drive")
-    parser.add_argument(f"--{STARTOPTION_VERBOSE}", action="store_true",help="Show full subprocess output")
-    parser.add_argument(f"--{STARTOPTION_BACKUP}", action="store_true", help="Backup existing venv before deleting/replacing or changing anything")
-    parser.add_argument(f"--{STARTOPTION_NOBLOB}", action="store_true",help="Disable Filedownloads marked as blobs. This can reduce high band width")
+    parser.add_argument(f"--{STARTOPTION_DRYRUN}", action="store_true", help="Simulated run. All actions are performed without changing files or installing anything. would-be commands are shown")
+    parser.add_argument(f"--{STARTOPTION_VERBOSE}", action="store_true",help="Show full subprocess output. Good for debugging (can be long)")
+    parser.add_argument(f"--{STARTOPTION_BACKUP}", action="store_true", help="Backup existing venv before deleting/replacing or changing anything (backup is the original name and a suffix on the same location)")
+    parser.add_argument(f"--{STARTOPTION_NOBLOB}", action="store_true",help="Disable Filedownloads marked as blobs. This can reduce band width usage but some files will be missing")
     parser.add_argument(f"--{STARTOPTION_VENVNAME}",type=str,default=None,help="Provide a custom name for the virtual environment")
     parser.add_argument(f"--{STARTOPTION_FORCELATESTPULL}", action="store_true",help="Force git repository code to the newest version on the main/master branch (sometimes calles 'nightly')")
-    parser.add_argument(f"--{STARTOPTION_UPDATEMODE}", action="store_true",help="Check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one.")
+    parser.add_argument(f"--{STARTOPTION_UPDATEMODE}", action="store_true",help="Pre-Check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one.")
     parser.add_argument(f"--{STARTOPTION_DEBUGTEST}", action="store_true",help="Show debug info and quit")
     args = parser.parse_args()
 

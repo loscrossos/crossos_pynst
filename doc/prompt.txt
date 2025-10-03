@@ -10,31 +10,32 @@ The definition of what is to be done is contained in input files.
 
 -Arguments-
 
-The code accepts 3 mandatory mandatory arguments
+The code accepts 2 mandatory mandatory arguments
 
 Mandatory arguments:
 
--m  [main mode]: The main mode can be:
-"sensoinstall" installs the project without altering existing code or deleting files.
-"install", which installs a python repository and updates code where it finds it (defined by the commands).
-"repair", which rebuilds and repairs a python repository.
+-an input file [file.pynst.txt]: The input file is a plain text file, where each line contains: a command in upper case followed by parameters if needed (see commands section)
+-a target directory, where the pynst instructions will be applied. This can be relative or absolute
 
--an input file [file.pynst.txt]. The input file is a text file(ensure conversion to utf-8 if needed), where each line contains: a command in upper case and parameters following it  in this format:
+By default the code works in "install" mode, which installs a python repository and updates git repositories where it finds it (defined by the commands).
+
 
 ---
 [COMAND] [PARAMETER1] [PARAMETER2] [PARAMETER3] 
 ---
 
-The following commands exist unless stated explicitly they all can exist multiple times. Commands can have aliases (GITCLON is an alias to GITCLONE) These commands must be executed in the order they appear in the file:
+The following commands exist unless stated explicitly they all can exist multiple times.  These commands must be executed in the order they appear in the file:
 
 PYTHON: 1 Parameter: [a version number e.g. "3.12"]. This is the version of python to be used from this point on. if the version is not available abort with an error message. On Windows, the expected way to launch a specific Python version is via the py launcher e.g. "py -3.12". On Linux/macOS "python3.12".
 RFILTER: multiple words.  it applies also to cloned repos. A list of packages that will be filtered out from all requirements files found from this line on (installations before this line are not affected). once RFILTER is set it applies to all requirement files in the order processed. yes, the filter is case-insensitive. Example: if the parameters are "torch torch vision" then from this point on all requirements.txt files found will be copied into a temp file before importing them and all lined containing the word "torch" or "torchvision" will not be copied. Only filter out if the word is alone or followed by a whitespace or non alphabetic symbol (A-Z a-z and - or _) symbol. "torchaudio" should not be filtered.
 REQFILE: 1 Parameter: [a file path or URL]. a requirements file to be installed into the virtual environment. This can be a local file or a file on the internet that will then be downloaded into a temporary local file and installed from there.
-GITCLONE or GITCLON: 2 Parameters: [an URL] [a path suffix]. The URL is the git repository to clone and install. The path suffix is used to set the target location of the clone operation. This is added to the base directory. e.g. base directory is /temp and suffix is "test" then the repository is cloned under /temp/test/. After the clone the code checks if a "requirements.txt" is present and if it's present it is installed in the virtual environment.
-STARTER: a label consisting of one word or several in quotes(labels in  quotes are treated as one argument), followed by multiple parameters: line is intended as the start command to be used to make a start shortcut file. This shortcut file will be written as a .sh file or a .bat file (use bat for windows and sh for linux/macos) named after the label and  where the command that follows is added to the created venv. Example: if the base install is /temp/test and parameters are 'STARTER "Comfy CPU" comfyUI/main.py --cpu' then the starter on linux is the venv python and the starter is called "Comfy CPU.sh" with the contents "/temp/test/.env_linux/bin/python /temp/test/ComfyUI/main.py --cpu". 
+CLONEIT: 2 Parameters: [an URL] [a path suffix]. The URL is the git repository to clone and install. The path suffix is used to set the target location of the clone operation. This is added to the base directory. e.g. base directory is /temp and suffix is "test" then the repository is cloned under /temp/test/. After the clone the code checks if a "requirements.txt" is present and if it's present it is installed in the virtual environment.
+DESKICO, DESKEXE, HOMEEXE or HOMEICO: create a starter shortcut on the desktop ofthe current user. parameters: a label consisting of one word or several in quotes(labels in  quotes are treated as one argument), followed by multiple parameters: line is intended as the start command to be used to make a start shortcut file. For the EXE variant the file will be written as a .sh file or a .bat file (use bat for windows and sh for linux/macos) named after the label and  where the command that follows is added to the created venv. Example: if the base install is /temp/test and parameters are 'STARTER "Comfy CPU" comfyUI/main.py --cpu' then the starter on linux is the venv python and the starter is called "Comfy CPU.sh" with the contents "/temp/test/.env_linux/bin/python /temp/test/ComfyUI/main.py --cpu". for the ICO variants use shortcut formats for each OS (e.g. lnk for windows)
 REQSCAN: 1 Parameters: [a path suffix]. Path under the base directory to be searched in repair mode for directories that contain "requirements.txt" files (only 1 level deep) to install into the venv in case of repair mode. in REQSCAN we only scan one level below the given suffix (RFILTER applies here too).  e.g. base directory is /temp and suffix is "test" then the code searches all directories under /temp/test/ and checks if these contain a "requirements.txt" and installs it. Match could be /temp/test/repo2/requirements.txt and /temp/test/repox/requirements.txt.  if install fails we abort and output the name of the path of the file that failed
 
-commmand                              | sensitive                       | Install   | Rebuild
+Here a full list of the commands with their placeholder var names for python and an explanation of what they do in the differen modes.
+
+commmand                              | senso                     | Install   | Rebuild
 ---                                   | ---                             |---        | ---
 CMD_COMMENTEDOUT_LINE=     "#"       #| comment                                     | <- same   |<- same
 CMD_PYTHON=                "PYTHON"  #| set python version to be used for venv creation from this point on. Script will abort if he existing venv has another version   | <- same |<- same but will delete existing venvs and create a new venv with the scpecified version
@@ -75,11 +76,14 @@ DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch
 
 
 
--a target directory: The target directory --basedir [path]: the path to be used as base directory to install the repositories or where the location of the existing installation is. 
+-target directory: the path to be used as base directory to install the repositories or where the location of the existing installation is. 
 
 Optional Arguments:
 
 The code accepts the following optional arguments:
+
+"senso" installs the project without altering existing code or deleting files.
+"revenv", rebuilds and repairs the python venv defined in the input file.
 
 --repairportable : (only for repair mode) this attempts to repair an embedded python installation. As described further below.
 --nodesktop : this sets a variable called STARTER_NO_DESKTOP as True in the code

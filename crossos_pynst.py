@@ -1534,15 +1534,15 @@ COLOR_RESET = "\033[0m"
 
 
 CMD_COMMENTEDOUT_LINE=     "#"       #| comment                                     | <- same   |<- same
-CMD_PYTHON=                "PYTHON"  #| set python version to be used for venvs. Script will abort if he existing venv has another version   | <- same |<- same but will delete existing venvs and create a new venv with the scpecified version
-CMD_SETVENV=               "SETVENV" #| sets the venv path to be used or created.   | <-same    | Venv to build or rebuild the venv
-CMD_PIPREQFILE=            "REQINST" #| install req file                            | <- same   |<- same
+CMD_PYTHON=                "PYTHON"  #| set python version to be used for venvs. Script will abort if an existing venv has another version   | <- same |<- same but will delete existing venvs and create a new venv with the scpecified version. on embedded python it will empty the venv and rebuild it.
+CMD_SETVENV=               "SETVENV" #| sets the venv path to be used to create the venv. This path is also scanned for a requirements.txt file. this file is isntalled automatically.   | <-same    | Venv to build or rebuild the venv
+CMD_PIPREQFILE=            "REQINST" #| install req file. local or remote.                            | <- same   |<- same
 CMD_PIPREQPACKAGE=         "PIPINST" #| install req wheel or module                 | <- same   |<- same
-CMD_RFILTER=               "RFILTER" #| Filter out packages (from REQ* commands)    | <- same   |<- same
+CMD_RFILTER=               "RFILTER" #| Filter out packages (from REQ* commands) from now on. these packages will not be installed if present on req files. can be reset by putting single command with no params.     | <- same   |<- same
 CMD_GITCLONE=              "CLONEIT" #| clone a repo into a dir. no code update if it exists    | <- same but updates code | same but updates code
 CMD_GITCLONE_ALIAS1=       "GITCLON" #| clone a repo into a dir. no code update if it exists    | <- same but updates code | same but updates code
-CMD_REQSCAN=               "REQSCAN" #| Specifies a directory to scan for subdirectories with "requirements.txt" to install. Will not update code in safe mode  | <- same but updates the repository code first|<- same but updates the repository code first
-CMD_GETFILE=               "GETFILE" #| Downloads a file to a directory.  | <- same |<- same
+CMD_REQSCAN=               "REQSCAN" #| Specifies a directory to scan for subdirectories with "requirements.txt" to install. git repos will be updated first. Will not update code in safe mode  | <- same but updates the repository code first|<- same but updates the repository code first
+CMD_GETFILE=               "GETFILE" #| Downloads a file to a directory. Only downloads if the file does not exist or has a different size than the remote file.  | <- same |<- same
 CMD_GETBLOB=               "GETBLOB" #| Downloads a file to a directory. Used for large files (e.g. models)  | <- same |<- same
 CMD_PRINT=                 "PRINTIT" #| Prints a message for the user to command line.  | <- same |<- same
 CMD_CONFIRM_FILE_OR_ABORT= "HASFILE" #| Checks that a file exists. Aborts run if it fails  | <- same |<- same

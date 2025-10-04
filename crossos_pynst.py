@@ -1212,8 +1212,49 @@ def render_glyphs_to_mask(letters, size, stroke_px=22, spacing=0.12, ss=4):
 # --------------------------
 # Text handling & main API
 # --------------------------
+"""
+i need a function in python def extract_initial_letters(text: str, lettersamount: int, uppercase=False) -> str: that takes a string and a number and a bool uppercase param. It will extract a number X of letters (in uppercase if indicated by the uppercase param) indicated by lettersamount (e.g. 4) in this way: take all initials of the string until number X. If there arent enough words use the next letters of the first word X as placeholder. e.g. 
+for X=4 and string="first word of area" -> "fwoa".
+for X=4 and string="first word area" -> "fiwoa".
+for X=4 and string="first word" -> "firw".
+for X=5 and string="first word of area" -> "fiwoa".
+any questions before coding?
+"""
+import re
 
-def extract_logo_letters(text: str) -> str:
+ 
+
+def extract_initial_letters(text: str, lettersamount: int=4, uppercase=False) -> str:
+    words = re.findall(r'\b\w+\b', text)
+    if not words:
+        # hardcoded fallback word
+        words = ["losCrossos"]
+
+    # Take one initial from each word
+    initials = [w[0] for w in words if w]
+
+    # If not enough initials, fill from *next letters* of the first word
+    if len(initials) < lettersamount:
+        first_word = words[0]
+        # number of missing letters
+        needed = lettersamount - len(initials)
+        # take next letters from first word (after the first letter)
+        extra = first_word[1:1 + needed]
+        # if even the first word is too short, pad with X
+        if len(extra) < needed:
+            extra += "X" * (needed - len(extra))
+        # insert filler letters right after the first initial
+        initials = [initials[0]] + list(extra) + initials[1:]
+
+    # if still shorter than requested (edge cases), pad with X
+    if len(initials) < lettersamount:
+        initials += ["X"] * (lettersamount - len(initials))
+
+    result = ''.join(initials[:lettersamount])
+    return result.upper() if uppercase else result
+
+
+def old_extract_initial_letters(text: str) -> str:
     words = [w for w in text.strip().split() if w]
     if not words:
         return "AA"  # fallback
@@ -1240,7 +1281,7 @@ def crossos_make_icon_artsy(text: str,
     - stroke_px: stroke thickness in output pixels (approximate)
     - supersample: supersampling factor for antialiasing (4 is good)
     """
-    letters = extract_logo_letters(text)
+    letters = extract_initial_letters(text)
     # Render supersampled mask
     mask_hi, W, H = render_glyphs_to_mask(letters, size=size, stroke_px=stroke_px, spacing=0.19, ss=supersample)
     # Downsample to final mask
@@ -1477,7 +1518,8 @@ STARTOPTION_VERBOSE="verbose"
 STARTOPTION_BACKUP="backup"
 STARTOPTION_NOBLOB="noblob"
 STARTOPTION_VENVNAME="venvname"
-STARTOPTION_FORCELATESTPULL="forcegitlatest"
+STARTOPTION_FORCEGITLATEST="gitlatest"
+STARTOPTION_FORCEGITSTABLE="gitstable"#TODO
 STARTOPTION_DEBUGTEST="debugtest"
 STARTOPTION_UPDATEMODE="updatemode"
     
@@ -1538,7 +1580,7 @@ CMD_COMMENTEDOUT_LINE=     "#"       #|Arguments: any. Description: comment line
 CMD_PYTHON=                "PYTHON"  #|Arguments: a float number (python version). Description:  set python version to be used for venvs from now on.. Script will abort if an existing venv has another version (unless the venv shall be deleted and rebuilt). in revenv mode pynst will delete existing venvs and create a new venv with the scpecified version. on embedded python it will empty the venv and rebuild it.
 CMD_SETVENV=               "SETVENV" #|Arguments: a directory path relative to the target directory. Description:  Ensures a venv exists at the path provided. Either by looking is one exists or by creating a new one. This path is also scanned for a requirements.txt file, if so then this file is installed automatically.
 CMD_PIPREQFILE=            "REQINST" #|Arguments: a file path relative to the target directory or a remote url to a file. Description:  installs a requirements file to the current venv. local or remote.                            
-CMD_PIPREQPACKAGE=         "PIPINST" #|Arguments: a list of arguments to be passed directly to "pip install". Description:  installs wheels or modules to the current venv
+CMD_PIPREQPACKAGE=         "PIPINST" #|Arguments: a list of arguments to be passed directly to "pip install". Description:  installs wheels or modules to the current venv. Can be wheel file URL (not a file path) or a pip package
 CMD_RFILTER=               "RFILTER" #|Arguments: a list of words. Description:  Filter out packages (from REQ* commands) from now on. Filter is reset when the command is used again with no parameters. these packages will not be installed if present on req files. can be reset by putting single command with no params. The words are filtered by looking at the start of a line until a not allowed letter appears (any letter apart from A-Z, a-z, '-' or '_'). We anchor at start (ignoring leading whitespace). Example "torch" matches: 'torch==2.1.0', 'torch ', 'torch[extra]', 'torch\t', 'torch; python_version<"3.12"'. Does NOT match 'torchaudio' or 'torchvision'.
 CMD_GITCLONE=              "CLONEIT" #|Arguments: an url to a repository AND a directory path relative to target. Description:  clone a repo into a dir. The directory will be created if it does not exist.
 CMD_REQSCAN=               "REQSCAN" #|Arguments: a directory path relative to the target directory. Description:  Specifies a directory to scan for subdirectories (git repositories) with "requirements.txt" to install. git repositories found, will be updated first. Will not update code in senso mode  
@@ -2206,12 +2248,12 @@ def do_git_pull( repo_path: Path, operating_mode=None, force_gitpull_mode=False)
             if rc != 0:
                 log_subsubtask(f"Warning: 'Git restore .' failed. Repo could be broken or conflicting changes (force remove might be needed): {repo_path}. Ignore this if no further ERROR appears!")
         except Exception as e:
-                abort(f"Warning(exception): 'Git restore .' failed. Repo could be broken or conflicting changes (try adding argument '--{STARTOPTION_FORCELATESTPULL}'): {repo_path}.")
+                abort(f"Warning(exception): 'Git restore .' failed. Repo could be broken or conflicting changes (try adding argument '--{STARTOPTION_FORCEGITLATEST}'): {repo_path}.")
     rc = run_cmd(cmd=["git", "pull"], cwd=repo_path, task_description=f"Updating git repository: {repo_path}")
     if rc != 0:
         if force_gitpull_mode==True:
             if operating_mode==STARTOPTION_MODE_SENSOINSTALL:
-                log_subtask(f"{STARTOPTION_FORCELATESTPULL}-mode was cancelled out by {STARTOPTION_MODE_SENSOINSTALL}-mode")
+                log_subtask(f"{STARTOPTION_FORCEGITLATEST}-mode was cancelled out by {STARTOPTION_MODE_SENSOINSTALL}-mode")
                 return
             log_subtask("git pull failed, trying force-pull")
             if do_force_git_pull_on_repository(repo_path):
@@ -2220,7 +2262,7 @@ def do_git_pull( repo_path: Path, operating_mode=None, force_gitpull_mode=False)
             else:
                 abort(f"Force-pull failed. Aborting to not break further. Broken repo?: {repo_path}")
                 return
-        abort(f"Failed to update repository (broken or not a repo) (try adding argument '--{STARTOPTION_FORCELATESTPULL}'): {str(repo_path)}")
+        abort(f"Failed to update repository (broken or not a repo) (try adding argument '--{STARTOPTION_FORCEGITLATEST}'): {str(repo_path)}")
         
 
 def do_git_command(target: Path, params):
@@ -3143,7 +3185,8 @@ def main():
     parser.add_argument(f"--{STARTOPTION_BACKUP}", action="store_true", help="Backup existing venv before deleting/replacing or changing anything (backup is the original name and a suffix on the same location)")
     parser.add_argument(f"--{STARTOPTION_NOBLOB}", action="store_true",help="Disable Filedownloads marked as blobs. This can reduce band width usage but some files will be missing")
     parser.add_argument(f"--{STARTOPTION_VENVNAME}",type=str,default=None,help="Provide a custom name for the virtual environment")
-    parser.add_argument(f"--{STARTOPTION_FORCELATESTPULL}", action="store_true",help="Force git repository code to the newest version on the main/master branch (sometimes calles 'nightly')")
+    parser.add_argument(f"--{STARTOPTION_FORCEGITLATEST}", action="store_true",help="Force git repository code to the newest version on the main/master branch (sometimes called 'nightly')")
+    #parser.add_argument(f"--{STARTOPTION_FORCEGITSTABLE}", action="store_true",help="Force git repository code to the newest release version on the main/master branch (sometimes called 'release')")
     parser.add_argument(f"--{STARTOPTION_UPDATEMODE}", action="store_true",help="Pre-Check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one.")
     parser.add_argument(f"--{STARTOPTION_DEBUGTEST}", action="store_true",help="Show debug info and quit")
     args = parser.parse_args()
@@ -3237,7 +3280,7 @@ def main():
         in_custom_venv_name=getattr(args, STARTOPTION_VENVNAME), 
         noblob_mode=getattr(args, STARTOPTION_NOBLOB), 
         in_operation_mode=operation_mode, 
-        force_gitpull_mode=getattr(args, STARTOPTION_FORCELATESTPULL),
+        force_gitpull_mode=getattr(args, STARTOPTION_FORCEGITLATEST),
         precheck_updatemode=getattr(args, STARTOPTION_UPDATEMODE))
     log_app_section(f"=== CrossOS {APP_NAME}: END ===")
 

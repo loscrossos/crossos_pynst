@@ -1,7 +1,0 @@
-PYTHON 3.13
-CLONEIT https://github.com/comfyanonymous/ComfyUI .
-CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
-REQSCAN .
-REQSCAN ComfyUI/custom_nodes
-DESKICO "ComfyUI GPU Mode" ComfyUI/main.py --gpu --use-sage-attention --auto-launch 
-DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch 

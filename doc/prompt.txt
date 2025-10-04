@@ -30,46 +30,23 @@ PYTHON: 1 Parameter: [a version number e.g. "3.12"]. This is the version of pyth
 RFILTER: multiple words.  it applies also to cloned repos. A list of packages that will be filtered out from all requirements files found from this line on (installations before this line are not affected). once RFILTER is set it applies to all requirement files in the order processed. yes, the filter is case-insensitive. Example: if the parameters are "torch torch vision" then from this point on all requirements.txt files found will be copied into a temp file before importing them and all lined containing the word "torch" or "torchvision" will not be copied. Only filter out if the word is alone or followed by a whitespace or non alphabetic symbol (A-Z a-z and - or _) symbol. "torchaudio" should not be filtered.
 REQFILE: 1 Parameter: [a file path or URL]. a requirements file to be installed into the virtual environment. This can be a local file or a file on the internet that will then be downloaded into a temporary local file and installed from there.
 CLONEIT: 2 Parameters: [an URL] [a path suffix]. The URL is the git repository to clone and install. The path suffix is used to set the target location of the clone operation. This is added to the base directory. e.g. base directory is /temp and suffix is "test" then the repository is cloned under /temp/test/. After the clone the code checks if a "requirements.txt" is present and if it's present it is installed in the virtual environment.
+
+For example 
+CLONEIT target .
+[target dir]/projectx/requirements.txt
+For target "mytest" :
+[target dir]/mytest/projecty/requirements.txt
+
+
 DESKICO, DESKEXE, HOMEEXE or HOMEICO: create a starter shortcut on the desktop ofthe current user. parameters: a label consisting of one word or several in quotes(labels in  quotes are treated as one argument), followed by multiple parameters: line is intended as the start command to be used to make a start shortcut file. For the EXE variant the file will be written as a .sh file or a .bat file (use bat for windows and sh for linux/macos) named after the label and  where the command that follows is added to the created venv. Example: if the base install is /temp/test and parameters are 'STARTER "Comfy CPU" comfyUI/main.py --cpu' then the starter on linux is the venv python and the starter is called "Comfy CPU.sh" with the contents "/temp/test/.env_linux/bin/python /temp/test/ComfyUI/main.py --cpu". for the ICO variants use shortcut formats for each OS (e.g. lnk for windows)
 REQSCAN: 1 Parameters: [a path suffix]. Path under the base directory to be searched in repair mode for directories that contain "requirements.txt" files (only 1 level deep) to install into the venv in case of repair mode. in REQSCAN we only scan one level below the given suffix (RFILTER applies here too).  e.g. base directory is /temp and suffix is "test" then the code searches all directories under /temp/test/ and checks if these contain a "requirements.txt" and installs it. Match could be /temp/test/repo2/requirements.txt and /temp/test/repox/requirements.txt.  if install fails we abort and output the name of the path of the file that failed
-
-Here a full list of the commands with their placeholder var names for python and an explanation of what they do in the differen modes.
-
-commmand                              | senso                     | Install   | Rebuild
----                                   | ---                             |---        | ---
-CMD_COMMENTEDOUT_LINE=     "#"       #| comment                                     | <- same   |<- same
-CMD_PYTHON=                "PYTHON"  #| set python version to be used for venv creation from this point on. Script will abort if he existing venv has another version   | <- same |<- same but will delete existing venvs and create a new venv with the scpecified version
-CMD_SETVENV=               "SETVENV" #| sets the venv path to be used or created.   | <-same    | Venv to build or rebuild the venv
-CMD_PIPREQFILE=            "REQINST" #| install req file                            | <- same   |<- same
-CMD_PIPREQPACKAGE=         "PIPINST" #| install req wheel or module                 | <- same   |<- same
-CMD_RFILTER=               "RFILTER" #| Filter out packages (from REQ* commands)    | <- same   |<- same
-CMD_GITCLONE=              "CLONEIT" #| clone a repo into a dir. no code update if it exists    | <- same but updates code | same but updates code
-CMD_GITCLONE_ALIAS1=       "GITCLON" #| clone a repo into a dir. no code update if it exists    | <- same but updates code | same but updates code
-CMD_REQSCAN=               "REQSCAN" #| Specifies a directory to scan for subdirectories with "requirements.txt" to install. Will not update code in safe mode  | <- same but updates the repository code first|<- same but updates the repository code first
-CMD_GETFILE=               "GETFILE" #| Downloads a file to a directory.  | <- same |<- same
-CMD_GETBLOB=               "GETBLOB" #| Downloads a file to a directory. Used for large files (e.g. models)  | <- same |<- same
-CMD_PRINT=                 "PRINTIT" #| Prints a message for the user to command line.  | <- same |<- same
-CMD_CONFIRM_FILE_OR_ABORT= "HASFILE" #| Checks that a file exists. Aborts run if it fails  | <- same |<- same
-CMD_PAUSE=                 "PAUSEIT" #| Pauses the execution until user confirms  | <- same |<- same
-CMD_SHORTCUT_DESK_ICON  =  "DESKICO" #| Creates a Desktop icon with a command line  | <- same |<- same
-CMD_SHORTCUT_DESK_SCRIPT=  "DESKEXE" #| Creates a Desktop script with a command line  | <- same |<- same
-CMD_SHORTCUT_BASE_ICON  =  "HOMEICO" #| Creates a Installdir icon with a command line  | <- same |<- same
-CMD_SHORTCUT_BASE_SCRIPT=  "HOMEEXE" #| Creates a installdir script with a command line  | <- same |<- same
-CMD_XRUNGITCOMMAND ="XRUNGITCOMMAND"#| Runs a git command directly | <-same | <-same
-CMD_PIPEXEC =       "XRUNPIPCOMMAND" #| Advanced: Raw command line passed to pip.      | <- same |<- same
-CMD_EXEC =          "XRUNPYTHONFILE" #| Runs a python file (arguments and params allowed)  | <- same |<- same
-
 
 
 
 Example: 
 ---
-REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_lite_python312torch271cu129.txt
-RFILTER torch torchvision torchaudio
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
-CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
-REQSCAN .
-REQSCAN ComfyUI/custom_nodes
+SETVENV ComfyUI
 DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch
 ---
 
@@ -82,10 +59,9 @@ Optional Arguments:
 
 The code accepts the following optional arguments:
 
-"senso" installs the project without altering existing code or deleting files.
-"revenv", rebuilds and repairs the python venv defined in the input file.
-
---repairportable : (only for repair mode) this attempts to repair an embedded python installation. As described further below.
+--senso installs the project without altering existing code or deleting files.
+--revenv, rebuilds and repairs the python venv defined in the input file.
+--embedded : declares the intsallation to be a portable embedded python installation.
 --nodesktop : this sets a variable called STARTER_NO_DESKTOP as True in the code
 --dryrun : this causes all runs to happen in simulated mode only with no changes to data for test purposes. The code prints all actions but never actually change the filesystem or install anything.
 --verbose: by default command output are suppressed (by setting "capture=True" or similar. This option enables command outputs.
@@ -101,74 +77,47 @@ The code accepts the following optional arguments:
 Upon running the script checks the following:
 -that python in is installed in the version defined in the default variable and the variable defined in the input file if that variable exists
 -that git is installed in the system
--if the optional path is provided: that the path exists. The path is created if it does not exist.
+-if the mandatory parameters are provided and valid. The path is created if it does not exist.
 
 The code provides colorized output with defined colors for main tasks and other color for progress of subtasks while per default surpassing other output.
 
 
-if the main command is "install" then:
 
-The code creates a virtual environment under the base directory using the version defined in the PYTHON command or the default version: If no PYTHON command is present the code uses 3.12 as default. This version is defined at the top of the code as a global variable.
-
+The code creates a virtual environment under the base directory using the version defined in the PYTHON command or the default version: If no PYTHON command is present the code uses 3.13 as default. This version is defined at the top of the code as a global variable.
 Then it reads sequentially the other commands and performs the associated tasks.
 
-In "install" mode these commands are only used: PYTHON, RFILTER, REQFILE, GITCLONE/GITCLON, STARTER.
-
-
-End of main command "install"
 
 
 
-if the main command is "repair" then:
+If the argument --embedded is provided and the code detects the folder python_embedded then we have a portable installation and the following apply:
+-there should be a folder named "python_embedded" directly under the target dir.
+-the python executable python from that folder is used. it is located directly in the folder.
 
-We assume the code runs in the provided base directory of an installation.
-
-In "repair" mode these commands are only used: PYTHON, RFILTER, REQFILE, STARTER, REQSCAN.
-
-If the argument --repairportable is provided and the code detects the folder python_embedded then we have a portable installation and the following apply:
--the python executable python from that folder is used.
--the comfyUI-requirements file is under the folder ComfyUI
-- the custom_nodes folder is in the folder ComfyUI
-
-If the argument --repairportable is not set and the  folder python_embedded  is not there then:
--the executable will be the python executable from the system (e.g. on windows "py -3.12" or on linux or macos "python3.12")
--the comfyUI-requirements file and the custom_nodes folder are in the current folder
-
-Check that the above apply. Else abort with the message "this is not a portable or manual installation".
-
-End of main command "repair"
-
-
-In "repair", Use only python_embedded if "--repairportable" is given and that folder exists. When detecting portable (python_embedded present), we assume the folder structure is:
-
+we assume the folder structure is:
 [base dir]/python_embedded/
 
-
-For example GITCLON target . :
-[base dir]/projectx/requirements.txt
-For target "mytest" :
-[basedir]/mytest/projecty/requirements.txt
+Check that the above apply. Else abort with the message "this is not a portable installation".
 
 
 
-The code will build a virtual environment in the following way:
-in install mode the venv is always created under the base directory.
-If the folder python_embedded does not exist the name of the venv is according to the OS and a new venv will be created:
-for windows: .env_windows
-for linux: .env_linux
-for macOS: .env_macos
 
-If the argument --backup is provided and a venv is not python_embedded and the venv directory already exists it will be renamed by adding the suffix ".bak" so its not lost.
-If the argument --backup is provided and a venv is python_embeded then a copy will be created called "python_embeded.bak".
 
-If the venv is python_embedded then all packages will be removed by extracting them with pip freeze and unsinstalling them. 
+If needed the code will build a virtual environment in the following way:
+in install mode the venv is always created under the base directory unless stated otherwise by SETVENV.
+the name of the venv is according to the OS and a new venv will be created:
+for windows: .env_win
+for linux: .env_lin
+for macOS: .env_mac
+
+If the argument --backup is provided the venv directory already exists it will be renamed by adding the suffix ".bak" so its not lost.
+If the venv is embedded then all packages will be removed by extracting them with pip freeze and unsinstalling them. 
 
 then the venv will be rebuilt like this:
 
 1. the venv is checked to be empty by running pip freeze. if not abort and show a error message.
 2. requirements files defined in REQFILE will be installed with pip in the venv by downloading them to a temp file and performing pip install -r temp.txt
-3. In repair mode: requirements files from all folders under the defined REQSCAN folders will be searched and installed with pip in the venv. 
-4. In install mode: requirement filed from all GITCLON folders are installed
+3. requirements files from all folders under the defined REQSCAN folders will be searched and installed with pip in the venv. 
+4. requirement filed from all GITCLON folders are installed
 5. If any file gives an error abort with a message displaying which custom node is the cause of error.
 
 
@@ -176,19 +125,12 @@ then the venv will be rebuilt like this:
 
 VENV Repair:
 
-in rebuild mode the venv of an embedded project might be corrupted by faulty entries in the pip freeze list. the list looks like this:
+in revenv mode the venv of an embedded project might be corrupted by faulty entries in the pip freeze list. the list looks like this:
 torch
 torchaudio
 WARNING: Ignoring invalid distribution ~orchsd (D:\gh_test\ComfyUI_windows_portable7\python_embeded\Lib\site-packages)
 WARNING: Ignoring invalid distribution ~orch (D:\gh_test\ComfyUI_windows_portable7\python_embeded\Lib\site-packages)
 torchvision
 
-i want to clean it from the WARNING entries. but also repair the errors if those are found.
-The path at the end is a directory and the entries "~orchad" or "~orch" are faulty directories under it.
-On each WARNING entry the path will be used and all directories on that path that start with a tilde "~" shall be deleted.
-
-
-before coding: do you have any questions for clarification?
-
-
-
+the code will clean the WARNING entries. but also repair the errors if those are found.
+On each WARNING entry the path will be used and all directories on that path that start with a tilde "~" shall be deleted

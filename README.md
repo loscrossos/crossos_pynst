@@ -22,57 +22,15 @@ todo: precheck checks if files to be downloaded are existent AND have different 
 
 
 
-
-
-
-Elements:
-
-Mode element  |  venv                     | repo                  | code in repo          | files
----           | ---                       | ---                   | ---                   | ---
-**senso** | created if not existent   | cloned if not existent| untouched, not updated| Downloaded if not existent
-**Install**   | created if not existent   | cloned if not existent| code update (no reset)| Downloaded if not existent 
-**revenv**   | deleted if exists,rebuilt | cloned if not exists  | reset and updated     | Check for integrity and redownload 
-
-
-
-install: installs repo and files. Only installs venv, files and repos if they dont exist. Updates code of existing repos.
-repair: rebuilds a venv. deletes and reinstalls repos to latest code.
-
-
-
-commmand                              | sensitive                       | Install   | Rebuild
----                                   | ---                             |---        | ---
-CMD_COMMENTEDOUT_LINE=     "#"       #| comment                                     | <- same   |<- same
-CMD_PYTHON=                "PYTHON"  #| set python version to be used for venvs. Script will abort if he existing venv has another version   | <- same |<- same but will delete existing venvs and create a new venv with the scpecified version
-CMD_SETVENV=               "SETVENV" #| sets the venv path to be used or created.   | <-same    | Venv to build or rebuild the venv
-CMD_PIPREQFILE=            "REQINST" #| install req file                            | <- same   |<- same
-CMD_PIPREQPACKAGE=         "PIPINST" #| install req wheel or module                 | <- same   |<- same
-CMD_RFILTER=               "RFILTER" #| Filter out packages (from REQ* commands)    | <- same   |<- same
-CMD_GITCLONE=              "CLONEIT" #| clone a repo into a dir. no code update if it exists    | <- same but updates code | same but updates code
-CMD_GITCLONE_ALIAS1=       "GITCLON" #| clone a repo into a dir. no code update if it exists    | <- same but updates code | same but updates code
-CMD_REQSCAN=               "REQSCAN" #| Specifies a directory to scan for subdirectories with "requirements.txt" to install. Will not update code in safe mode  | <- same but updates the repository code first|<- same but updates the repository code first
-CMD_GETFILE=               "GETFILE" #| Downloads a file to a directory.  | <- same |<- same
-CMD_GETBLOB=               "GETBLOB" #| Downloads a file to a directory. Used for large files (e.g. models)  | <- same |<- same
-CMD_PRINT=                 "PRINTIT" #| Prints a message for the user to command line.  | <- same |<- same
-CMD_CONFIRM_FILE_OR_ABORT= "HASFILE" #| Checks that a file exists. Aborts run if it fails  | <- same |<- same
-CMD_PAUSE=                 "PAUSEIT" #| Pauses the execution until user confirms  | <- same |<- same
-CMD_SHORTCUT_DESK_ICON  =  "DESKICO" #| Creates a Desktop icon with a command line  | <- same |<- same
-CMD_SHORTCUT_DESK_SCRIPT=  "DESKEXE" #| Creates a Desktop script with a command line  | <- same |<- same
-CMD_SHORTCUT_BASE_ICON  =  "HOMEICO" #| Creates a Installdir icon with a command line  | <- same |<- same
-CMD_SHORTCUT_BASE_SCRIPT=  "HOMEEXE" #| Creates a installdir script with a command line  | <- same |<- same
-CMD_XRUNGITCOMMAND ="XRUNGITCOMMAND"#| Runs a git command directly | <-same | <-same
-CMD_PIPEXEC =       "XRUNPIPCOMMAND" #| Advanced: Raw command line passed to pip.      | <- same |<- same
-CMD_EXEC =          "XRUNPYTHONFILE" #| Runs a python file (arguments and params allowed)  | <- same |<- same
-
-
+ 
 
 
 
 code CMD_PIPEXEC. all arguments are fed into pip. RFILTER does not affect this command. sensoinstall does not safeguard this command.
 
-TODO: issue warnin if running CMD_PIPEXEC in sensoinstall mode, also warn ifruning at all as this is advanced. disabled in settings.
+TODO: issue warnin if running CMD_PIPEXEC in senso mode, also warn ifruning at all as this is advanced. disabled in settings.
 
-forceforcegitlatest: reset git repos first by running: git restore .
+forcegitlatest: reset git repos first by running: git restore .
   --info: 
     -a git repo where a file is changed by me but others are changed on server can be "pulled"
     -a git where a file is changed by me and the sme file on server must be restore'd before hand
@@ -160,7 +118,6 @@ python crossos_pynst.py      comfy.cropy.txt  c:\temp
 
 
 **Options**
-
 usage: crossos_pynst.py [-h] [--revenv] [--senso] [--embedded] [--nodesktop] [--dryrun] [--verbose] [--backup] [--noblob] [--venvname VENVNAME]
                         [--forcegitlatest] [--updatemode] [--debugtest]
                         inputfile targetdirectory
@@ -187,6 +144,7 @@ options:
   --updatemode         Pre-Check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated
                        and the target exists. Else a typo would cause a full installation besides an existing one.
   --debugtest          Show debug info and quit
+
 
 
 

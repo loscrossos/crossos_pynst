@@ -1224,7 +1224,7 @@ import re
 
  
 
-def extract_initial_letters(text: str, lettersamount: int=4, uppercase=False) -> str:
+def extract_initial_letters(text: str, lettersamount: int=4, uppercase=True) -> str:
     words = re.findall(r'\b\w+\b', text)
     if not words:
         # hardcoded fallback word

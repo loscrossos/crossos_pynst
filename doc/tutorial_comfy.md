@@ -20,9 +20,14 @@ The "target directory": pynst installs always in a directory that contains all f
 
 Normally all paths within a pynstaller file will be relative to the target dir.
 
-Lets build a pynstaller:
 
-## Installing a Repo
+## Basic Installation
+
+Lets build a pynstaller that installs a brand new ComfyUI!
+
+
+
+### Installing a Repo
 
 
 
@@ -59,7 +64,7 @@ mytestcomfy
 At this point we have a ready-to-use comfyUI installation: ComfyUI was cloned, a venv was created and the requirements.txt was installed into the venv.
 
 
-## Installing extra files
+### Installing extra files
 
 ComfyUI comes by default with no accelerators installed. to add them one must activate the venv and install a requirements file. For this we will use the command `REQINST` (REQuirements INSTallation) which takes an URL as a parameter. We use it to install the accelerator file from my other project [Crossos_Acceleritor](https://github.com/loscrossos/crossOS_acceleritor). 
 
@@ -78,14 +83,14 @@ REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/he
 ```
 
 
-## Adding more repositories at custom locations
+### Adding more repositories at custom locations
 
 ComfyUI accepts plugins: those are simply repositories cloned under the subdirectory `ComfyUI/custom_nodes`
 
 so we use the `CLONEIT` command with some repositories that we like. Just put as many as you want with the target `ComfyUI/custom_nodes` and pynst will clone them.
 
 
-For a complete installation we need to install their `requirements.txt` into the main venv. This is done with `REQSCAN`: this command defined a directory that is scanned for subdirectories that are repositories, for each repository found it will update their code (`git pull`) and install the requirements file from it (if there is one present) into the last venv defined by `SETVENV`. `REQSCAN` will search for ANY repository under its defined target: therefore it will also update and install existing directories (plugins).
+For a complete installation we need to install their `requirements.txt` into the main venv. This is done with `REQSCAN`: this command accepts as parameter a directory that is scanned for subdirectories that are repositories, for each repository found it will update their code (`git pull`) and install the requirements file from it (if there is one present) into the last venv defined by `SETVENV`. `REQSCAN` will search for ANY repository under its defined target: therefore it will also update and install existing directories (plugins).
 
 
 ```
@@ -105,7 +110,7 @@ CLONEIT https://github.com/city96/ComfyUI-GGUF ComfyUI/custom_nodes
 REQSCAN ComfyUI/custom_nodes
 ```
 
-## Adding Starter icons
+### Adding Starter icons
 
 
 so.. how do we start it? normally you would have to open a command line, activate the venv and start the python file `main.py`.
@@ -145,3 +150,8 @@ so now we have a full fledged ComfyUI installation:
 
 Mind you this works on Windows, Mac and Linux!
 
+## Use Case Scenarios
+
+Now lets see what we can do with our fully defined pynst file!
+
+We are going to use a windows path for the scenarios, but these commands work the same on Linux or MacOS.

@@ -21,7 +21,7 @@ CrossOS Pynst manages:
 You can run it directly with:
 
 ```bash
-python crossos_pynst.py [inputfile] [targetdirectory]
+python pynst.py [inputfile] [targetdirectory]
 ```
 
 No installation, no dependencies, no platform issues.
@@ -31,7 +31,7 @@ No installation, no dependencies, no platform issues.
 ## Features
 
 - Easy to Use
-  - Just download `crossos_pynst.py` and run it. All you need is an installation file (a pynst file) and a target directory.
+  - Just download `pynst.py` and run it. All you need is an installation file (a pynst file) and a target directory.
   - The pynst defines what to install. It is a plain-text instruction file. Use one of the provided examples, check out the community or write one yourself! Everything else is automated.
 - Fully Cross-OS
   - Works identically on **Windows**, **Linux**, and **macOS**. Learn once use forever!
@@ -67,7 +67,7 @@ DESKICO "ComfyUI CPU" ComfyUI/main.py --cpu
 
 Then run (example on windows):
 ```bash
-python crossos_pynst.py pynstallers/test.comfyhelloworld.pynst.txt ./hellocomfy
+python pynst.py pynstallers/test.comfyhelloworld.pynst.txt ./hellocomfy
 ```
 
 This will: 
@@ -84,12 +84,12 @@ Just double-click the starter icon! thats it. You have a ComfyUI installed with 
 
 Example on Linux or macOS:
 ```bash
-python crossos_pynst.py comfy.cropy.txt /Users/Shared/aii/myco
+python pynst.py comfy.cropy.txt /Users/Shared/aii/myco
 ```
 
 Example on Windows:
 ```bash
-python crossos_pynst.py comfy.cropy.txt C:\temp
+python pynst.py comfy.cropy.txt C:\temp
 ```
 
 Pynst reads the instructions, sets up the virtual environment, clones and updates repositories, installs requirements, and creates launcher shortcuts.
@@ -99,7 +99,7 @@ Pynst reads the instructions, sets up the virtual environment, clones and update
 ## Command-Line Options
 
 ```
-usage: crossos_pynst.py [-h] [--revenv] [--senso] [--embedded] [--nodesktop]
+usage: pynst.py [-h] [--revenv] [--senso] [--embedded] [--nodesktop]
                         [--dryrun] [--verbose] [--backup] [--noblob]
                         [--venvname VENVNAME] [--forcegitlatest]
                         [--updatemode] [--debugtest]
@@ -136,22 +136,22 @@ usage: crossos_pynst.py [-h] [--revenv] [--senso] [--embedded] [--nodesktop]
 
 **Install ComfyUI**
 ```bash
-python crossos_pynst.py comfy_install.pynst.txt /ai/comfy
+python pynst.py comfy_install.pynst.txt /ai/comfy
 ```
 
 **Repair an existing install by rebuilding the virtual environment**
 ```bash
-python crossos_pynst.py comfy_install.pynst.txt /ai/comfy --revenv
+python pynst.py comfy_install.pynst.txt /ai/comfy --revenv
 ```
 
 **Update without downloading model blobs**
 ```bash
-python crossos_pynst.py visomaster.pynst.txt /ai/visomaster --noblob
+python pynst.py visomaster.pynst.txt /ai/visomaster --noblob
 ```
 
 **Force nightly git updates**
 ```bash
-python crossos_pynst.py comfy.pynst.txt /ai/comfy --gitlatest
+python pynst.py comfy.pynst.txt /ai/comfy --gitlatest
 ```
 
 ---

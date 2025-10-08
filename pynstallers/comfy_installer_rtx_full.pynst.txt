@@ -3,6 +3,7 @@ CLONEIT https://github.com/comfyanonymous/ComfyUI .
 SETVENV ComfyUI
 PRINTIT This step may take some time depending on your connection.
 REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
+# REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python312torch280cu129_lite.txt
 
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
 CLONEIT https://github.com/kijai/ComfyUI-KJNodes ComfyUI/custom_nodes

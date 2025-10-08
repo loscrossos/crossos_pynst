@@ -1,5 +1,9 @@
 # Pynst Tutorial - Install the perfect ComfyUI
 
+**Linux/MacOS:** All Examples use a windows path `d:\temp\mytestcomfy`. For linux or Macos the command is exactly the same. just use a unix path e.g. `/User/Shared/mycomfy`.
+
+### Overview
+
 In this tutorial we will learn how to build a perfect ComfyUI installatation with Pynst and how the Pynstaller definition file is built. This way you can build your own or expand an existing file to your liking. Therefore this tutorial is more to learn how pynst works.
 
 If all you want is to install ComfyUI, then you dont need the tutorial. The full pynst file is in the repo in the folder `pynstallers`. 
@@ -7,13 +11,13 @@ If all you want is to install ComfyUI, then you dont need the tutorial. The full
 all you need to run is:
 
 ```bash
-python crossos_pynst.py pynstallers/comfyui_installer_nvidia_accelerated.pynst.txt d:\temp\mytestcomfy
+python pynst.py pynstallers/comfy_installer_rtx_full.pynst.txt d:\temp\mytestcomfy
 ```
 
 This command does the folowing:
 - it calls python (the version is not important as pynst is not version dependent as long as its python 3.xx+)
-- it instructs to use the `crossos_pynst.py` file
-- the **first parameter is which pynstaller to use**: we use `pynstallers/comfyui_installer_nvidia_accelerated.pynst.txt`
+- it instructs to use the `pynst.py` file
+- the **first parameter is which pynstaller to use**: we use `pynstallers/comfy_installer_rtx_full.pynst.txt`
 - the **second parameter is the target directory**: where the project will be installed: e.g. on windows `d:\temp\mytestcomfy`
 
 The "target directory": pynst installs always in a directory that contains all files and repositories. So here the target project directory would be `mytestcomfy` and all files that pynst creates will be placed under it (cloned repos, images, icons): e.g. if this pynstaller clones comfyUI, then comfy will be placed under it: `d:\temp\mytestcomfy\ComfyUI`
@@ -155,3 +159,42 @@ Mind you this works on Windows, Mac and Linux!
 Now lets see what we can do with our fully defined pynst file!
 
 We are going to use a windows path for the scenarios, but these commands work the same on Linux or MacOS.
+
+
+### Install ComfyUI
+
+install comfyui on any path you like (you can have 10, 20 installations or as many as you want in parallel), all of them with all the accelerators in the latest versions preinstalled and enabled. As seen above this also installs startable icons on your desktop.
+
+```bash
+python pynst.py pynstallers/comfy_installer_rtx_full.pynst.txt d:\temp\mytestcomfy
+```
+
+
+install comfy with plugins: add any plugins that you want and have it preinstalled
+add start icons: adds clickable start icons on your desktop for any configuration you want! One for ComfyCPU one for ComfyGPU, one for ComfyGPU with Sageattention or one for each installation of comfy on your PC
+
+
+
+
+Safely and securely install any workflow (including models and plugins): have your favorite workflow installed and all models automatically downloaded to the right place! Pynst takes care that its fully fail safe! You can not do anything wrong!
+
+
+-SensoInstall mode: this mode will not update code or remove anything. It only intalls plugins and files in the safest and most conservative way possible (special case. You do want latest code!).
+
+-You have a “comfyUI portable” installation that is out of date? Easily and safely convert it to a bleeding edge manual installation with the latest code and all accelerators! Enable it to work on linux and mac! 
+
+REPAIR:
+
+Safely repair your existing comfy install! Keep all your data!
+-repair a broken venv
+-rebuild a venv
+-install as many venvs as you want in parallel for one single Comfy installation and have separate starter icons on your desktop!
+-one with sageattention (SA)
+-one without SA
+-one with python 3.12 or  3.13 or 3.8
+-one only for nunchaku wokrflows
+
+-safely update comfy
+-safely update your portable installation
+
+ Wait. you are still reading?? Are you not sold yet? I would be long ago!

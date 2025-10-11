@@ -131,11 +131,25 @@ REQSCAN ComfyUI/custom_nodes
 
 so.. how do we start it? normally you would have to open a command line, activate the venv and start the python file `main.py`.
 
-With pynst we can define some neat starter icons right on your desktop! or if you prefer old style start files.
+With pynst we can define some neat starter icons to appear right on your desktop! or if you prefer old style start files (`bat` files on windows, `sh` files on Mac/Lin).
 
 just define the `DESKICO`, `DESKEXE` for desktop or`HOMEEXE` and `HOMEICO` for the target directory location, add a label to be used and the start command which is appended to the venvs python. 
 
-Voila the finished file!
+For example: to start ComfyUI in awy that uses the GPU, enables Sage Attention and auto-starts the browser when Comfy is loaded, you would need a command that that uses the current virtual environments Python and starts the file `main.py` (located under the `ComfyUI` folder, located in your installation directory) and uses the options `--gpu --use-sage-attention --auto-launch`. Therefore you would normally have this command line:
+
+```
+[path to your venv]/python [installdir]/ComfyUI/main.py --gpu --use-sage-attention --auto-launch
+````
+
+With Pynst we are going to define such an starter icon on your Desktop called "ComfyUI GPU Mode". We only need the label, and the starter file and options. Pynst automatically uses the last venv defined by `SETVENV`
+
+```
+DESKICO "ComfyUI GPU Mode" ComfyUI/main.py --gpu --use-sage-attention --auto-launch 
+```
+
+The `DESKICO` uses as label the first word (several words in quotes count as one word) and everything after that as the starter command. To make a starter icon in the home directory just use `HOMEICO`. To make it a starter file (bat or sh) just replace `ICO` wiht `EXE`.
+
+Here is the finished file!
 
 ```bash
 PYTHON 3.13
@@ -159,11 +173,12 @@ DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch
 ```
 
 so now we have a full fledged ComfyUI installation:
-- ComfyUI and as many plugins installed as you want
-- All code updated to latest version
-- Virtual environment created and all plugins installed into it
+- ComfyUI installed
+- A virtual environment (venv) automatically created and setup
 - Accelerators installed
-- Starter Icons on the Desktop
+- as many plugins installed as you want
+- All code updated to latest version
+- Starter Icons on the Desktop in several versions
 
 Mind you this works on Windows, Mac and Linux!
 
@@ -177,7 +192,7 @@ Mind you this works on Windows, Mac and Linux!
 
 ## Managing your ComfyUI installation
 
-How you can manage your Comfy Installation!
+Now that we defined how the installation looks like now, lets learn how to manage it!
 
 We are going to use a windows path for the scenarios, but these commands work the same on Linux or MacOS.
 
@@ -194,6 +209,13 @@ python pynst.py pynstallers/comfy_installer_rtx_full.pynst.txt d:\temp\mytestcom
 ### Install any plugins your want
 
 install comfy with plugins: add any plugins that you want and have it preinstalled. Just add any amount of entries to the section where the plugins are.
+The format is:
+```
+CLONEIT [Gitub URL] [custom nodes path on comfy]
+# example:
+CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
+```
+
 For example:
 
 
@@ -227,42 +249,48 @@ The default name is `.env_mac`, `.env_win` or `.env_lin` depending on OS.
 By using the file above the venv will be fully rebuilt.
 
 
-## Add started Dekstop Icons to your existing installation
+## Add starter Dekstop Icons to your existing installation
 
 With a minimal file you can simply add desktop icons to your existing installation to just have a nice clickable starter.
-
-
-
 
 
 add start icons: adds clickable start icons on your desktop for any configuration you want! One for ComfyCPU one for ComfyGPU, one for ComfyGPU with Sageattention or one for each installation of comfy on your PC
 
 
+### Safely install a full ComfyUI workflow (models and plugins included)
 
+TODO
 
 Safely and securely install any workflow (including models and plugins): have your favorite workflow installed and all models automatically downloaded to the right place! Pynst takes care that its fully fail safe! You can not do anything wrong!
 
 
--SensoInstall mode: this mode will not update code or remove anything. It only intalls plugins and files in the safest and most conservative way possible (special case. You do want latest code!).
+### Update your portable ComfyUI to the latest bleeding edge version
+
+TODO 
 
 -You have a “comfyUI portable” installation that is out of date? Easily and safely convert it to a bleeding edge manual installation with the latest code and all accelerators! Enable it to work on linux and mac! 
 
-REPAIR:
 
-Safely repair your existing comfy install! Keep all your data!
--repair a broken venv
--rebuild a venv
--install as many venvs as you want in parallel for one single Comfy installation and have separate starter icons on your desktop!
+### Convert your embedded installation to a manual installation
+
+TODO
+
+
+### Install multiple venvs to a single ComfyUI installation
+
+install as many venvs as you want in parallel for one single Comfy installation and have separate starter icons on your desktop!
 -one with sageattention (SA)
 -one without SA
 -one with python 3.12 or  3.13 or 3.8
 -one only for nunchaku wokrflows
 
--safely update comfy
--safely update your portable installation
+
+
 
  Wait. you are still reading?? Are you not sold yet? I would be long ago!
 
 
+### Senso-Install
 
-### Convert your embedded installation to a manual installation
+
+-SensoInstall mode: this mode will not update code or remove anything. It only intalls plugins and files in the safest and most conservative way possible (special case. You do want latest code!).

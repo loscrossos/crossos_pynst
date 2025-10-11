@@ -1521,7 +1521,7 @@ STARTOPTION_VENVNAME="venvname"
 STARTOPTION_FORCEGITLATEST="gitlatest"
 STARTOPTION_FORCEGITSTABLE="gitstable"#TODO
 STARTOPTION_DEBUGTEST="debugtest"
-STARTOPTION_UPDATEMODE="updatemode"
+STARTOPTION_UPDATEMODE="update"
     
 DEFAULT_PYTHON_VERSION = "3.13"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
@@ -2728,18 +2728,12 @@ def get_dir_name(path: Path, root_fallback: str = "ROOT") -> str:
  
 
 import os
-def assert_file_exists(path: str):
+def file_exists(path: str):
     """
     Check if the given path exists (file or directory).
     If not, prints an error message.
     """
-    if os.path.exists(path):
-        return True
-    else:
-        abort(f"CONFIRM: Fatal Error: required path does not exist. Check failed. -> {path}")
-        return False
-
-
+    return os.path.exists(path)
 
 
 def get_exec_variables(in_python_embedded_mode:bool=False,in_custom_venv_name:str=None, in_basedir:Path=None, required_venv_path:str=None ):
@@ -2800,18 +2794,20 @@ def get_exec_variables(in_python_embedded_mode:bool=False,in_custom_venv_name:st
         
     return venv_name, venv_python_exec, venv_path
 
-def check_that_file_exists_or_abort(file_path, file_description=None):
+def check_that_file_exists_or_abort(path, file_description=None, hardabortmode=True, requestor_name="Filecheck"):
     
     file_desc="requested file"
     if file_description is not None:
         file_desc=file_description
     
     if DRYRUN:
-        log_subsubtask(f"[DRYRUN] Would run: check for existence of {file_desc}: {file_path}")
+        log_subsubtask(f"[DRYRUN] Would run: check for existence of {file_desc}: {path}")
     else:
-        if os.path.exists(file_path)==False:
-            abort(f"{file_desc}. Missing: {file_path}")
-
+        if os.path.exists(path)==False:
+            if hardabortmode:
+                abort(f"{requestor_name}: {file_desc}. Missing: {path}")
+            else:
+                log_subsubtask(f"{requestor_name}: {file_desc}. Missing: {path}")
 
 # ========= MAIN PROCESS =========
 def process_input_script(in_commands: list[tuple[str, list[str]]], 
@@ -2857,7 +2853,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             break
 
     
-    #PRECHECK2: if in check existing install mode then check that repo dirs already exist and issue a warning if not
+    #PRECHECK2: UPDATE MODE: check that CLONEIT repo dirs and HASFILE items already exist  issue a warning if not
     if precheck_updatemode:
         log_task(f"PRECHECK:{STARTOPTION_UPDATEMODE}: will search for repository requirements and check if the repositories exist")
         #if this is set show a warning that some repos are not existent
@@ -2880,16 +2876,34 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                     precheckwarning=True
 
                     #show failed repo
-                    log_subsubtask(f"WARNING: Repo not found. Will re-install: {targetrepo}")
+                    log_subsubtask(f"WARNING: Repo not found. Missing: {targetrepo}")
                 else:
-                    log_subsubtask(f"CHECKOK: Repo found at target. Will keep: {targetrepo}")
+                    log_subsubtask(f"CHECKOK: Repo found. Checked for: {targetrepo}")
+                    
+            elif cmd == CMD_CONFIRM_FILE_OR_ABORT:
+                path_to_confirm = params[0]
+                target = (in_basedir / path_to_confirm).resolve()
+                if file_exists(path=target)==False:
+                    #on first violation show header
+                    if not precheckwarning:
+                        log_subtask(f"{STARTOPTION_UPDATEMODE}:PRECHECK Possible errors found")
+                    precheckwarning=True
 
-        pc2_message=f"{STARTOPTION_UPDATEMODE}:"
+                    #show failed repo
+                    log_subsubtask(f"WARNING: File not found. Missing: {target}")
+                else:
+                    log_subsubtask(f"CHECKOK: File found. Checked for: {target}")
+
+
+                
+        pc2_message=f"{STARTOPTION_UPDATEMODE}: "
 
         if elements_to_check_exist==False:
-            pc2_message= pc2_message + "No Check Elements were found. No Check was performed."
+            pc2_message= pc2_message + f"No Check Elements were found. No Check was performed. Aborting. To proceed rerun without option: --{STARTOPTION_UPDATEMODE}"
+            abort(msg=pc2_message)
         elif precheckwarning==True:
-            pc2_message= pc2_message + "There were warnings. Press Enter to continue or Crtl+c to abort"
+            pc2_message= pc2_message + f"There were warnings. This installation is NOT safe as an update. Aborting. To proceed rerun without option: --{STARTOPTION_UPDATEMODE}"
+            abort(msg=pc2_message)
         else:
             pc2_message= pc2_message + "Precheck Succesful. Tt is safe to continue. Press Enter to continue or Crtl+c to abort"    
         task_pause(pc2_message)
@@ -3016,9 +3030,9 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
 
         elif cmd in (CMD_GITCLONE):
             if len(params) != 2:
-                abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
+                abort(msg=f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
             url, suffix = params
-            log_task(f"{cmd} cloning: {url}")
+            log_task(msg=f"{cmd} cloning: {url}")
                         
             target = (in_basedir / suffix).resolve()
             target = target / extract_project_name(url)
@@ -3027,18 +3041,18 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             
         elif cmd == CMD_GETFILE or cmd==CMD_GETBLOB:
             if len(params) != 2:
-                abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
+                abort(msg=f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
             url, suffix = params
-            log_task(f"{cmd}: retrieving file: {url}")
+            log_task(msg=f"{cmd}: retrieving file: {url}")
             
             targetdir = (in_basedir / suffix).resolve()
             if noblob_mode and cmd==CMD_GETBLOB:
-                log_subsubtask(f"{cmd}: no-blob mode. ignoring download")    
+                log_subsubtask(msg=f"{cmd}: no-blob mode. ignoring download")    
                 continue
             if DRYRUN:
-                log_subsubtask(f"DRYRUM: {cmd}: would download {url}")
+                log_subsubtask(msg=f"DRYRUM: {cmd}: would download {url}")
             else:
-                log_subsubtask(f"{cmd} Storing file to: {targetdir}")
+                log_subsubtask(msg=f"{cmd} Storing file to: {targetdir}")
                 #url = "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/wan2.2-i2v-rapid-aio-example.json"
                 #path = "d:/resources/"
                 download_only_if_not_existent(url=url, directory_target_path=targetdir, verbose=VERBOSE, show_progress=True)
@@ -3049,15 +3063,15 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 abort(f"{cmd} requires at least one parameter")
             log_task(f"{cmd}: executing pip command: {" ".join(params)}")
             check_that_file_exists_or_abort(venv_python_exec,"python executable")            
-            pip_run_command(venv_python_exec, pip_command= params)
+            pip_run_command(python_exec=venv_python_exec, pip_command= params)
 
 
         elif cmd ==CMD_PIPREQPACKAGE:
             if len(params) < 1:
                 abort(f"{cmd} requires at least one parameter")
             log_task(f"{cmd}: installing pip packages: {" ".join(params)}")
-            check_that_file_exists_or_abort(venv_python_exec,"python executable")
-            pip_run_pip_install(venv_python_exec, pip_command= params)
+            check_that_file_exists_or_abort(path=venv_python_exec, file_description="python executable")
+            pip_run_pip_install(python_exec=venv_python_exec, pip_command= params)
 
 
         elif cmd == CMD_COMMENTEDOUT_LINE:
@@ -3066,10 +3080,10 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
 
         elif cmd == CMD_CONFIRM_FILE_OR_ABORT:
             path_to_confirm = params[0]
-            log_task(f"{cmd}: Checking for file existence: {str(path_to_confirm)}")
+            log_task(msg=f"{cmd}: Checking for file existence: {str(path_to_confirm)}")
             
             target = (in_basedir / path_to_confirm).resolve()
-            assert_file_exists(target)
+            check_that_file_exists_or_abort(path=target)
             
         
         elif cmd ==CMD_XRUNGITCOMMAND:
@@ -3077,14 +3091,14 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             #the params follow
             git_command_params = params[1:]
             git_command_target = (in_basedir / git_command_path).resolve()
-            assert_file_exists(git_command_target)
+            check_that_file_exists_or_abort(path=git_command_target)
             
-            log_task(f"{cmd}: executing git command on: {git_command_path}")
+            log_task(msg=f"{cmd}: executing git command on: {git_command_path}")
             
             do_git_command(target=Path(git_command_target), params=git_command_params)
 
         else:
-            abort(f"Unknown command in inputfile: {cmd}")
+            abort(msg=f"Unknown command in inputfile: {cmd}")
 
 
 

@@ -25,20 +25,21 @@ The "target directory": pynst installs always in a directory that contains all f
 Normally all paths within a pynstaller file will be relative to the target dir.
 
 
-## Basic Installation
-
-Lets build a pynstaller that installs a brand new ComfyUI!
 
 
+
+
+
+## Define a full fledged accelerated ComfyUI
+
+Lets build a pynstaller that installs a brand new ComfyUI preloaded with accelerators and plugins!
 
 ### Installing a Repo
-
-
 
 The most basic setup to run a repository is usually to clone a repository (e.g. from github) and to create a virtual environment.
 With Pynst this is done with 2 commands:
 
-```
+```bash
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
 SETVENV ComfyUI
 ```
@@ -49,23 +50,34 @@ The commands:
 
 **VENV name:** by default pynst names a venv depending on the OS: on windows `.env_win`, on linux `.env_lin` and on mac `.env_mac`. This way you can install a project on a shared drive and access it from different OSes and it will work on all of them.
 
-
 **VENV Creation**: you can place a VENV anywhere you want. It does not really matter. To keep things ordered it is good practice to put it under the directory of the repository it belongs to. If you have several repos that share a venv you can put it under the target directory by setting the parameter as a dot "."
 
 **Automatic requirements installation**: `SETENV` searches the directory where the venv is placed and if it finds a `requirements.txt` it automatically installs it.
 
 So after running this two commands as indicated at the beginning we would have this structure:
 
-
 ```
-mytestcomfy
+|-mytestcomfy
     |-ComfyUI
         |-.env_win
+        |-requirements.txt
+        |-main.py
         |-(other comfyUIfiles)
         |-(other files)
 ```
 
-At this point we have a ready-to-use comfyUI installation: ComfyUI was cloned, a venv was created and the requirements.txt was installed into the venv.
+At this point we have a ready-to-use comfyUI installation: ComfyUI was cloned, a venv was created and the requirements.txt was installed into the venv. We could start comfy by activating the venv and running the `main.py` file
+```bash
+.env_win\Scripts\activate
+python main.py
+```
+
+but now is where it starts to get interesting....
+
+
+### Securing the installation
+
+We add a check that the repository was correctly installed by checking the existence of the `ComfyUI/main.py` file. This check also ensures that running in `--update` later will abort if the file is not found. This way an update only works if the correct path has been given.
 
 
 ### Installing extra files
@@ -77,9 +89,10 @@ Since we use a file that needs Python 3.13 we use the definer `PYTHON` at the be
 Then we add a simple text warning with `PRINTIT`, telling the user that this step might take some time.. else the user might think the process is stuck:
 
 
-```
+```bash
 PYTHON 3.13
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
+HASFILE ComfyUI/main.py
 SETVENV ComfyUI
 PRINTIT This step may take some time depending on your connection.
 REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
@@ -96,10 +109,10 @@ so we use the `CLONEIT` command with some repositories that we like. Just put as
 
 For a complete installation we need to install their `requirements.txt` into the main venv. This is done with `REQSCAN`: this command accepts as parameter a directory that is scanned for subdirectories that are repositories, for each repository found it will update their code (`git pull`) and install the requirements file from it (if there is one present) into the last venv defined by `SETVENV`. `REQSCAN` will search for ANY repository under its defined target: therefore it will also update and install existing directories (plugins).
 
-
-```
+```bash
 PYTHON 3.13
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
+HASFILE ComfyUI/main.py
 SETVENV ComfyUI
 PRINTIT This step may take some time depending on your connection.
 REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
@@ -116,7 +129,6 @@ REQSCAN ComfyUI/custom_nodes
 
 ### Adding Starter icons
 
-
 so.. how do we start it? normally you would have to open a command line, activate the venv and start the python file `main.py`.
 
 With pynst we can define some neat starter icons right on your desktop! or if you prefer old style start files.
@@ -125,9 +137,10 @@ just define the `DESKICO`, `DESKEXE` for desktop or`HOMEEXE` and `HOMEICO` for t
 
 Voila the finished file!
 
-```
+```bash
 PYTHON 3.13
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
+HASFILE ComfyUI/main.py
 SETVENV ComfyUI
 PRINTIT This step may take some time depending on your connection.
 REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
@@ -154,9 +167,17 @@ so now we have a full fledged ComfyUI installation:
 
 Mind you this works on Windows, Mac and Linux!
 
-## Use Case Scenarios
 
-Now lets see what we can do with our fully defined pynst file!
+
+
+
+
+
+
+
+## Managing your ComfyUI installation
+
+How you can manage your Comfy Installation!
 
 We are going to use a windows path for the scenarios, but these commands work the same on Linux or MacOS.
 
@@ -170,7 +191,50 @@ python pynst.py pynstallers/comfy_installer_rtx_full.pynst.txt d:\temp\mytestcom
 ```
 
 
-install comfy with plugins: add any plugins that you want and have it preinstalled
+### Install any plugins your want
+
+install comfy with plugins: add any plugins that you want and have it preinstalled. Just add any amount of entries to the section where the plugins are.
+For example:
+
+
+```bash
+PYTHON 3.13
+CLONEIT https://github.com/comfyanonymous/ComfyUI .
+HASFILE ComfyUI/main.py
+SETVENV ComfyUI
+PRINTIT This step may take some time depending on your connection.
+REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
+
+# add plugins here
+CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
+CLONEIT https://github.com/kijai/ComfyUI-KJNodes ComfyUI/custom_nodes
+CLONEIT https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet ComfyUI/custom_nodes
+CLONEIT https://github.com/kijai/ComfyUI-WanVideoWrapper ComfyUI/custom_nodes
+CLONEIT https://github.com/city96/ComfyUI-GGUF ComfyUI/custom_nodes
+
+REQSCAN ComfyUI/custom_nodes
+HOMEEXE "ComfyUI_cpu" ComfyUI/main.py --cpu --auto-launch 
+DESKICO "ComfyUI GPU Mode" ComfyUI/main.py --gpu --use-sage-attention --auto-launch 
+DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch 
+```
+
+
+
+### Repair an existing manual installation
+
+If your installation is "broken", the most likely culprit is a broken virtual environment (a.k.a "venv"). Pynst can fully rebuild your venv by adding the option `--revenv`. Then it will delete the venv it encounters and rebuild it from scratch using the definition found in the ystaller. If you have an embedded python installation use additionally the option `--embedded`: it then does not delete the venv but empties it, repairs errors (removing broken packages) and reinstalls all packages.
+The default name is `.env_mac`, `.env_win` or `.env_lin` depending on OS.
+By using the file above the venv will be fully rebuilt.
+
+
+## Add started Dekstop Icons to your existing installation
+
+With a minimal file you can simply add desktop icons to your existing installation to just have a nice clickable starter.
+
+
+
+
+
 add start icons: adds clickable start icons on your desktop for any configuration you want! One for ComfyCPU one for ComfyGPU, one for ComfyGPU with Sageattention or one for each installation of comfy on your PC
 
 
@@ -198,3 +262,7 @@ Safely repair your existing comfy install! Keep all your data!
 -safely update your portable installation
 
  Wait. you are still reading?? Are you not sold yet? I would be long ago!
+
+
+
+### Convert your embedded installation to a manual installation

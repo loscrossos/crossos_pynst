@@ -126,7 +126,7 @@ usage: pynst.py [-h] [--revenv] [--senso] [--embedded] [--nodesktop]
 | `--noblob` | Skip optional large file downloads (e.g., model blobs). |
 | `--venvname` | Provide a custom virtual-environment folder name. |
 | `--gitlatest` | Force git repository code to the newest version on the main/master branch (sometimes called 'nightly') |
-| `--updatemode` | Pre-Check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one. |
+| `--update` | Only update exiting installations. This option performs a pre-Check AND only proceeds if: a) repositories (marked by CLONEIT) to be cloned already exist AND b) marked required files (by HASFILE) exist. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation in parallel to an existing one. |
 | `--senso` | Ultra Safe mode: avoids overwriting or deleting existing code (only for special cases. do not use this unless you know what you are doing). |
 | `--debugtest` | Output debug info and exit. |
 

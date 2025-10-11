@@ -101,8 +101,8 @@ Pynst reads the instructions, sets up the virtual environment, clones and update
 ```
 usage: pynst.py [-h] [--revenv] [--senso] [--embedded] [--nodesktop]
                         [--dryrun] [--verbose] [--backup] [--noblob]
-                        [--venvname VENVNAME] [--forcegitlatest]
-                        [--updatemode] [--debugtest]
+                        [--venvname VENVNAME] [--gitlatest]
+                        [--update] 
                         inputfile targetdirectory
 ```
 

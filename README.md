@@ -2,9 +2,11 @@
 
 **One file. All platforms. Any Python project.**
 
-CrossOS Pynst is a **cross-platform (Windows, Linux, macOS)** single-file Python tool that installs, rebuilds, and repairs virtually any Python project with a single command.  
+CrossOS Pynst is a **cross-platform (Windows, Linux, macOS)** single-file Python tool that installs, rebuilds, updates, upgrades, extends and repairs virtually any Python project with a single command.  
 
-Whether you want to **install from scratch**, **repair an existing environment**, or **fully re-harden** a complex multi-repo setup like ComfyUI, WAN, or a custom AI pipeline-Pynst automates the heavy lifting while keeping your existing code and data safe.
+Whether you want to **install from scratch**, **repair an existing environment**, or **fully re-harden** a complex multi-repo setup like ComfyUI, WAN2GP, or a custom AI pipeline-Pynst automates the heavy lifting while keeping your existing code and data safe.
+
+Pynst sets up the virtual environment, clones and updates repositories, installs requirements, downloads files, creates launcher shortcuts and much more!
 
 ---
 
@@ -16,12 +18,13 @@ CrossOS Pynst manages:
 - Git repositories and plugin modules
 - Requirement files (local or remote)
 - Desktop shortcuts and launcher scripts
-- Safe rebuilds and full-environment repairs  
+- Safe rebuilds and full-environment repairs 
+- File downloads
 
 You can run it directly with:
 
 ```bash
-python pynst.py [inputfile] [targetdirectory]
+python pynst.py [pynst-installer-file] [targetdirectory] [optional commands]
 ```
 
 No installation, no dependencies, no platform issues.
@@ -31,17 +34,17 @@ No installation, no dependencies, no platform issues.
 ## Features
 
 - Easy to Use
-  - Just download `pynst.py` and run it. All you need is an installation file (a pynst file) and a target directory.
-  - The pynst defines what to install. It is a plain-text instruction file. Use one of the provided examples, check out the community or write one yourself! Everything else is automated.
+  - Just download `pynst.py` and run it. All you need is an PIF (pynst-installer-file) and a target directory.
+  - The pif defines what to install. It is a plain-text instruction file. Use one of the provided examples, check out the community or write one yourself! Everything else is automated.
 - Fully Cross-OS
   - Works identically on **Windows**, **Linux**, and **macOS**. Learn once use forever!
-  - Dual/multi-boot friendly: projects you install can be used across all OSes.
+  - Dual/multi-boot friendly: projects you install can be used across all OSes. Access the same installation from Windows, Linux and MacOS!
 - Powerful Installation
   - Installs and configures full projects in one step.
   - Automatically installs the right files on the right place
   - Creates desktop or home-directory launchers automatically.
 - Repair & Rebuild
-  - Rebuilds or repairs broken or outdated venvs. ComfyUI broke? lets repair it!
+  - Rebuilds or repairs broken or outdated venvs. ComfyUI broke? just repair it!
   - Works on embedded/portable installs.
   - Ensures correct Python and dependency versions. No more dependency jungle.
 - Safety & Clarity
@@ -53,11 +56,13 @@ No installation, no dependencies, no platform issues.
 
 ## Quick Start
 
-### 1. Prepare an instruction file
+Simple example to install ComfyUI and load a full fledgew Workflow into it.
 
-A `.pynst.txt` file defines what to install and how. Example for the simplest install of comfyUI.
+### 1. ComfyUI simple installation
 
-Save this as `test.comfyhelloworld.pynst.txt`:
+A `.inst.txt` file defines what to install and how. Example for the simplest install of comfyUI.
+
+Save this as `test.comfyhelloworld.inst.txt` or use the provided example in the `installers` folder:
 
 ```bash
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
@@ -67,32 +72,28 @@ DESKICO "ComfyUI CPU" ComfyUI/main.py --cpu
 
 Then run (example on windows):
 ```bash
-python pynst.py pynstallers/test.comfyhelloworld.pynst.txt ./hellocomfy
+python pynst.py installers/test.comfyhelloworld.inst.txt ./hellocomfy
 ```
 
 This will: 
 
 1. clone the comfyUI repository under the target directory `hellocomfy/ComfyUI`
-2. create a virtual environment `hellocomfy/ComfyUI/.env_win` (example on windows) while searching and installing the requirements it finds in the ComfyUI directory.
+2. automatically create a virtual environment `hellocomfy/ComfyUI/.env_win` (example on windows) while searching and installing the requirements it finds in the ComfyUI directory.
 3. create a starter icon on the desktop.
 
 Just double-click the starter icon! thats it. You have a ComfyUI installed with latest code.
 
 
+### 2. Load a full fledged workflow into ComfyUI with ALL dependencies!
 
-### 2. Run the installer
+Now lets upgrade ComfyUI to load a workflow.
 
-Example on Linux or macOS:
-```bash
-python pynst.py comfy.cropy.txt /Users/Shared/aii/myco
-```
 
-Example on Windows:
-```bash
-python pynst.py comfy.cropy.txt C:\temp
-```
 
-Pynst reads the instructions, sets up the virtual environment, clones and updates repositories, installs requirements, and creates launcher shortcuts.
+
+
+
+
 
 ---
 

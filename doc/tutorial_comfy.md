@@ -36,7 +36,16 @@ Normally all paths within a pynstaller file will be relative to the target dir.
 
 On an OS level, you should have git and python installed. 
 
-Plus since this is comfyUI you should also have optimally Visual Studio installed
+**Windows**
+
+On Windows you should also have Visual C Redistributable installed
+
+open an administrator console and enter these commands to install git, python and VC Redistributable from official sources.
+```
+winget install --id=Python.Python.3.13 -e  --silent --accept-package-agreements --accept-source-agreements --scope machine
+winget install --id=Git.Git -e  --silent --accept-package-agreements --accept-source-agreements --scope machine
+winget install --id=Microsoft.VCRedist.2015+.x64 -e  --silent --accept-package-agreements --accept-source-agreements --scope machine
+```
 
 **Windows**
 

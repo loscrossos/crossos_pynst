@@ -58,6 +58,19 @@ No installation, no dependencies, no platform issues.
 
 Simple example to install ComfyUI and load a full fledgew Workflow into it.
 
+### Pre-requisites
+
+You need git and python installed to run pynst. Pynst uses by default python 3.13 (it can be changed)
+
+**Windows**
+
+if you havent already installed them, open an administrator console and run these commands:
+
+```
+winget install --id=Python.Python.3.13 -e  --silent --accept-package-agreements --accept-source-agreements --scope machine
+winget install --id=Git.Git -e  --silent --accept-package-agreements --accept-source-agreements --scope machine
+```
+
 ### 1. ComfyUI simple installation
 
 A `.inst.txt` file defines what to install and how. Example for the simplest install of comfyUI.

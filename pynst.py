@@ -1521,7 +1521,7 @@ STARTOPTION_VENVNAME="venvname"
 STARTOPTION_FORCEGITLATEST="gitlatest"
 STARTOPTION_FORCEGITSTABLE="gitstable"#TODO
 STARTOPTION_DEBUGTEST="debugtest"
-STARTOPTION_UPDATEMODE="update"
+STARTOPTION_SAFECHECK="safecheck"
     
 DEFAULT_PYTHON_VERSION = "3.13"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
@@ -2856,7 +2856,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
     
     #PRECHECK2: UPDATE MODE: check that CLONEIT repo dirs and HASFILE items already exist  issue a warning if not
     if precheck_updatemode:
-        log_task(f"PRECHECK:{STARTOPTION_UPDATEMODE}: will search for repository requirements and check if the repositories exist")
+        log_task(f"PRECHECK:{STARTOPTION_SAFECHECK}: will search for repository requirements and check if the repositories exist")
         #if this is set show a warning that some repos are not existent
         precheckwarning=False
         elements_to_check_exist=False
@@ -2873,7 +2873,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 if os.path.exists(targetrepo)==False:
                     #on first violation show header
                     if not precheckwarning:
-                        log_subtask(f"{STARTOPTION_UPDATEMODE}:PRECHECK Possible errors found")
+                        log_subtask(f"{STARTOPTION_SAFECHECK}:PRECHECK Possible errors found")
                     precheckwarning=True
 
                     #show failed repo
@@ -2887,7 +2887,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 if file_exists(path=target)==False:
                     #on first violation show header
                     if not precheckwarning:
-                        log_subtask(f"{STARTOPTION_UPDATEMODE}:PRECHECK Possible errors found")
+                        log_subtask(f"{STARTOPTION_SAFECHECK}:PRECHECK Possible errors found")
                     precheckwarning=True
 
                     #show failed repo
@@ -2897,13 +2897,13 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
 
 
                 
-        pc2_message=f"{STARTOPTION_UPDATEMODE}: "
+        pc2_message=f"{STARTOPTION_SAFECHECK}: "
 
         if elements_to_check_exist==False:
-            pc2_message= pc2_message + f"No Check Elements were found. No Check was performed. Aborting. To proceed rerun without option: --{STARTOPTION_UPDATEMODE}"
+            pc2_message= pc2_message + f"No Check Elements were found. No Check was performed. Aborting. To proceed rerun without option: --{STARTOPTION_SAFECHECK}"
             abort(msg=pc2_message)
         elif precheckwarning==True:
-            pc2_message= pc2_message + f"There were warnings. This installation is NOT safe as an update. Aborting. To proceed rerun without option: --{STARTOPTION_UPDATEMODE}"
+            pc2_message= pc2_message + f"There were warnings. This installation is NOT safe as an update. Aborting. To proceed rerun without option: --{STARTOPTION_SAFECHECK}"
             abort(msg=pc2_message)
         else:
             pc2_message= pc2_message + "Precheck Succesful. Tt is safe to continue. Press Enter to continue or Crtl+c to abort"    
@@ -3182,7 +3182,6 @@ def main():
     global STARTER_NO_DESKTOP, DRYRUN, VERBOSE, BACKUP
     
 
-    
 
     parser = argparse.ArgumentParser(description="Install or repair a Python project based on a instruction file.", epilog="Have fun!")
     parser.add_argument(f"--{STARTOPTION_MODE_REBUILD}", action="store_true",help=f"rebuilds the venv from zero. Can be used to repair an installation with a broken venv.")
@@ -3202,7 +3201,7 @@ def main():
     parser.add_argument(f"--{STARTOPTION_VENVNAME}",type=str,default=None,help="Provide a custom name for the virtual environment")
     parser.add_argument(f"--{STARTOPTION_FORCEGITLATEST}", action="store_true",help="Force git repository code to the newest version on the main/master branch (sometimes called 'nightly')")
     #parser.add_argument(f"--{STARTOPTION_FORCEGITSTABLE}", action="store_true",help="Force git repository code to the newest release version on the main/master branch (sometimes called 'release')")
-    parser.add_argument(f"--{STARTOPTION_UPDATEMODE}", action="store_true",help="Pre-Check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one.")
+    parser.add_argument(f"--{STARTOPTION_SAFECHECK}", action="store_true",help="Pre-Check if the comand will create a new installation or update an existing one. This will check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one.")
     parser.add_argument(f"--{STARTOPTION_DEBUGTEST}", action="store_true",help="Show debug info and quit")
     args = parser.parse_args()
 
@@ -3296,7 +3295,8 @@ def main():
         noblob_mode=getattr(args, STARTOPTION_NOBLOB), 
         in_operation_mode=operation_mode, 
         force_gitpull_mode=getattr(args, STARTOPTION_FORCEGITLATEST),
-        precheck_updatemode=getattr(args, STARTOPTION_UPDATEMODE))
+        precheck_updatemode=getattr(args, STARTOPTION_SAFECHECK),
+        )
     log_app_section(f"=== CrossOS {APP_NAME}: END ===")
 
 if __name__ == "__main__":

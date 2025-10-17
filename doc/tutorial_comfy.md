@@ -4,9 +4,16 @@
 
 ### Overview
 
-In this tutorial we will learn how to build a perfect ComfyUI installatation with Pynst and how the Pynstaller definition file is built. This way you can build your own or expand an existing file to your liking. Therefore this tutorial is more to learn how pynst works.
+Pynst is a powerful tool to securely install, manage and repair your comfyUI setup. It also can fully install workflows (the workflow file AND the models and the right dependencies).
+This all depends on an installer file (which is a plain text file with instructions). The definition file can be provided by someone or you can easily define one yourself!
+
+
+In this tutorial we will learn how to build a perfect ComfyUI installatation file with Pynst and how we can use it to manage a new installation or your existing installation. This way you can build your own or expand an existing file to your liking. Therefore this tutorial is more to learn how pynst works.
+
 
 If all you want is to install ComfyUI, then you dont need the tutorial. The full pynst file is in the repo in the folder `pynstallers`. 
+Also you dont have to remember or note the example. The file used for this tutorial is provided in the repo!
+
 
 all you need to run is:
 
@@ -25,7 +32,17 @@ The "target directory": pynst installs always in a directory that contains all f
 Normally all paths within a pynstaller file will be relative to the target dir.
 
 
+### Pre-requisites
 
+On an OS level, you should have git and python installed. 
+
+Plus since this is comfyUI you should also have optimally Visual Studio installed
+
+**Windows**
+
+If you did not have ComfyUI runing before in manual mode 
+
+Start an administrator console and run these commands to install git, python and the needed C++-Compiler.
 
 
 
@@ -226,7 +243,7 @@ python pynst.py pynstallers/comfy_installer_rtx_full.pynst.txt d:\temp\mytestcom
 install comfy with plugins: add any plugins that you want and have it preinstalled. Just add any amount of entries to the section where the plugins are.
 The format is:
 ```
-CLONEIT [Gitub URL] [custom nodes path on comfy]
+CLONEIT [Gitub URL] [custom nodes path on comfy]
 # example:
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
 ```

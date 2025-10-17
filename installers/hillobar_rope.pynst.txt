@@ -4,7 +4,7 @@ PRINTIT Linux: needs TKinter to be installed prior. i didnt try it.
 PAUSEIT
 PYTHON 3.10
 CLONEIT https://github.com/loscrossos/core_rope .
-REQSCAN .
+SETVENV core_rope
 DESKICO "Core Rope" core_rope/Rope.py
 GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/2d106det.onnx core_rope/models
 GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/79999_iter.pth core_rope/models

@@ -196,6 +196,21 @@ Now that we defined how the installation looks like now, lets learn how to manag
 
 We are going to use a windows path for the scenarios, but these commands work the same on Linux or MacOS.
 
+One thing that is important to understand is that pynsts target directory is the base. Anyting it installs will be under it:
+
+If you put the target directory as `mytestcomfy` then the ComfyUI repo and all target paths are placed under it:
+
+```
+|-mytestcomfy
+    |-ComfyUI
+        |-.env_win
+        |-requirements.txt
+        |-main.py
+        |-(other comfyUIfiles)
+        |-(other files)
+```
+
+If you want to repair a Comfy instance that is in `C:\temp\ComfyUI`, then you have to use `c:\temp`as target directory
 
 ### Install ComfyUI
 

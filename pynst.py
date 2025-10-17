@@ -1597,6 +1597,7 @@ CMD_XRUNGITCOMMAND ="XRUNGITCOMMAND"#| Arguments: commands to pass directly to g
 CMD_PIPEXEC =       "XRUNPIPCOMMAND" #|Arguments: commands to pass directly to pip. Description:  Advanced: Raw command line passed to pip.       
 CMD_EXEC =          "XRUNPYTHONFILE" #|Arguments: commands to pass directly to python. Description:  Runs a python file (arguments and params allowed)   
 
+#TODO: use keyword CONFIRM
 
 TOKEN_PRINT_PREFIX="Info: "
 # ========= Utility logging =========

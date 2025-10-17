@@ -1,9 +1,10 @@
 GETFILE https://raw.githubusercontent.com/loscrossos/comfy_workflows/refs/heads/main/comfy_wf_flux1_krea_dev.json   ComfyUI/user/default/workflows/
-GETFILE https://huggingface.co/QuantStack/FLUX.1-Krea-dev-GGUF/resolve/main/flux1-krea-dev-Q8_0.gguf ComfyUI/models/unet
+GETFILE https://huggingface.co/QuantStack/FLUX.1-Krea-dev-GGUF/resolve/main/flux1-krea-dev-Q8_0.gguf                ComfyUI/models/unet
 
-GETFILE https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors ComfyUI/models/text_encoders
-GETFILE https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors ComfyUI/models/text_encoders
-# GETFILE https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors ComfyUI/models/text_encoders
-GETFILE https://huggingface.co/Comfy-Org/Lumina_Image_2.0_Repackaged/resolve/main/split_files/vae/ae.safetensors ComfyUI/models/vae
-CLONEIT https://github.com/city96/ComfyUI-GGUF ComfyUI/custom_nodes 
+GETFILE https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors                    ComfyUI/models/text_encoders
+GETFILE https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors          ComfyUI/models/text_encoders
+# GETFILE https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors              ComfyUI/models/text_encoders
+GETFILE https://huggingface.co/Comfy-Org/Lumina_Image_2.0_Repackaged/resolve/main/split_files/vae/ae.safetensors    ComfyUI/models/vae
+
+CLONEIT https://github.com/city96/ComfyUI-GGUF                                                                      ComfyUI/custom_nodes 
 REQSCAN ComfyUI/custom_nodes

@@ -4,5 +4,5 @@ PRINTIT Before using this installation you have to run the model downloader.
 PAUSEIT
 PYTHON 3.10
 CLONEIT https://github.com/loscrossos/core_visomaster .
-REQSCAN .
+SETVENV core_visomaster
 DESKICO "Core Visomaster" core_visomaster/appvisomaster.py

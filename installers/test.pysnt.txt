@@ -1,3 +1,4 @@
 CLONEIT https://github.com/loscrossos/test_repo .
 PYTHON 3.13
+SETVENV test_repo
 XRUNPIPCOMMAND freeze

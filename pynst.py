@@ -4,8 +4,6 @@
 #TODO
 DONE: criticalfilecheck.
 TODO: warnfilecheck
-TODO: 
-
 
 FILECHECK crit ComfyUI/myfile "this does not seem to be a Comfy installation"
 FILECHECK warn ComfyUI/main.py  "Not having this file will slowdown your processes"
@@ -2900,13 +2898,13 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         pc2_message=f"{STARTOPTION_SAFECHECK}: "
 
         if elements_to_check_exist==False:
-            pc2_message= pc2_message + f"No Check Elements were found. No Check was performed. Aborting. To proceed rerun without option: --{STARTOPTION_SAFECHECK}"
+            pc2_message= pc2_message + f"No safe-check elements were found. No Check was performed. Aborting. To proceed rerun without option: --{STARTOPTION_SAFECHECK}"
             abort(msg=pc2_message)
         elif precheckwarning==True:
-            pc2_message= pc2_message + f"There were warnings. This installation is NOT safe as an update. Aborting. To proceed rerun without option: --{STARTOPTION_SAFECHECK}"
+            pc2_message= pc2_message + f"There were warnings: \n-This installation is NOT safe as an update as some elements will be a new installation.\n-It is ok to upgrade an existing install (see summary above). \nAborting. To proceed rerun without option: --{STARTOPTION_SAFECHECK}"
             abort(msg=pc2_message)
         else:
-            pc2_message= pc2_message + "Precheck Succesful. Tt is safe to continue. Press Enter to continue or Crtl+c to abort"    
+            pc2_message= pc2_message + "Precheck Succesful as update of an existing installation. It is safe to continue. \nPress Enter to continue or Crtl+c to abort"    
         task_pause(pc2_message)
         #do_git_clone(url=url, target=target,operating_mode=in_operation_mode, force_gitpull_mode=force_gitpull_mode)
                 

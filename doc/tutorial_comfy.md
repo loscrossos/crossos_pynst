@@ -117,7 +117,7 @@ We add a check that the repository was correctly installed by checking the exist
 
 ### Installing extra files
 
-ComfyUI comes by default with no accelerators installed. to add them one must activate the venv and install a requirements file. For this we will use the command `REQINST` (REQuirements INSTallation) which takes an URL as a parameter. We use it to install the accelerator file from my [Crossos Acceleritor project](https://github.com/loscrossos/crossOS_acceleritor). 
+ComfyUI comes by default with no accelerators installed. To add them, one must activate the venv and install a requirements file. For this we will use the command `REQINST` (REQuirements INSTallation) which takes an URL as a parameter. We use it to install the accelerator file from my [Crossos Acceleritor project](https://github.com/loscrossos/crossOS_acceleritor). This file is compatible with Python 3.12 and 3.13.
 
 Since we use a file that needs Python 3.13 we use the definer `PYTHON` at the beginning to ensure the whole installation is based on python 3.13. This also ensures that if a user uses the pynstaller to try to install on an existing installation with a different python version, then Pynst will abort warning that the target is incompatible.
 
@@ -130,7 +130,7 @@ CLONEIT https://github.com/comfyanonymous/ComfyUI .
 HASFILE ComfyUI/main.py
 SETVENV ComfyUI
 PRINTIT This step may take some time depending on your connection.
-REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
+REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
 
 ```
 
@@ -150,7 +150,7 @@ CLONEIT https://github.com/comfyanonymous/ComfyUI .
 HASFILE ComfyUI/main.py
 SETVENV ComfyUI
 PRINTIT This step may take some time depending on your connection.
-REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
+REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
 
 
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
@@ -192,7 +192,7 @@ CLONEIT https://github.com/comfyanonymous/ComfyUI .
 HASFILE ComfyUI/main.py
 SETVENV ComfyUI
 PRINTIT This step may take some time depending on your connection.
-REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
+REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
 
 
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
@@ -275,7 +275,7 @@ CLONEIT https://github.com/comfyanonymous/ComfyUI .
 HASFILE ComfyUI/main.py
 SETVENV ComfyUI
 PRINTIT This step may take some time depending on your connection.
-REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
+REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
 
 # add plugins here
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
@@ -320,10 +320,10 @@ DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch
 
 Installing a workflow is not only installing the json file.
 
-- you need several models in the right folder
+- you need several models in the right folders
 - you often need additional plugins.
 
-The plugin "Comfy manager" can often load missing plugins. For models you often get text instructions "put model xxx in folder yy". Wouldnt it be great if one file would install everything? yes. EVERYTHING!!
+The plugin "Comfy manager" can often load missing plugins. For models you often get text instructions "put model xxx in folder yy".... yet still you have to know what to install. Wouldnt it be great if one file would install everything? yes. EVERYTHING!!
 
 Enter pynst!
 

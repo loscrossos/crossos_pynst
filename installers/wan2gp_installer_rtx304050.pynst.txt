@@ -1,6 +1,7 @@
 CLONEIT https://github.com/deepbeepmeep/Wan2GP.git .
+SETVENV .
 RFILTER opencv-python
-SETVENV Wan2GP
+REQINST Wan2GP/requirements.txt
 RFILTER
 REQINST https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/reqinsightface.txt
 REQINST https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/opencv_python313.txt

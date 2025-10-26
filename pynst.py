@@ -1501,7 +1501,8 @@ from pathlib import Path
 
 # ========= Global defaults & flags =========
 APP_NAME="Pynst"
-
+GLOBAL_EXPERIMENTAL_FEATURE_UV=True
+GLOBAL_SETTING_SHOW_CMD_NR=True
 #main modes of operation
 
 STARTOPTION_MODE_SENSOINSTALL="senso"
@@ -1577,7 +1578,8 @@ COLOR_RESET = "\033[0m"
 CMD_COMMENTEDOUT_LINE=     "#"       #|Arguments: any. Description: comment line. this line will be ignored.
 CMD_PYTHON=                "PYTHON"  #|Arguments: a float number (python version). Description:  set python version to be used for venvs from now on.. Script will abort if an existing venv has another version (unless the venv shall be deleted and rebuilt). in revenv mode pynst will delete existing venvs and create a new venv with the scpecified version. on embedded python it will empty the venv and rebuild it.
 CMD_SETVENV=               "SETVENV" #|Arguments: a directory path relative to the target directory. Description:  Ensures a venv exists at the path provided. Either by looking is one exists or by creating a new one. This path is also scanned for a requirements.txt file, if so then this file is installed automatically.
-CMD_PIPREQFILE=            "REQINST" #|Arguments: a file path relative to the target directory or a remote url to a file. Description:  installs a requirements file to the current venv. local or remote.                            
+CMD_PIPREQFILE=            "REQFILE" #|Arguments: a file path relative to the target directory or a remote url to a file. Description:  installs a requirements file to the current venv. local or remote.
+CMD_PIPREQFILE_FORCE=      "REQFILEFORCE" #|Arguments: a file path relative to the target directory or a remote url to a file. Description:  installs a requirements file to the current venv. local or remote.
 CMD_PIPREQPACKAGE=         "PIPINST" #|Arguments: a list of arguments to be passed directly to "pip install". Description:  installs wheels or modules to the current venv. Can be wheel file URL (not a file path) or a pip package
 CMD_RFILTER=               "RFILTER" #|Arguments: a list of words. Description:  Filter out packages (from REQ* commands) from now on. Filter is reset when the command is used again with no parameters. these packages will not be installed if present on req files. can be reset by putting single command with no params. The words are filtered by looking at the start of a line until a not allowed letter appears (any letter apart from A-Z, a-z, '-' or '_'). We anchor at start (ignoring leading whitespace). Example "torch" matches: 'torch==2.1.0', 'torch ', 'torch[extra]', 'torch\t', 'torch; python_version<"3.12"'. Does NOT match 'torchaudio' or 'torchvision'.
 CMD_GITCLONE=              "CLONEIT" #|Arguments: an url to a repository AND a directory path relative to target. Description:  clone a repo into a dir. The directory will be created if it does not exist.
@@ -1598,6 +1600,9 @@ CMD_EXEC =          "XRUNPYTHONFILE" #|Arguments: commands to pass directly to p
 #TODO: use keyword CONFIRM
 
 TOKEN_PRINT_PREFIX="Info: "
+TOKEN_TASK_DELIM=""
+TOKEN_SUB_TASK_DELIM="-"
+TOKEN_SUBSUB_TASK_DELIM="---"
 # ========= Utility logging =========
 
 
@@ -1615,26 +1620,26 @@ def show_ansi_colors():
         print(f"\033[{code}m{code} - {name}{reset}")
         
         
- 
+
     
     
 def log_app_section(msg: str):
     print(f"{UNDERLINE}{BOLD}{COLOR_APP_SECTION}{msg}{COLOR_RESET}")
 
 def log_task(msg: str):
-    print(f"{COLOR_TASK}{msg}{COLOR_RESET}")
+    print(f"{COLOR_TASK}{TOKEN_TASK_DELIM}{msg}{COLOR_RESET}")
 
 def log_subsubtask(msg: str):
-    print(f"{COLOR_SUBSUBTASK}{msg}{COLOR_RESET}")
+    print(f"{COLOR_SUBSUBTASK}{TOKEN_SUB_TASK_DELIM}{msg}{COLOR_RESET}")
 
 def log_subtask(msg: str):
-    print(f"{COLOR_SUBTASK}{msg}{COLOR_RESET}")
+    print(f"{COLOR_SUBTASK}{TOKEN_SUBSUB_TASK_DELIM}{msg}{COLOR_RESET}")
 
 def log_warning(msg: str):
     print(f"{COLOR_WARNING}{msg}{COLOR_RESET}")
 
 def log_syscall(msg: str, cmd:str):
-    print(f"{COLOR_SUBSUBTASK}{msg}: {COLOR_SYSCALL}{str(cmd)}{COLOR_RESET}")
+    print(f"{COLOR_SUBSUBTASK}{TOKEN_SUBSUB_TASK_DELIM}{msg}: {COLOR_SYSCALL}{str(cmd)}{COLOR_RESET}")
     
 def log_error(msg: str):
     print(f"{COLOR_ERROR}{msg}{COLOR_RESET}")
@@ -1974,7 +1979,8 @@ def is_venv_empty(python_exec: str) -> bool:
         log_subsubtask("[DRYRUN] Assuming environment is empty for checks.")
         return True
     try:
-        out = subprocess.check_output([python_exec, "-m", "pip", "freeze"], stderr=subprocess.STDOUT)
+        ensure_uv_is_installed(python_exec=python_exec)
+        out = subprocess.check_output([python_exec, "-m", "uv", "pip", "freeze"], stderr=subprocess.STDOUT)
         lines = [l.strip() for l in out.decode("utf-8", errors="replace").splitlines() if l.strip()]
         return len(lines) == 0
     except Exception:
@@ -1997,7 +2003,8 @@ def repair_venv_package_list(python_exec):
         log_subsubtask(f"[DRYRUN] {MODULENAME_REPAIR}: Would run 'pip freeze' and repair broken packages.")
         return
     try:
-        out = subprocess.check_output([python_exec, "-m", "pip", "freeze"], stderr=subprocess.STDOUT)
+        ensure_uv_is_installed(python_exec=python_exec)
+        out = subprocess.check_output([python_exec, "-m", "uv", "pip", "freeze"], stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         abort("Failed to query installed packages via 'pip freeze'.")
     pkgs = [l.strip() for l in out.decode("utf-8", errors="replace").splitlines() if l.strip()]
@@ -2039,11 +2046,13 @@ def uninstall_all_packages(python_exec: str):
     Uninstall all installed packages from the environment represented by python_exec.
     """
     log_subtask("Uninstalling all packages from current environment (pip freeze -> pip uninstall -y) ...")
+    ensure_uv_is_installed(python_exec=python_exec)
+    
     if DRYRUN:
         log_subsubtask("[DRYRUN] Would run 'pip freeze' and uninstall all packages.")
         return
     try:
-        out = subprocess.check_output([python_exec, "-m", "pip", "freeze"], stderr=subprocess.STDOUT)
+        out = subprocess.check_output([python_exec, "-m", "uv", "pip", "freeze"], stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         abort("Failed to query installed packages via 'pip freeze'.")
 
@@ -2060,7 +2069,7 @@ def uninstall_all_packages(python_exec: str):
             tf.write(p + "\n")
         temp_list = tf.name
     try:
-        rc = run_cmd(cmd=[python_exec, "-m", "pip", "uninstall", "-y", "-r", temp_list], task_description="uninstalling packages")
+        rc = run_cmd(cmd=[python_exec, "-m", "uv", "pip", "uninstall", "-y", "-r", temp_list], task_description="uninstalling packages")
         if rc != 0:
             abort("Failed to uninstall some packages.")
     finally:
@@ -2123,6 +2132,238 @@ def download_to_temp(url: str) -> Path:
     return p
 
 
+import os
+def ensure_uv_is_installed(python_exec: str):
+    """
+    Return True if 'uv' is installed and runnable in the environment
+    of the given Python executable (venv).
+
+    :param python_exec: Path to a Python executable (e.g., '/path/to/venv/bin/python').
+    """
+    # Get venv root by going two levels up from the Python executable
+    venv_root = os.path.dirname(os.path.dirname(os.path.abspath(python_exec)))
+    if os.name == "nt":
+        uv_exe = os.path.join(venv_root, "Scripts", "uv.exe")
+    else:
+        uv_exe = os.path.join(venv_root, "bin", "uv")
+
+    if not os.path.isfile(uv_exe):
+        run_cmd(cmd=[python_exec, "-m", "pip", "install",   "--upgrade", "uv"],task_description="installing UV")
+
+
+"""USED PROMPT
+i need python code that runs on windows mac and linux. the code shall use only standard python (no extra libraries needed).
+i want a function that takes a path to a file. the file is a python requirements file which contains lines.
+The code copies the file line by line to a temp file and filters out the lines that contain OS selectors that rule out the current line for the current selectors like sys_platform, platform_system, os_name, platform_machine, python_version. 
+For example: if the current OS is Windows then all lines with "sys_platform  == 'darwin'" or "sys_platform  == 'linux'" or "sys_platform  != 'win32'" or "os_name != 'Windows'" are filtered out. 
+Also it should filter selectors that use one or multiple operators like 'sys_platform == 'win32' and python_version == "3.12"'
+The resulting file does not have any of the selectors. also the leading ";" is removed. 
+the code should take into account that code behind a comment marker like "#" is not valid.
+the function returns the path to the filtered temp file.
+"""
+## Requirements OS cleaner start---------------------------------------
+import ast
+import platform
+import sys
+import tempfile
+import os
+from typing import Any
+def _current_env():
+    return {
+        "sys_platform": sys.platform,              # e.g. "win32", "linux", "darwin"
+        "platform_system": platform.system(),     # e.g. "Windows", "Linux", "Darwin"
+        "os_name": os.name,                       # e.g. "nt", "posix"
+        "platform_machine": platform.machine(),   # e.g. "x86_64", "AMD64"
+        "python_version": f"{sys.version_info.major}.{sys.version_info.minor}",  # "3.12"
+    }
+
+def _is_version_like(s: Any):
+    if not isinstance(s, str):
+        return False
+    parts = s.split(".")
+    return all(p.isdigit() for p in parts)
+
+def _version_tuple(s: str):
+    return tuple(int(p) for p in s.split("."))
+
+# Safe AST evaluator for simple boolean marker expressions.
+def _safe_eval_marker(expr: str, env: dict) -> bool:
+    """
+    Evaluate marker expressions like:
+       sys_platform == 'win32' and python_version >= "3.10"
+    Allowed AST nodes: Expression, BoolOp (and/or), UnaryOp (not), Compare, Name, Constant (or Str), 
+    and operators ==, !=, <, <=, >, >=.
+    """
+    node = ast.parse(expr, mode="eval")
+
+    def _eval(n: ast.AST):
+        if isinstance(n, ast.Expression):
+            return _eval(n.body)
+
+        if isinstance(n, ast.Constant):  # Py3.8+
+            return n.value
+   #     if isinstance(n, ast.Str):  # older nodes
+    #        return n.s
+
+        if isinstance(n, ast.Name):
+            if n.id in env:
+                return env[n.id]
+            raise ValueError(f"Unknown name in marker: {n.id}")
+
+        if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.Not):
+            return not bool(_eval(n.operand))
+
+        if isinstance(n, ast.BoolOp):
+            if isinstance(n.op, ast.And):
+                for v in n.values:
+                    if not bool(_eval(v)):
+                        return False
+                return True
+            if isinstance(n.op, ast.Or):
+                for v in n.values:
+                    if _eval(v):
+                        return True
+                return False
+            raise ValueError("Unsupported BoolOp")
+
+        if isinstance(n, ast.Compare):
+            left = _eval(n.left)
+            for op, comp in zip(n.ops, n.comparators):
+                right = _eval(comp)
+
+                # If either side looks like a version string, compare version-wise for ordering ops
+                if _is_version_like(left) and _is_version_like(right) and type(op) in (ast.Lt, ast.LtE, ast.Gt, ast.GtE):
+                    lv = _version_tuple(left)
+                    rv = _version_tuple(right)
+                    if isinstance(op, ast.Eq):
+                        ok = (lv == rv)
+                    elif isinstance(op, ast.NotEq):
+                        ok = (lv != rv)
+                    elif isinstance(op, ast.Lt):
+                        ok = (lv < rv)
+                    elif isinstance(op, ast.LtE):
+                        ok = (lv <= rv)
+                    elif isinstance(op, ast.Gt):
+                        ok = (lv > rv)
+                    elif isinstance(op, ast.GtE):
+                        ok = (lv >= rv)
+                    else:
+                        raise ValueError("Unsupported comparison operator")
+                else:
+                    # Default python compare (strings, numbers)
+                    if isinstance(op, ast.Eq):
+                        ok = (left == right)
+                    elif isinstance(op, ast.NotEq):
+                        ok = (left != right)
+                    elif isinstance(op, ast.Lt):
+                        ok = (left < right)
+                    elif isinstance(op, ast.LtE):
+                        ok = (left <= right)
+                    elif isinstance(op, ast.Gt):
+                        ok = (left > right)
+                    elif isinstance(op, ast.GtE):
+                        ok = (left >= right)
+                    else:
+                        raise ValueError("Unsupported comparison operator")
+
+                if not ok:
+                    return False
+                # for chained comparisons, continue with next comparator using previous comparator as new left
+                left = right
+            return True
+
+        raise ValueError(f"Unsupported AST node in marker: {type(n).__name__}")
+
+    result = _eval(node)
+    return bool(result)
+
+def _find_first_unquoted_char(s: str, ch: str) -> int:
+    """
+    Return index of first occurrence of ch in s that is not inside single or double quotes.
+    If not found, return -1.
+    """
+    in_sq = False
+    in_dq = False
+    esc = False
+    for i, c in enumerate(s):
+        if esc:
+            esc = False
+            continue
+        if c == "\\":
+            esc = True
+            continue
+        if c == "'" and not in_dq:
+            in_sq = not in_sq
+            continue
+        if c == '"' and not in_sq:
+            in_dq = not in_dq
+            continue
+        if c == ch and not in_sq and not in_dq:
+            return i
+    return -1
+
+def filter_os_arch_lines_from_requirementstxt(req_path: str) -> str:
+    """
+    Reads a requirements-style file and returns path to a temp file where any environment marker
+    (the part after an unquoted ';') that does NOT match the current environment is stripped
+    (the whole line is removed). If the marker matches, the marker is removed and only the
+    requirement portion is written (also dropping leading ';'). Comments (unquoted '#') after the marker
+    are ignored for marker evaluation.
+    """
+    env = _current_env()
+    fd, tmp_path = tempfile.mkstemp(prefix="filtered_requirements_", suffix=".txt")
+    os.close(fd)
+
+    with open(req_path, "r", encoding="utf-8") as infile, open(tmp_path, "w", encoding="utf-8") as outfile:
+        for raw_line in infile:
+            line = raw_line.rstrip("\n")
+            stripped_l = line.lstrip()
+            # preserve pure comment or empty lines as-is
+            if not stripped_l or stripped_l.startswith("#"):
+                outfile.write(raw_line)
+                continue
+
+            # Find first unquoted semicolon that separates requirement and marker
+            semi_idx = _find_first_unquoted_char(line, ";")
+            if semi_idx == -1:
+                # no marker -> write line as-is (strip trailing spaces)
+                outfile.write(line.rstrip() + "\n")
+                continue
+
+            req_part = line[:semi_idx].rstrip()
+            marker_and_after = line[semi_idx + 1 :].lstrip()
+
+            # If there's a '#' that is not quoted, it starts a comment; marker is before that
+            hash_idx = _find_first_unquoted_char(marker_and_after, "#")
+            if hash_idx != -1:
+                marker_text = marker_and_after[:hash_idx].strip()
+            else:
+                marker_text = marker_and_after.strip()
+
+            if not marker_text:
+                # nothing to evaluate; write requirement part
+                outfile.write(req_part + "\n")
+                continue
+
+            # Evaluate marker safely
+            try:
+                keep = _safe_eval_marker(marker_text, env)
+            except Exception:
+                # On any parse/eval problem, be conservative: drop the line (or choose to keep?).
+                # Here we choose to drop to avoid writing incompatible packages.
+                keep = False
+
+            if keep:
+                # write requirement part only (no selector)
+                outfile.write(req_part + "\n")
+            else:
+                # skip line entirely
+                continue
+
+    return tmp_path
+
+## Requirements OS cleaner start---------------------------------------
+
 
 def pip_upgrade_pip(python_exec: str):
     """
@@ -2132,25 +2373,34 @@ def pip_upgrade_pip(python_exec: str):
     #run_cmd(cmd=[python_exec, "-m", "pip", "ensurepip", "--upgrade"],task_description="upgrading pip")
     #python.exe -m pip install --upgrade pip
     run_cmd(cmd=[python_exec, "-m", "pip", "install",   "--upgrade", "pip"],task_description="upgrading pip")
+    ensure_uv_is_installed(python_exec=python_exec)
 
-def pip_install_requirements_file(python_exec: str, req_file: Path, current_filters: list[str], fail_label: str, force_reinstall=False):
+def pip_install_requirements_file(python_exec: str, req_file: Path, current_filters: list[str], fail_label: str, force_reinstall=False, opt_upgrade=False):
     """
     Install requirements from a (possibly remote) file with RFILTER applied.
     """
    
     if not os.path.exists(req_file):
         abort(f"Requirements file not found: {req_file}")
-    filtered = apply_rfilter_to_file(req_file, current_filters)
+    os_cleaned_file= filter_os_arch_lines_from_requirementstxt(req_path=req_file)
+    filtered = apply_rfilter_to_file(src_path = os_cleaned_file, filters = current_filters)
+    
+    ensure_uv_is_installed(python_exec=python_exec)
     
     message_append=""
     if current_filters:
        message_append=f"(package filter applied and installing as temp file)" 
     #pip install --upgrade --force-reinstall --no-warn-script-location -r requirements.txt
-    cmd=[python_exec, "-m", "pip", "install", "--upgrade"]
+    cmd=[python_exec, "-m", "uv", "pip", "install"]
+
+    if opt_upgrade:
+        cmd.extend([ "--upgrade"])
     
     if force_reinstall:
         cmd.extend([ "--force-reinstall"])
-    cmd.extend(["--no-warn-script-location", "-r", str(filtered)])
+    
+    #cmd.extend(["--no-warn-script-location"])
+    cmd.extend(["-r", str(filtered)])
     
     rc = run_cmd(cmd, task_description=f"Installing requirements from file{message_append}: {req_file}" )
     if rc != 0:
@@ -2158,13 +2408,14 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
 
 def pip_run_pip_install(python_exec: str, pip_command: list[str], fail_label: str="Pip command failed"):
     """
-    run a command through pip install.
-    """       
+    run an arbitrary command through pip install.
+    """
+    ensure_uv_is_installed(python_exec=python_exec)
     if DRYRUN:
         log_subsubtask(f"[DRYRUN] Would run: pip install {" ".join(pip_command)}")
     else:
         log_subsubtask(f"Running pip command: pip install {" ".join(pip_command)}")
-        rc = run_cmd(cmd=[python_exec, "-m", "pip", "install" ] + pip_command)
+        rc = run_cmd(cmd=[python_exec, "-m", "uv", "pip", "install" ] + pip_command)
         if rc != 0:
             abort(f"Failed to run pip command: {fail_label}")
 
@@ -2173,7 +2424,8 @@ def pip_run_command(python_exec: str, pip_command: list[str], fail_label: str="P
     """
     run a command through pip.
     """       
-    rc = run_cmd(cmd=[python_exec, "-m", "pip" ]+pip_command,task_description=f"Running command: pip {" ".join(pip_command)}")
+    ensure_uv_is_installed(python_exec=python_exec)
+    rc = run_cmd(cmd=[python_exec, "-m", "uv", "pip" ]+pip_command,task_description=f"Running command: pip {" ".join(pip_command)}")
     if rc != 0:
         abort(f"Failed to run pip command: {fail_label}")
 
@@ -2408,9 +2660,9 @@ def do_force_git_pull_on_repository(directory: str) -> bool:
 
 
 
-def task_print(text_tokens):
+def task_print(text_tokens="", prefix=TOKEN_PRINT_PREFIX):
     text = " ".join([quote_arg(x) for x in text_tokens])
-    print(f"{COLOR_SUBSUBTASK}{TOKEN_PRINT_PREFIX}{COLOR_RESET}{text}")
+    print(f"{COLOR_SUBSUBTASK}{prefix}{COLOR_RESET}{text}")
  
 def task_pause(message:str = None):
     """
@@ -2910,31 +3162,50 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 
         
 
-
+    
      
     
     log_app_section(f"Processing Input file")
     # Now process commands permitted in REPAIR mode: PYTHON (already handled), RFILTER, REQFILE, STARTER, REQSCAN
     rfilters: list[str] = []
     # Collect REQSCAN paths (process them after REQFILEs or as they appear? Spec: executed in order they appear. We'll execute in order.)
+    total_commands=len(in_commands)
+    current_command_nr=0
     for cmd, params in in_commands:
+        current_command_nr=current_command_nr+1
         if cmd == CMD_PAUSE:
-            task_pause()
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+            message=f"{output_prefix}{cmd}: Press Enter to continue or Ctrl+C to abort... "
+            task_pause(message=message)
             
-
+            
         elif cmd == CMD_PRINT:
-            task_print(params)
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+
+            prefix=f"{output_prefix}{TOKEN_PRINT_PREFIX}"
+            task_print(text_tokens=params, prefix=prefix)
             
     
         elif cmd == CMD_PYTHON:
             required_python_version = params[0]
-            log_task(f"{cmd}: setting version to be used as: {required_python_version}")
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+            log_task(f"{output_prefix}{cmd}: setting version to be used as: {required_python_version}")
             continue
         
         
         elif cmd == CMD_SETVENV:
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+           
             required_venv_path = params[0]
-            log_task(f"{cmd}: Ensuring existence of venv at path {required_venv_path}")
+            log_task(f"{output_prefix}{cmd}: Ensuring existence of venv at path {required_venv_path}")
             venv_name, venv_python_exec, venv_path = get_exec_variables(in_python_embedded_mode=in_python_embedded_mode,in_custom_venv_name=in_custom_venv_name, in_basedir=in_basedir, required_venv_path=required_venv_path )
             path_to_req_file=None            
             req_temp_path= in_basedir / required_venv_path / DEFAULT_REQUIREMENTS_FILENAME
@@ -2946,27 +3217,38 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
 
 
         elif cmd == CMD_RFILTER:
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
             rfilters = params[:]
             if len(params) == 0:
-                log_task(f"{cmd} Filters cleared! {rfilters}")
+                log_task(f"{output_prefix}{cmd} Filters cleared! {rfilters}")
             else:
-                log_task(f"{cmd} filters set: {', '.join(rfilters)}")
+                log_task(f"{output_prefix}{cmd} filters set: {', '.join(rfilters)}")
 
 
-        elif cmd == CMD_PIPREQFILE:
+        elif cmd == CMD_PIPREQFILE or cmd == CMD_PIPREQFILE_FORCE:
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
             req_file_to_install = params[0]
-            log_task(f"{cmd} installing: {req_file_to_install}")
+            pip_force_reinstall=False
+            if cmd== CMD_PIPREQFILE_FORCE:
+                pip_force_reinstall=True
+            log_task(f"{output_prefix}{cmd} installing: {req_file_to_install}")
             check_that_file_exists_or_abort(venv_python_exec,"python executable")
             if re.match(r"^https?://", req_file_to_install, re.I):
                 req_file_to_install = download_to_temp(req_file_to_install)
             else:
                 req_file_to_install=(in_basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install)
-            #TODO decide if force reinstall: for now yes
-            pip_install_requirements_file(python_exec=venv_python_exec, req_file=req_file_to_install,current_filters= rfilters, fail_label=req_file_to_install,force_reinstall=True)
+            pip_install_requirements_file(python_exec=venv_python_exec, req_file=req_file_to_install,current_filters= rfilters, fail_label=req_file_to_install,force_reinstall=pip_force_reinstall)
 
 
         elif cmd == CMD_REQSCAN:
-            log_task(f"{cmd} searching for requirements in: {in_basedir / params[0]} (depth=1)")
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+            log_task(f"{output_prefix}{cmd} searching for requirements in: {in_basedir / params[0]} (depth=1)")
             #TODO: maybe its more efficient to collect all reqscans and copy all reqfiles and concatenate them into once command as in: pip install -r fiole1.txt -r file2.txt -r file3.txt
             check_that_file_exists_or_abort(venv_python_exec,"python executable")
             # Search one level below basedir/suffix for requirements.txt (plus root-of-suffix)
@@ -2986,9 +3268,12 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 
 
         elif  cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :
-            log_task(f"{cmd}: creating start shortcuts")
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+            log_task(f"{output_prefix}{cmd}: creating start shortcuts")
             if not params:
-                abort(f"{cmd} requires parameters.")
+                abort(f"{output_prefix}{cmd} requires parameters.")
             
             check_that_file_exists_or_abort(venv_python_exec,"python executable")
             #the first param is the shortcut name
@@ -3015,9 +3300,13 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
 
 
         elif cmd == CMD_EXEC:
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                
             if not params:
-                abort(f"{cmd} requires parameters.")
-            log_task(f"{cmd}: will execute python command: {' '.join(params)}")
+                abort(f"{output_prefix}{cmd} requires parameters.")
+            log_task(f"{output_prefix}{cmd}: will execute python command: {' '.join(params)}")
             check_that_file_exists_or_abort(venv_python_exec,"python executable")
             exec_working_dir, full_exec_line, main_executable_file, params_as_list = get_executable_line_and_dir(in_basedir, venv_python_exec, params)
             log_subsubtask(f"Full command line: '{full_exec_line}', CWD='{exec_working_dir}'")
@@ -3028,10 +3317,13 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
 
 
         elif cmd in (CMD_GITCLONE):
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
             if len(params) != 2:
-                abort(msg=f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
+                abort(msg=f"{output_prefix}{cmd} requires exactly 2 parameters: <url> <path_suffix>")
             url, suffix = params
-            log_task(msg=f"{cmd} cloning: {url}")
+            log_task(msg=f"{output_prefix}{cmd} cloning: {url}")
                         
             target = (in_basedir / suffix).resolve()
             target = target / extract_project_name(url)
@@ -3039,17 +3331,21 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             
             
         elif cmd == CMD_GETFILE or cmd==CMD_GETBLOB:
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                
             if len(params) != 2:
-                abort(msg=f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
+                abort(msg=f"{output_prefix}{cmd} requires exactly 2 parameters: <url> <path_suffix>")
             url, suffix = params
-            log_task(msg=f"{cmd}: retrieving file: {url}")
+            log_task(msg=f"{output_prefix}{cmd}: retrieving file: {url}")
             
             targetdir = (in_basedir / suffix).resolve()
             if noblob_mode and cmd==CMD_GETBLOB:
                 log_subsubtask(msg=f"{cmd}: no-blob mode. ignoring download")    
                 continue
             if DRYRUN:
-                log_subsubtask(msg=f"DRYRUM: {cmd}: would download {url}")
+                log_subsubtask(msg=f"DRYRUM:{cmd}: would download {url}")
             else:
                 log_subsubtask(msg=f"{cmd} Storing file to: {targetdir}")
                 #url = "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/wan2.2-i2v-rapid-aio-example.json"
@@ -3058,41 +3354,58 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         
         
         elif cmd ==CMD_PIPEXEC:
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
             if len(params) < 1:
-                abort(f"{cmd} requires at least one parameter")
-            log_task(f"{cmd}: executing pip command: {" ".join(params)}")
+                abort(f"{output_prefix}{cmd} requires at least one parameter")
+            log_task(f"{output_prefix}{cmd}: executing pip command: {" ".join(params)}")
             check_that_file_exists_or_abort(venv_python_exec,"python executable")            
             pip_run_command(python_exec=venv_python_exec, pip_command= params)
 
 
         elif cmd ==CMD_PIPREQPACKAGE:
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
             if len(params) < 1:
-                abort(f"{cmd} requires at least one parameter")
-            log_task(f"{cmd}: installing pip packages: {" ".join(params)}")
+                abort(f"{output_prefix}{cmd} requires at least one parameter")
+            log_task(f"{output_prefix}{cmd}: installing pip packages: {" ".join(params)}")
             check_that_file_exists_or_abort(path=venv_python_exec, file_description="python executable")
             pip_run_pip_install(python_exec=venv_python_exec, pip_command= params)
 
 
         elif cmd == CMD_COMMENTEDOUT_LINE:
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+            log_task(f"{output_prefix}{cmd}: skipping comment")
             continue
         
 
         elif cmd == CMD_CONFIRM_FILE_OR_ABORT:
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                
             path_to_confirm = params[0]
-            log_task(msg=f"{cmd}: Checking for file existence: {str(path_to_confirm)}")
+            log_task(msg=f"{output_prefix}{cmd}: Checking for file existence: {str(path_to_confirm)}")
             
             target = (in_basedir / path_to_confirm).resolve()
             check_that_file_exists_or_abort(path=target)
             
         
         elif cmd ==CMD_XRUNGITCOMMAND:
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
             git_command_path = params[0]
             #the params follow
             git_command_params = params[1:]
             git_command_target = (in_basedir / git_command_path).resolve()
             check_that_file_exists_or_abort(path=git_command_target)
             
-            log_task(msg=f"{cmd}: executing git command on: {git_command_path}")
+            log_task(msg=f"{output_prefix}{cmd}: executing git command on: {git_command_path}")
             
             do_git_command(target=Path(git_command_target), params=git_command_params)
 
@@ -3232,6 +3545,7 @@ def main():
         CMD_PYTHON,
         CMD_SETVENV,
         CMD_PIPREQFILE,
+        CMD_PIPREQFILE_FORCE,
         CMD_PIPREQPACKAGE,
         CMD_PIPEXEC,
         CMD_RFILTER,

@@ -132,7 +132,7 @@ usage: pynst.py [-h] [--revenv] [--senso] [--embedded] [--nodesktop]
 | Option | Description |
 |---------|--------------|
 | `--revenv` | Rebuild the venv from zero; deletes the old venv and rebuilds one correctly. In embedded mode it fixes broken environments removing all packages and reinstalling them correctly. |
-| `--embedded` | Treat installation as portable “python_embedded” install. |
+| `--embedded` | Treat installation as portable "python_embedded" install. |
 | `--nodesktop` | Skip creation of desktop shortcuts. |
 | `--dryrun` | Simulated run: no changes, just prints intended actions (including system commands). |
 | `--verbose` | Show full subprocess output for debugging. |

@@ -1,13 +1,14 @@
 GETFILE https://raw.githubusercontent.com/nunchaku-tech/ComfyUI-nunchaku/refs/heads/main/example_workflows/nunchaku-qwen-image-edit-2509.json   ComfyUI/user/default/workflows/
 
-REQINST https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/req_lib_nunchaku_torch280.txt
+REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/req_lib_nunchaku100_torch280.txt
 
-# GETFILE https://huggingface.co/QuantStack/FLUX.1-Krea-dev-GGUF/resolve/main/flux1-krea-dev-Q8_0.gguf                ComfyUI/models/unet
+# Non Blackwell model
+GETBLOB https://huggingface.co/nunchaku-tech/nunchaku-qwen-image-edit-2509/resolve/main/svdq-int4_r128-qwen-image-edit-2509.safetensors               ComfyUI/models/unet
+# Blackwell model
+GETBLOB https://huggingface.co/nunchaku-tech/nunchaku-qwen-image-edit-2509/resolve/main/svdq-fp4_r128-qwen-image-edit-2509.safetensors              ComfyUI/models/unet
 
-# GETFILE https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors                    ComfyUI/models/text_encoders
-# GETFILE https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors          ComfyUI/models/text_encoders
-# GETFILE https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors              ComfyUI/models/text_encoders
-# GETFILE https://huggingface.co/Comfy-Org/Lumina_Image_2.0_Repackaged/resolve/main/split_files/vae/ae.safetensors    ComfyUI/models/vae
+GETBLOB https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors         ComfyUI/models/text_encoders
+GETBLOB https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors    ComfyUI/models/vae
 
 CLONEIT https://github.com/nunchaku-tech/ComfyUI-nunchaku                                                                                        ComfyUI/custom_nodes 
 REQSCAN ComfyUI/custom_nodes

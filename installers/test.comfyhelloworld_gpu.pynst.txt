@@ -1,0 +1,7 @@
+CLONEIT https://github.com/comfyanonymous/ComfyUI .
+SETVENV .
+
+REQSCAN .
+XRUNPIPCOMMAND install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128 
+DESKICO "ComfyUI CPU" ComfyUI/main.py --cpu
+DESKICO "ComfyUI GPU" ComfyUI/main.py --gpu

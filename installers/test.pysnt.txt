@@ -1,4 +1,6 @@
 CLONEIT https://github.com/loscrossos/test_repo .
+# we clone the command
+PRINTIT now we create the venv
 PYTHON 3.13
 SETVENV test_repo
-XRUNPIPCOMMAND freeze
+XRUNCMD_PIP freeze

@@ -1,10 +1,8 @@
 CLONEIT https://github.com/deepbeepmeep/Wan2GP.git .
 SETVENV .
-RFILTER opencv-python
-REQINST Wan2GP/requirements.txt
-RFILTER
-REQINST https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/reqinsightface.txt
-REQINST https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/opencv_python313.txt
-REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
+REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
+REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/opencv_python313.txt
+REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/reqinsightface.txt
+REQFILE Wan2GP/requirements.txt
 DESKICO "Wan2GP" Wan2GP/wgp.py --open-browser --attention auto
 

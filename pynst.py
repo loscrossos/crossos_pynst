@@ -1575,30 +1575,31 @@ COLOR_RESET = "\033[0m"
 
 #Here a full list of the commands with their placeholder var names for python and an explanation of what they do in the differen modes.
  
-CMD_COMMENTEDOUT_LINE=     "#"       #|Arguments: any. Description: comment line. this line will be ignored.
-CMD_PYTHON=                "PYTHON"  #|Arguments: a float number (python version). Description:  set python version to be used for venvs from now on.. Script will abort if an existing venv has another version (unless the venv shall be deleted and rebuilt). in revenv mode pynst will delete existing venvs and create a new venv with the scpecified version. on embedded python it will empty the venv and rebuild it.
-CMD_SETVENV=               "SETVENV" #|Arguments: a directory path relative to the target directory. Description:  Ensures a venv exists at the path provided. Either by looking is one exists or by creating a new one. This path is also scanned for a requirements.txt file, if so then this file is installed automatically.
-CMD_PIPREQFILE=            "REQFILE" #|Arguments: a file path relative to the target directory or a remote url to a file. Description:  installs a requirements file to the current venv. local or remote.
-CMD_PIPREQFILE_FORCE=      "REQFILEFORCE" #|Arguments: a file path relative to the target directory or a remote url to a file. Description:  installs a requirements file to the current venv. local or remote.
-CMD_PIPREQPACKAGE=         "PIPINST" #|Arguments: a list of arguments to be passed directly to "pip install". Description:  installs wheels or modules to the current venv. Can be wheel file URL (not a file path) or a pip package
-CMD_RFILTER=               "RFILTER" #|Arguments: a list of words. Description:  Filter out packages (from REQ* commands) from now on. Filter is reset when the command is used again with no parameters. these packages will not be installed if present on req files. can be reset by putting single command with no params. The words are filtered by looking at the start of a line until a not allowed letter appears (any letter apart from A-Z, a-z, '-' or '_'). We anchor at start (ignoring leading whitespace). Example "torch" matches: 'torch==2.1.0', 'torch ', 'torch[extra]', 'torch\t', 'torch; python_version<"3.12"'. Does NOT match 'torchaudio' or 'torchvision'.
-CMD_GITCLONE=              "CLONEIT" #|Arguments: an url to a repository AND a directory path relative to target. Description:  clone a repo into a dir. The directory will be created if it does not exist.
-CMD_REQSCAN=               "REQSCAN" #|Arguments: a directory path relative to the target directory. Description:  Specifies a directory to scan for subdirectories (git repositories) with "requirements.txt" to install. git repositories found, will be updated first. Will not update code in senso mode  
-CMD_GETFILE=               "GETFILE" #|Arguments: url to a file. Description:  Downloads a file to a directory. Only downloads if the file does not exist or has a different size than the remote file.  
-CMD_GETBLOB=               "GETBLOB" #|Arguments: url to a file. Description:  Downloads a file to a directory. Used for large files (e.g. models). Same as GETFILE but this command has an option to disable the downloads of this kind.
-CMD_PRINT=                 "PRINTIT" #|Arguments: any number of words. Description:  Prints an info message for the user to command line. e.g. when you know that the next step is going to take a long time. "the next step might take a while"
-CMD_CONFIRM_FILE_OR_ABORT= "HASFILE" #|Arguments: a file path relative to the target directory. Description:  Checks that a file exists. Aborts run if it fails.
-CMD_PAUSE=                 "PAUSEIT" #|Arguments: none. Description:  Pauses the execution until user confirms   
-CMD_SHORTCUT_DESK_ICON  =  "DESKICO" #|Arguments: a python file path (relative to target dir) wiht arguments. Description:  Creates a Desktop icon with a command line   
-CMD_SHORTCUT_DESK_SCRIPT=  "DESKEXE" #|Arguments: a python file path (relative to target dir) wiht arguments.. Description:  Creates a Desktop script with a command line  
-CMD_SHORTCUT_BASE_ICON  =  "HOMEICO" #|Arguments: a python file path (relative to target dir) wiht arguments.. Description:  Creates a Installdir icon with a command line   
-CMD_SHORTCUT_BASE_SCRIPT=  "HOMEEXE" #|Arguments: a python file path (relative to target dir) wiht arguments.. Description:  Creates a installdir script with a command line   
-CMD_XRUNGITCOMMAND ="XRUNGITCOMMAND"#| Arguments: commands to pass directly to git. Description: Runs a git command directly 
-CMD_PIPEXEC =       "XRUNPIPCOMMAND" #|Arguments: commands to pass directly to pip. Description:  Advanced: Raw command line passed to pip.       
-CMD_EXEC =          "XRUNPYTHONFILE" #|Arguments: commands to pass directly to python. Description:  Runs a python file (arguments and params allowed)   
+CMD_COMMENTEDOUT_LINE=      "#"       #|Arguments: any. Description: comment line. this line will be ignored.
+CMD_PYTHON=                 "PYTHON"  #|Arguments: a float number (python version). Description:  set python version to be used for venvs from now on.. Script will abort if an existing venv has another version (unless the venv shall be deleted and rebuilt). in revenv mode pynst will delete existing venvs and create a new venv with the scpecified version. on embedded python it will empty the venv and rebuild it.
+CMD_SETVENV=                "SETVENV" #|Arguments: a directory path relative to the target directory. Description:  Ensures a venv exists at the path provided. Either by looking is one exists or by creating a new one. This path is also scanned for a requirements.txt file, if so then this file is installed automatically.
+CMD_PIPREQFILE=             "REQFILE" #|Arguments: a file path relative to the target directory or a remote url to a file. Description:  installs a requirements file to the current venv. local or remote.
+CMD_PIPREQFILE_FORCE=       "REQFILEFORCE" #|Arguments: a file path relative to the target directory or a remote url to a file. Description:  installs a requirements file to the current venv. local or remote.
+CMD_PIPREQPACKAGE=          "PIPINST" #|Arguments: a list of arguments to be passed directly to "pip install". Description:  installs wheels or modules to the current venv. Can be wheel file URL (not a file path) or a pip package
+CMD_RFILTER=                "RFILTER" #|Arguments: a list of words. Description:  Filter out packages (from REQ* commands) from now on. Filter is reset when the command is used again with no parameters. these packages will not be installed if present on req files. can be reset by putting single command with no params. The words are filtered by looking at the start of a line until a not allowed letter appears (any letter apart from A-Z, a-z, '-' or '_'). We anchor at start (ignoring leading whitespace). Example "torch" matches: 'torch==2.1.0', 'torch ', 'torch[extra]', 'torch\t', 'torch; python_version<"3.12"'. Does NOT match 'torchaudio' or 'torchvision'.
+CMD_GITCLONE=               "CLONEIT" #|Arguments: an url to a repository AND a directory path relative to target. Description:  clone a repo into a dir. The directory will be created if it does not exist.
+CMD_REQSCAN=                "REQSCAN" #|Arguments: a directory path relative to the target directory. Description:  Specifies a directory to scan for subdirectories (git repositories) with "requirements.txt" to install. git repositories found, will be updated first. Will not update code in senso mode  
+CMD_GETFILE=                "GETFILE" #|Arguments: url to a file. Description:  Downloads a file to a directory. Only downloads if the file does not exist or has a different size than the remote file.  
+CMD_GETBLOB=                "GETBLOB" #|Arguments: url to a file. Description:  Downloads a file to a directory. Used for large files (e.g. models). Same as GETFILE but this command has an option to disable the downloads of this kind.
+CMD_PRINT=                  "PRINTIT" #|Arguments: any number of words. Description:  Prints an info message for the user to command line. e.g. when you know that the next step is going to take a long time. "the next step might take a while"
+CMD_CONFIRM_FILE_OR_ABORT=  "HASFILE" #|Arguments: a file path relative to the target directory. Description:  Checks that a file exists. Aborts run if it fails.
+CMD_PAUSE=                  "PAUSEIT" #|Arguments: none. Description:  Pauses the execution until user confirms   
+CMD_SHORTCUT_DESK_ICON  =   "DESKICO" #|Arguments: a python file path (relative to target dir) wiht arguments. Description:  Creates a Desktop icon with a command line   
+CMD_SHORTCUT_DESK_SCRIPT=   "DESKEXE" #|Arguments: a python file path (relative to target dir) wiht arguments.. Description:  Creates a Desktop script with a command line  
+CMD_SHORTCUT_BASE_ICON  =   "HOMEICO" #|Arguments: a python file path (relative to target dir) wiht arguments.. Description:  Creates a Installdir icon with a command line   
+CMD_SHORTCUT_BASE_SCRIPT=   "HOMEEXE" #|Arguments: a python file path (relative to target dir) wiht arguments.. Description:  Creates a installdir script with a command line   
+CMD_XRUNCOMMAND_GIT =       "XRUNCMD_GIT"#| Arguments: commands to pass directly to git. Description: Runs a git command directly 
+CMD_XRUNCOMMAND_PIP =       "XRUNCMD_PIP" #|Arguments: commands to pass directly to pip. Description:  Advanced: Raw command line passed to pip.       
+CMD_EXEC =                  "XRUNPYTHONFILE" #|Arguments: commands to pass directly to python. Description:  Runs a python file (arguments and params allowed)   
 
 #TODO: use keyword CONFIRM
 
+TOKEN_INPUTFILE_COMMAND_PREFIX="CMD"
 TOKEN_PRINT_PREFIX="Info: "
 TOKEN_TASK_DELIM=""
 TOKEN_SUB_TASK_DELIM="-"
@@ -2940,7 +2941,7 @@ def parse_inputfile(inputfile_path: Path) -> list[tuple[str, list[str]]]:
     token_re = re.compile(r'"[^"]*"|\S+')
     for raw in inputfile_path.read_text(encoding="utf-8", errors="replace").splitlines():
         line = raw.strip()
-        if not line or line.startswith("#"):
+        if not line or line.startswith(f"{CMD_COMMENTEDOUT_LINE}"):
             continue
         parts = token_re.findall(line)
         parts = [p[1:-1] if p.startswith('"') and p.endswith('"') else p for p in parts]
@@ -3145,10 +3146,8 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 else:
                     log_subsubtask(f"CHECKOK: File found. Checked for: {target}")
 
-
                 
         pc2_message=f"{STARTOPTION_SAFECHECK}: "
-
         if elements_to_check_exist==False:
             pc2_message= pc2_message + f"No safe-check elements were found. No Check was performed. Aborting. To proceed rerun without option: --{STARTOPTION_SAFECHECK}"
             abort(msg=pc2_message)
@@ -3159,11 +3158,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             pc2_message= pc2_message + "Precheck Succesful as update of an existing installation. It is safe to continue. \nPress Enter to continue or Crtl+c to abort"    
         task_pause(pc2_message)
         #do_git_clone(url=url, target=target,operating_mode=in_operation_mode, force_gitpull_mode=force_gitpull_mode)
-                
-        
-
     
-     
     
     log_app_section(f"Processing Input file")
     # Now process commands permitted in REPAIR mode: PYTHON (already handled), RFILTER, REQFILE, STARTER, REQSCAN
@@ -3171,30 +3166,32 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
     # Collect REQSCAN paths (process them after REQFILEs or as they appear? Spec: executed in order they appear. We'll execute in order.)
     total_commands=len(in_commands)
     current_command_nr=0
+    
     for cmd, params in in_commands:
         current_command_nr=current_command_nr+1
         if cmd == CMD_PAUSE:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
             message=f"{output_prefix}{cmd}: Press Enter to continue or Ctrl+C to abort... "
             task_pause(message=message)
             
             
         elif cmd == CMD_PRINT:
+            required_python_version = params[0]
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
+            log_task(f"{output_prefix}{cmd}: User provided Information")
 
-            prefix=f"{output_prefix}{TOKEN_PRINT_PREFIX}"
-            task_print(text_tokens=params, prefix=prefix)
+            task_print(text_tokens=params)
             
     
         elif cmd == CMD_PYTHON:
             required_python_version = params[0]
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
             log_task(f"{output_prefix}{cmd}: setting version to be used as: {required_python_version}")
             continue
         
@@ -3202,7 +3199,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif cmd == CMD_SETVENV:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
            
             required_venv_path = params[0]
             log_task(f"{output_prefix}{cmd}: Ensuring existence of venv at path {required_venv_path}")
@@ -3219,7 +3216,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif cmd == CMD_RFILTER:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
             rfilters = params[:]
             if len(params) == 0:
                 log_task(f"{output_prefix}{cmd} Filters cleared! {rfilters}")
@@ -3230,7 +3227,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif cmd == CMD_PIPREQFILE or cmd == CMD_PIPREQFILE_FORCE:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
             req_file_to_install = params[0]
             pip_force_reinstall=False
             if cmd== CMD_PIPREQFILE_FORCE:
@@ -3247,7 +3244,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif cmd == CMD_REQSCAN:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
             log_task(f"{output_prefix}{cmd} searching for requirements in: {in_basedir / params[0]} (depth=1)")
             #TODO: maybe its more efficient to collect all reqscans and copy all reqfiles and concatenate them into once command as in: pip install -r fiole1.txt -r file2.txt -r file3.txt
             check_that_file_exists_or_abort(venv_python_exec,"python executable")
@@ -3270,7 +3267,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif  cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
             log_task(f"{output_prefix}{cmd}: creating start shortcuts")
             if not params:
                 abort(f"{output_prefix}{cmd} requires parameters.")
@@ -3302,7 +3299,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif cmd == CMD_EXEC:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
                 
             if not params:
                 abort(f"{output_prefix}{cmd} requires parameters.")
@@ -3319,7 +3316,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif cmd in (CMD_GITCLONE):
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
             if len(params) != 2:
                 abort(msg=f"{output_prefix}{cmd} requires exactly 2 parameters: <url> <path_suffix>")
             url, suffix = params
@@ -3333,7 +3330,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif cmd == CMD_GETFILE or cmd==CMD_GETBLOB:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
                 
             if len(params) != 2:
                 abort(msg=f"{output_prefix}{cmd} requires exactly 2 parameters: <url> <path_suffix>")
@@ -3342,21 +3339,21 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             
             targetdir = (in_basedir / suffix).resolve()
             if noblob_mode and cmd==CMD_GETBLOB:
-                log_subsubtask(msg=f"{cmd}: no-blob mode. ignoring download")    
+                log_subsubtask(msg=f"No-blob mode. ignoring download")    
                 continue
             if DRYRUN:
-                log_subsubtask(msg=f"DRYRUM:{cmd}: would download {url}")
+                log_subsubtask(msg=f"[DRYRUN]: would download {url}")
             else:
-                log_subsubtask(msg=f"{cmd} Storing file to: {targetdir}")
+                log_subsubtask(msg=f"Downloading file to: {targetdir}")
                 #url = "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/wan2.2-i2v-rapid-aio-example.json"
                 #path = "d:/resources/"
                 download_only_if_not_existent(url=url, directory_target_path=targetdir, verbose=VERBOSE, show_progress=True)
         
         
-        elif cmd ==CMD_PIPEXEC:
+        elif cmd ==CMD_XRUNCOMMAND_PIP:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
             if len(params) < 1:
                 abort(f"{output_prefix}{cmd} requires at least one parameter")
             log_task(f"{output_prefix}{cmd}: executing pip command: {" ".join(params)}")
@@ -3367,7 +3364,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif cmd ==CMD_PIPREQPACKAGE:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
             if len(params) < 1:
                 abort(f"{output_prefix}{cmd} requires at least one parameter")
             log_task(f"{output_prefix}{cmd}: installing pip packages: {" ".join(params)}")
@@ -3378,7 +3375,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif cmd == CMD_COMMENTEDOUT_LINE:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
             log_task(f"{output_prefix}{cmd}: skipping comment")
             continue
         
@@ -3386,7 +3383,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         elif cmd == CMD_CONFIRM_FILE_OR_ABORT:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
                 
             path_to_confirm = params[0]
             log_task(msg=f"{output_prefix}{cmd}: Checking for file existence: {str(path_to_confirm)}")
@@ -3395,10 +3392,10 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             check_that_file_exists_or_abort(path=target)
             
         
-        elif cmd ==CMD_XRUNGITCOMMAND:
+        elif cmd ==CMD_XRUNCOMMAND_GIT:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
-                output_prefix=f"CMD[{current_command_nr}/{total_commands}]:"
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
             git_command_path = params[0]
             #the params follow
             git_command_params = params[1:]
@@ -3547,7 +3544,7 @@ def main():
         CMD_PIPREQFILE,
         CMD_PIPREQFILE_FORCE,
         CMD_PIPREQPACKAGE,
-        CMD_PIPEXEC,
+        CMD_XRUNCOMMAND_PIP,
         CMD_RFILTER,
         CMD_GITCLONE,
         CMD_REQSCAN,
@@ -3562,7 +3559,7 @@ def main():
         CMD_COMMENTEDOUT_LINE,
         CMD_CONFIRM_FILE_OR_ABORT,
         CMD_EXEC,
-        CMD_XRUNGITCOMMAND
+        CMD_XRUNCOMMAND_GIT
         }
     restricted_keys={CMD_PYTHON: 1, CMD_PAUSE: 10}
     validate_file(inputfile_path,allowed_keywords=allowed_keys,limited_keywords=restricted_keys)

@@ -2303,6 +2303,7 @@ def _find_first_unquoted_char(s: str, ch: str) -> int:
             return i
     return -1
 
+#BUG: this does not correctly filter for python_version. it just removes it.
 def filter_os_arch_lines_from_requirementstxt(req_path: str) -> str:
     """
     Reads a requirements-style file and returns path to a temp file where any environment marker
@@ -2383,7 +2384,11 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
    
     if not os.path.exists(req_file):
         abort(f"Requirements file not found: {req_file}")
-    os_cleaned_file= filter_os_arch_lines_from_requirementstxt(req_path=req_file)
+        
+    #os_cleaned_file= filter_os_arch_lines_from_requirementstxt(req_path=req_file)
+    os_cleaned_file=req_file
+    log_subsubtask(f"using OS cleared requirements file: {os_cleaned_file}")
+    
     filtered = apply_rfilter_to_file(src_path = os_cleaned_file, filters = current_filters)
     
     ensure_uv_is_installed(python_exec=python_exec)

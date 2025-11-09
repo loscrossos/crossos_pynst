@@ -2405,6 +2405,11 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
     if force_reinstall:
         cmd.extend([ "--force-reinstall"])
     
+    ismacos = sys.platform == 'darwin'
+    if GLOBAL_EXPERIMENTAL_FEATURE_UV == True and ismacos==True:
+        cmd.extend([ "--index-strategy"])
+        cmd.extend([ "unsafe-best-match"])
+    
     #cmd.extend(["--no-warn-script-location"])
     cmd.extend(["-r", str(filtered)])
     

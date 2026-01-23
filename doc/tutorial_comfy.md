@@ -26,9 +26,9 @@ python pynst.py installers/comfy_installer_rtx_full.pynst.txt d:\temp\mytestcomf
 ```
 
 This command does the folowing:
-- it calls python (the version is not important as pynst is not version dependent as long as its python 3.xx+)
-- it instructs to use the `pynst.py` file
-- the **first parameter is which pynstaller to use**: we use `pynstallers/comfy_installer_rtx_full.pynst.txt`
+- it calls python to run the installer. The version is not important as pynst is not version dependent as long as its python 3.xx+, still you need Python 3.13 installed on your system as this is the version used in this example to install the venv.
+- it instructs to use the `pynst.py` file (the installer)
+- the **first parameter is which pynst-install recipe to use**: we use `pynstallers/comfy_installer_rtx_full.pynst.txt`, which defines a Nvidia accelerated comfy installation (for RTX cards 30xx and up)
 - the **second parameter is the target directory**: where the project will be installed: e.g. on windows `d:\temp\mytestcomfy`
 
 **IMPORTANT**
@@ -128,9 +128,10 @@ Then we add a simple text warning with `PRINTIT`, telling the user that this ste
 PYTHON 3.13
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
 HASFILE ComfyUI/main.py
-SETVENV ComfyUI
+SETVENV .
 PRINTIT This step may take some time depending on your connection.
-REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
+REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
+REQSCAN .
 
 ```
 
@@ -148,9 +149,10 @@ For a complete installation we need to install their `requirements.txt` into the
 PYTHON 3.13
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
 HASFILE ComfyUI/main.py
-SETVENV ComfyUI
+SETVENV .
 PRINTIT This step may take some time depending on your connection.
-REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
+REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
+REQSCAN .
 
 
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
@@ -190,10 +192,10 @@ Here is the finished file!
 PYTHON 3.13
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
 HASFILE ComfyUI/main.py
-SETVENV ComfyUI
+SETVENV .
 PRINTIT This step may take some time depending on your connection.
-REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
-
+REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
+REQSCAN .
 
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
 CLONEIT https://github.com/kijai/ComfyUI-KJNodes ComfyUI/custom_nodes
@@ -205,6 +207,7 @@ REQSCAN ComfyUI/custom_nodes
 HOMEEXE "ComfyUI_cpu" ComfyUI/main.py --cpu --auto-launch 
 DESKICO "ComfyUI GPU Mode" ComfyUI/main.py --gpu --use-sage-attention --auto-launch 
 DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch 
+
 ```
 
 so now we have a full fledged ComfyUI installation:
@@ -268,16 +271,19 @@ CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
 
 For example:
 
+Fll File:
 
 ```bash
+
 PYTHON 3.13
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
 HASFILE ComfyUI/main.py
-SETVENV ComfyUI
+SETVENV .
 PRINTIT This step may take some time depending on your connection.
-REQINST https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
+REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
+REQSCAN .
 
-# add plugins here
+# add custom nodes here
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes
 CLONEIT https://github.com/kijai/ComfyUI-KJNodes ComfyUI/custom_nodes
 CLONEIT https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet ComfyUI/custom_nodes
@@ -372,7 +378,26 @@ This option will force all repositories it finds to be set to the latest version
 
 ### Convert your embedded installation to a manual installation
 
-TODO
+An "embedded Comfy" installation is just a normal installation with some constraints. The only real advantage is that you dont need to install python or the venv.. but it comes with several disadvantages (as of 2025):
+
+* It brings its own python installation, which lacks some files (this causes problems with Sage-Attention)
+* The python version is locked and updates are troublesome as you can not update python itself
+* the ComfyUI code is locked by default to a release, this means you get updates with a delay.
+* If the venv breaks then its difficult to repair.
+
+Luckily Pynst can convert your embedded install to a normal manual install! just run with the `revenv` command to build a venv and also add the `gitlatest` option to unlock the code to the latest version.
+
+Due to the way pynst works you need to either point pynst to the directory of the embedded install.
+
+We will assume you dont move anything and your comfy is at `d:\aistuff\comfyuiembeded`
+
+then the command to convert it to a manual install using the full fledged file is:
+
+```bash
+python pynst.py installers/comfy_installer_rtx_full.pynst.txt d:\aistuff\comfyuiembeded --revenv --gitlatest
+```
+
+Pynst will create a new venv dir. You can safely delte the `embedded_python` directory afterwards as its not needed anymore :D
 
 
 ### Install multiple venvs to a single ComfyUI installation
@@ -384,12 +409,23 @@ install as many venvs as you want in parallel for one single Comfy installation 
 -one only for nunchaku wokrflows
 
 
+Since the configuration of your Comfy installation is fully contained in the venv you can define several venvs for installing stuff.. you can keep your current configurated venv and install a new one by using the option `--venvname`
+The installed icon has the venvname attached to it so you can have as many as you want and they will not overwrite each other!
 
 
- Wait. you are still reading?? Are you not sold yet? I would be long ago!
+```bash
+python pynst.py installers/comfy_installer_rtx_full.pynst.txt d:\aistuff\comfyui --venvname venv1
+python pynst.py installers/comfy_installer_rtx_full.pynst.txt d:\aistuff\comfyui --venvname venv2
+python pynst.py installers/comfy_installer_rtx_full.pynst.txt d:\aistuff\comfyui --venvname venv3
+```
+
 
 
 ### Senso-Install
 
 
--SensoInstall mode: this mode will not update code or remove anything. It only intalls plugins and files in the safest and most conservative way possible (special case. You do want latest code!).
+SensoInstall mode: this mode will not update code or remove anything. It only intalls plugins and files in the safest and most conservative way possible (special case. You do want latest code!). just add the option `--senso`
+
+
+
+ Wait. you are still reading?? Are you not sold yet? I would be long ago!

@@ -2,24 +2,49 @@
 
 **One file. All platforms. Any Python project.**
 
-CrossOS Pynst is a **cross-platform (Windows, Linux, macOS)** single-file Python tool that installs, rebuilds, updates, upgrades, extends and repairs virtually any Python project with a single command.  
+CrossOS Pynst is a **cross-platform (Windows, Linux, macOS)** single-file Python project manager that installs, rebuilds, updates, upgrades, extends and repairs virtually any Python project with a single command.  
 
-Whether you want to **install from scratch**, **repair an existing environment**, or **fully re-harden** a complex multi-repo setup like ComfyUI, WAN2GP, or a custom AI pipeline-Pynst automates the heavy lifting while keeping your existing code and data safe.
+The ultimate setup starts here. Pynst provides a robust, scriptable solution for effortless deployment. It offers granular control over your environment, including guaranteed Python version pinning and intelligent venv management. You get advanced dependency handling with flexible file/URL installation, package filtering, and recursive repository scanning. Plus, it accelerates setup with built-in Git cloning, smart file acquisition, custom command execution, and one-step desktop shortcut creation. Install your project the right way, every time.
 
-Pynst sets up the virtual environment, clones and updates repositories, installs requirements, downloads files, creates launcher shortcuts and much more!
 
----
+Whether you want to **install from scratch**, **repair an existing environment**, or **fully enhance** a complex multi-repo setup like ComfyUI, WAN2GP, or a custom AI pipeline - Pynst automates the heavy lifting while keeping your existing code and data safe.
+
+It uses a simple plain text file with instruction commands and executes them to create the ultimate installation.
+
+
 
 ## Overview
 
-CrossOS Pynst manages:
+CrossOS Pynst offers **complete environment control**, **flexible package management**, and **user-friendly setup**.
 
-- Python versions and virtual environments (venv or embedded)
-- Git repositories and plugin modules
-- Requirement files (local or remote)
-- Desktop shortcuts and launcher scripts
-- Safe rebuilds and full-environment repairs 
-- File downloads
+
+**Virtual Environment & Python Control**
+
+* **Python Version Pinning:** Guarantee the correct runtime by strictly enforcing the $\text{Python}$ version for all virtual environments (venvs). (`PYTHON`)
+* **Intelligent Venv Management:** Automatically create, manage, and optionally rebuild virtual environments at specified paths, and instantly install any local $\text{requirements.txt}$ file found within. (`SETVENV`)
+
+**Advanced Dependency Management**
+
+* **Flexible Requirements Handling:** Install dependencies from local files or remote $\text{URLs}$ for maximum flexibility. (`REQFILE`, `REQFILEFORCE`)
+* **Direct $\text{PIP}$ Command Support:** Install specific wheels or packages directly using raw $\text{pip}$ arguments. (`PIPINST`, `XRUNCMD_PIP`)
+* **Global Package Filtering (RFILTER):** Exclude unwanted packages from all installation lists instantly—ideal for dependency conflict resolution or specific build requirements. (`RFILTER`)
+* **Automated Repository Scanning:** Recursively scan specified directories, update any found $\text{Git}$ repositories, and install their respective $\text{requirements.txt}$ files. (`REQSCAN`)
+
+
+**Code & File Acquisition**
+
+* **One-Step $\text{Git}$ Cloning:** Easily clone any $\text{Git}$ repository to a specific directory in your target installation. (`CLONEIT`, `XRUNCMD_GIT`)
+* **Smart File Downloading:** Efficiently download files (including large assets like $\text{AI}$ models) only if they are missing or have changed in size, saving time and bandwidth. (`GETFILE`, `GETBLOB`)
+
+
+**Installation Customization & User Interaction**
+
+* **Shortcut Creation:** Instantly generate desktop icons/scripts or project-base icons/scripts to run your installed Python application. (`DESKICO`, `DESKEXE`, `HOMEICO`, `HOMEEXE`)
+* **Custom Execution:** Run arbitrary $\text{Python}$ files directly within the installation process, complete with arguments. (`XRUNPYTHONFILE`)
+* **User Checkpoints:** Implement mandatory pauses (`PAUSEIT`) and critical file existence checks (`HASFILE`) to ensure a smooth and verified installation path.
+* **Informative Messaging:** Display custom print messages to keep users informed during long installation steps. (`PRINTIT`)
+
+
 
 You can run it directly with:
 
@@ -34,8 +59,8 @@ No installation, no dependencies, no platform issues.
 ## Features
 
 - Easy to Use
-  - Just download `pynst.py` and run it. All you need is an PIF (pynst-installer-file) and a target directory.
-  - The pif defines what to install. It is a plain-text instruction file. Use one of the provided examples, check out the community or write one yourself! Everything else is automated.
+  - Just download `pynst.py` and run it. All you need is a pynst-installer-file and a target directory.
+  - The installer file defines what to install. It is a plain-text instruction file. Use one of the provided examples, check out the community or write one yourself! Everything else is automated.
 - Fully Cross-OS
   - Works identically on **Windows**, **Linux**, and **macOS**. Learn once use forever!
   - Dual/multi-boot friendly: projects you install can be used across all OSes. Access the same installation from Windows, Linux and MacOS!
@@ -56,7 +81,7 @@ No installation, no dependencies, no platform issues.
 
 ## Quick Start
 
-Simple example to install ComfyUI and load a full fledgew Workflow into it.
+Simple example to install ComfyUI and load a full fledge workflow into it.
 
 ### Pre-requisites
 
@@ -73,7 +98,7 @@ winget install --id=Git.Git -e  --silent --accept-package-agreements --accept-so
 
 ### 1. ComfyUI simple installation
 
-A `.inst.txt` file defines what to install and how. Example for the simplest install of comfyUI.
+An installer file defines what to install and how. Example for the simplest install of comfyUI.
 
 Save this as `test.comfyhelloworld.inst.txt` or use the provided example in the `installers` folder:
 
@@ -131,18 +156,27 @@ usage: pynst.py [-h] [--revenv] [--senso] [--embedded] [--nodesktop]
 
 | Option | Description |
 |---------|--------------|
-| `--revenv` | Rebuild the venv from zero; deletes the old venv and rebuilds one correctly. In embedded mode it fixes broken environments removing all packages and reinstalling them correctly. |
-| `--embedded` | Treat installation as portable "python_embedded" install. |
-| `--nodesktop` | Skip creation of desktop shortcuts. |
-| `--dryrun` | Simulated run: no changes, just prints intended actions (including system commands). |
-| `--verbose` | Show full subprocess output for debugging. |
-| `--backup` | Backup existing venv before deleting/replacing or changing anything (backup is the original name and a suffix on the same location). |
-| `--noblob` | Skip optional large file downloads (e.g., model blobs). |
-| `--venvname` | Provide a custom virtual-environment folder name. |
-| `--gitlatest` | Force git repository code to the newest version on the main/master branch (sometimes called 'nightly') |
-| `--safecheck` | Check to see if  we update existing installations. This option performs a pre-Check AND only proceeds if: a) repositories (marked by CLONEIT) to be cloned already exist AND b) marked required files (by HASFILE) exist. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation in parallel to an existing one. |
-| `--senso` | Ultra Safe mode: avoids overwriting or deleting existing code (only for special cases. do not use this unless you know what you are doing). |
-| `--debugtest` | Output debug info and exit. |
+"#"       |Arguments: any. <br> Description: comment line. this line will be ignored.
+"PYTHON"  |Arguments: a float number (python version). <br> Description:  set python version to be used for venvs from now on.. Script will abort if an existing venv has another version (unless the venv shall be deleted and rebuilt). in revenv mode pynst will delete existing venvs and create a new venv with the scpecified version. on embedded python it will empty the venv and rebuild it.
+"SETVENV"  |Arguments: a directory path relative to the target directory. <br> Description:  Ensures a venv exists at the path provided. Either by looking is one exists or by creating a new one. This path is also scanned for a requirements.txt file, if so then this file is installed automatically.
+"REQFILE" |Arguments: a file path relative to the target directory or a remote url to a file. <br> Description:  installs a requirements file to the current venv. local or remote.
+"REQFILEFORCE" |Arguments: a file path relative to the target directory or a remote url to a file. <br> Description:  installs a requirements file to the current venv. local or remote.
+"PIPINST" |Arguments: a list of arguments to be passed directly to "pip install". <br> Description:  installs wheels or modules to the current venv. Can be wheel file URL (not a file path) or a pip package
+"RFILTER" |Arguments: a list of words. <br> Description:  Filter out packages (from REQ* commands) from now on. Filter is reset when the command is used again with no parameters. these packages will not be installed if present on req files. can be reset by putting single command with no params. The words are filtered by looking at the start of a line until a not allowed letter appears (any letter apart from A-Z, a-z, '-' or '_'). We anchor at start (ignoring leading whitespace). Example "torch" matches: 'torch==2.1.0', 'torch ', 'torch[extra]', 'torch\t', 'torch; python_version<"3.12"'. Does NOT match 'torchaudio' or 'torchvision'.
+"CLONEIT" |Arguments: an url to a repository AND a directory path relative to target. <br> Description:  clone a repo into a dir. The directory will be created if it does not exist.
+"REQSCAN" |Arguments: a directory path relative to the target directory.<br>  Description:  Specifies a directory to scan for subdirectories (git repositories) with "requirements.txt" to install. git repositories found, will be updated first. Will not update code in senso mode  
+"GETFILE" |Arguments: url to a file. <br> Description:  Downloads a file to a directory. Only downloads if the file does not exist or has a different size than the remote file.  
+"GETBLOB" |Arguments: url to a file. <br> Description:  Downloads a file to a directory. Used for large files (e.g. models). Same as GETFILE but this command has an option to disable the downloads of this kind.
+"PRINTIT" |Arguments: any number of words. <br> Description:  Prints an info message for the user to command line. e.g. when you know that the next step is going to take a long time. "the next step might take a while"
+"HASFILE" |Arguments: a file path relative to the target directory. <br> Description:  Checks that a file exists. Aborts run if it fails.
+"PAUSEIT" |Arguments: none. <br> Description:  Pauses the execution until user confirms   
+"DESKICO" |Arguments: a python file path (relative to target dir) wiht arguments. <br> Description:  Creates a Desktop icon with a command line   
+"DESKEXE" |Arguments: a python file path (relative to target dir) wiht arguments.. <br> Description:  Creates a Desktop script with a command line  
+"HOMEICO" |Arguments: a python file path (relative to target dir) wiht arguments.. <br> Description:  Creates a Installdir icon with a command line   
+"HOMEEXE" |Arguments: a python file path (relative to target dir) wiht arguments.. <br> Description:  Creates a installdir script with a command line   
+"XRUNCMD_GIT"  | Arguments: commands to pass directly to git. <br> Description: Runs a git command directly 
+"XRUNCMD_PIP" |Arguments: commands to pass directly to pip. <br> Description:  Advanced: Raw command line passed to pip.       
+"XRUNPYTHONFILE" |Arguments: commands to pass directly to python. <br> Description:  Runs a python file (arguments and params allowed)   
 
 ---
 

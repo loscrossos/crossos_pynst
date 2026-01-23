@@ -1575,27 +1575,27 @@ COLOR_RESET = "\033[0m"
 
 #Here a full list of the commands with their placeholder var names for python and an explanation of what they do in the differen modes.
  
-CMD_COMMENTEDOUT_LINE=      "#"       #|Arguments: any. Description: comment line. this line will be ignored.
-CMD_PYTHON=                 "PYTHON"  #|Arguments: a float number (python version). Description:  set python version to be used for venvs from now on.. Script will abort if an existing venv has another version (unless the venv shall be deleted and rebuilt). in revenv mode pynst will delete existing venvs and create a new venv with the scpecified version. on embedded python it will empty the venv and rebuild it.
-CMD_SETVENV=                "SETVENV" #|Arguments: a directory path relative to the target directory. Description:  Ensures a venv exists at the path provided. Either by looking is one exists or by creating a new one. This path is also scanned for a requirements.txt file, if so then this file is installed automatically.
-CMD_PIPREQFILE=             "REQFILE" #|Arguments: a file path relative to the target directory or a remote url to a file. Description:  installs a requirements file to the current venv. local or remote.
-CMD_PIPREQFILE_FORCE=       "REQFILEFORCE" #|Arguments: a file path relative to the target directory or a remote url to a file. Description:  installs a requirements file to the current venv. local or remote.
-CMD_PIPREQPACKAGE=          "PIPINST" #|Arguments: a list of arguments to be passed directly to "pip install". Description:  installs wheels or modules to the current venv. Can be wheel file URL (not a file path) or a pip package
-CMD_RFILTER=                "RFILTER" #|Arguments: a list of words. Description:  Filter out packages (from REQ* commands) from now on. Filter is reset when the command is used again with no parameters. these packages will not be installed if present on req files. can be reset by putting single command with no params. The words are filtered by looking at the start of a line until a not allowed letter appears (any letter apart from A-Z, a-z, '-' or '_'). We anchor at start (ignoring leading whitespace). Example "torch" matches: 'torch==2.1.0', 'torch ', 'torch[extra]', 'torch\t', 'torch; python_version<"3.12"'. Does NOT match 'torchaudio' or 'torchvision'.
-CMD_GITCLONE=               "CLONEIT" #|Arguments: an url to a repository AND a directory path relative to target. Description:  clone a repo into a dir. The directory will be created if it does not exist.
-CMD_REQSCAN=                "REQSCAN" #|Arguments: a directory path relative to the target directory. Description:  Specifies a directory to scan for subdirectories (git repositories) with "requirements.txt" to install. git repositories found, will be updated first. Will not update code in senso mode  
-CMD_GETFILE=                "GETFILE" #|Arguments: url to a file. Description:  Downloads a file to a directory. Only downloads if the file does not exist or has a different size than the remote file.  
-CMD_GETBLOB=                "GETBLOB" #|Arguments: url to a file. Description:  Downloads a file to a directory. Used for large files (e.g. models). Same as GETFILE but this command has an option to disable the downloads of this kind.
-CMD_PRINT=                  "PRINTIT" #|Arguments: any number of words. Description:  Prints an info message for the user to command line. e.g. when you know that the next step is going to take a long time. "the next step might take a while"
-CMD_CONFIRM_FILE_OR_ABORT=  "HASFILE" #|Arguments: a file path relative to the target directory. Description:  Checks that a file exists. Aborts run if it fails.
-CMD_PAUSE=                  "PAUSEIT" #|Arguments: none. Description:  Pauses the execution until user confirms   
-CMD_SHORTCUT_DESK_ICON  =   "DESKICO" #|Arguments: a python file path (relative to target dir) wiht arguments. Description:  Creates a Desktop icon with a command line   
-CMD_SHORTCUT_DESK_SCRIPT=   "DESKEXE" #|Arguments: a python file path (relative to target dir) wiht arguments.. Description:  Creates a Desktop script with a command line  
-CMD_SHORTCUT_BASE_ICON  =   "HOMEICO" #|Arguments: a python file path (relative to target dir) wiht arguments.. Description:  Creates a Installdir icon with a command line   
-CMD_SHORTCUT_BASE_SCRIPT=   "HOMEEXE" #|Arguments: a python file path (relative to target dir) wiht arguments.. Description:  Creates a installdir script with a command line   
-CMD_XRUNCOMMAND_GIT =       "XRUNCMD_GIT"#| Arguments: commands to pass directly to git. Description: Runs a git command directly 
-CMD_XRUNCOMMAND_PIP =       "XRUNCMD_PIP" #|Arguments: commands to pass directly to pip. Description:  Advanced: Raw command line passed to pip.       
-CMD_EXEC =                  "XRUNPYTHONFILE" #|Arguments: commands to pass directly to python. Description:  Runs a python file (arguments and params allowed)   
+CMD_COMMENTEDOUT_LINE=      "#" #|**Arguments:** any. <br> **Description**: comment line. this line will be ignored.
+CMD_PYTHON=                 "PYTHON" #|**Arguments:** a float number (python version). <br> **Description**:  set python version to be used for venvs from now on.. Script will abort if an existing venv has another version (unless the venv shall be deleted and rebuilt). in revenv mode pynst will delete existing venvs and create a new venv with the scpecified version. on embedded python it will empty the venv and rebuild it.
+CMD_SETVENV=                "SETVENV" #|**Arguments:** a directory path relative to the target directory. <br> **Description**:  Ensures a venv exists at the path provided. Either by looking is one exists or by creating a new one. This path is also scanned for a requirements.txt file, if so then this file is installed automatically.
+CMD_PIPREQFILE=             "REQFILE" #|**Arguments:** a file path relative to the target directory or a remote url to a file. <br> **Description**:  installs a requirements file to the current venv. local or remote.
+CMD_PIPREQFILE_FORCE=       "REQFILEFORCE" #|**Arguments:** a file path relative to the target directory or a remote url to a file. <br> **Description**:  installs a requirements file to the current venv. local or remote.
+CMD_PIPREQPACKAGE=          "PIPINST" #|**Arguments:** a list of arguments to be passed directly to "pip install". <br> **Description**:  installs wheels or modules to the current venv. Can be wheel file URL (not a file path) or a pip package
+CMD_RFILTER=                "RFILTER" #|**Arguments:** a list of words. <br> **Description**:  Filter out packages (from REQ* commands) from now on. Filter is reset when the command is used again with no parameters. these packages will not be installed if present on req files. can be reset by putting single command with no params. The words are filtered by looking at the start of a line until a not allowed letter appears (any letter apart from A-Z, a-z, '-' or '_'). We anchor at start (ignoring leading whitespace). Example "torch" matches: 'torch==2.1.0', 'torch ', 'torch[extra]', 'torch\t', 'torch; python_version<"3.12"'. Does NOT match 'torchaudio' or 'torchvision'.
+CMD_GITCLONE=               "CLONEIT" #|**Arguments:** an url to a repository AND a directory path relative to target. <br> **Description**:  clone a repo into a dir. The directory will be created if it does not exist.
+CMD_REQSCAN=                "REQSCAN" #|**Arguments:** a directory path relative to the target directory. <br> **Description**:  Specifies a directory to scan for subdirectories (git repositories) with "requirements.txt" to install. git repositories found, will be updated first. Will not update code in senso mode  
+CMD_GETFILE=                "GETFILE" #|**Arguments:** url to a file. <br> **Description**:  Downloads a file to a directory. Only downloads if the file does not exist or has a different size than the remote file.  
+CMD_GETBLOB=                "GETBLOB" #|**Arguments:** url to a file. <br> **Description**:  Downloads a file to a directory. Used for large files (e.g. models). Same as GETFILE but this command has an option to disable the downloads of this kind.
+CMD_PRINT=                  "PRINTIT" #|**Arguments:** any number of words. <br> **Description**:  Prints an info message for the user to command line. e.g. when you know that the next step is going to take a long time. "the next step might take a while"
+CMD_CONFIRM_FILE_OR_ABORT=  "HASFILE" #|**Arguments:** a file path relative to the target directory. <br> **Description**:  Checks that a file exists. Aborts run if it fails.
+CMD_PAUSE=                  "PAUSEIT" #|**Arguments:** none. <br> **Description**:  Pauses the execution until user confirms   
+CMD_SHORTCUT_DESK_ICON  =   "DESKICO" #|**Arguments:** a python file path (relative to target dir) wiht arguments. <br> **Description**:  Creates a Desktop icon with a command line   
+CMD_SHORTCUT_DESK_SCRIPT=   "DESKEXE" #|**Arguments:** a python file path (relative to target dir) wiht arguments.. <br> **Description**:  Creates a Desktop script with a command line  
+CMD_SHORTCUT_BASE_ICON  =   "HOMEICO" #|**Arguments:** a python file path (relative to target dir) wiht arguments.. <br> **Description**:  Creates a Installdir icon with a command line   
+CMD_SHORTCUT_BASE_SCRIPT=   "HOMEEXE" #|**Arguments:** a python file path (relative to target dir) wiht arguments.. <br> **Description**:  Creates a installdir script with a command line   
+CMD_XRUNCOMMAND_GIT =       "XRUNCMD_GIT" #|**Arguments:** commands to pass directly to git. <br> **Description**: Runs a git command directly 
+CMD_XRUNCOMMAND_PIP =       "XRUNCMD_PIP" #|**Arguments:** commands to pass directly to pip. <br> **Description**:  Advanced: Raw command line passed to pip.       
+CMD_EXEC =                  "XRUNPYTHONFILE" #|**Arguments:** commands to pass directly to python. <br> **Description**:  Runs a python file (arguments and params allowed)   
 
 #TODO: use keyword CONFIRM
 
@@ -3399,6 +3399,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             log_task(msg=f"{output_prefix}{cmd}: Checking for file existence: {str(path_to_confirm)}")
             
             target = (in_basedir / path_to_confirm).resolve()
+            
             check_that_file_exists_or_abort(path=target)
             
         
@@ -3406,15 +3407,29 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
                 output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
-            git_command_path = params[0]
+            git_command_relative_cwd = params[0]
             #the params follow
             git_command_params = params[1:]
-            git_command_target = (in_basedir / git_command_path).resolve()
-            check_that_file_exists_or_abort(path=git_command_target)
+            git_command_absolute_cwd = (in_basedir / git_command_relative_cwd).resolve()
             
-            log_task(msg=f"{output_prefix}{cmd}: executing git command on: {git_command_path}")
+            log_task(msg=f"{output_prefix}{cmd}: executing git command on: {git_command_absolute_cwd}")
             
-            do_git_command(target=Path(git_command_target), params=git_command_params)
+            if not git_command_absolute_cwd.exists():
+                log_subsubtask(f"Target directory not found.")
+                if in_operation_mode==STARTOPTION_MODE_SENSOINSTALL:
+                    log_subsubtask(f"Operation mode forbids creation of target directory: mode={STARTOPTION_MODE_SENSOINSTALL}")
+                elif DRYRUN:
+                    log_subsubtask(f"[DRYRUN] Would create target directory: {git_command_absolute_cwd}")
+                else:
+                    log_subsubtask(f"Creating target directory: {git_command_absolute_cwd}")
+                    git_command_absolute_cwd.mkdir(parents=True, exist_ok=True)
+
+            
+            check_that_file_exists_or_abort(path=git_command_absolute_cwd, file_description="Target directory",requestor_name=CMD_XRUNCOMMAND_GIT)
+            
+            
+            
+            do_git_command(target=Path(git_command_absolute_cwd), params=git_command_params)
 
         else:
             abort(msg=f"Unknown command in inputfile: {cmd}")

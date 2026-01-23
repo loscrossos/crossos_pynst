@@ -1,5 +1,5 @@
 PYTHON 3.13
-CLONEIT https://github.com/comfyanonymous/ComfyUI .
+CLONEIT https://github.com/comfy-org/ComfyUI .
 HASFILE ComfyUI/main.py
 SETVENV .
 PRINTIT This step may take some time depending on your connection.

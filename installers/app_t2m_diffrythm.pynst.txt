@@ -1,0 +1,12 @@
+# you need espeakng installed: 
+#linux: sudo apt-get install espeak-ng 
+#macos: brew install espeak-ng
+#windows: winget install espeak-ng
+
+PYTHON 3.10
+SETVENV .
+CLONEIT https://github.com/ASLP-lab/DiffRhythm.git
+REQINST .
+GETBLOB https://huggingface.co/ASLP-lab/DiffRhythm-1_2-full/resolve/main/cfm_model.pt models
+GETBLOB https://huggingface.co/ASLP-lab/DiffRhythm-1_2-full/resolve/main/config.json modelss
+# ?? there seems to exist no app

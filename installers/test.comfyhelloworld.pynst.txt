@@ -1,3 +1,3 @@
-CLONEIT https://github.com/comfyanonymous/ComfyUI .
+CLONEIT https://github.com/comfy-org/ComfyUI.git .
 SETVENV ComfyUI
 DESKICO "ComfyUI CPU" ComfyUI/main.py --cpu

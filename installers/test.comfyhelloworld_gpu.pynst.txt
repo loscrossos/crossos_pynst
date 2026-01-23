@@ -1,4 +1,4 @@
-CLONEIT https://github.com/comfyanonymous/ComfyUI .
+CLONEIT https://github.com/comfy-org/ComfyUI .
 SETVENV .
 
 REQSCAN .

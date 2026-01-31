@@ -72,8 +72,11 @@ CLONEIT https://github.com/comfyanonymous/ComfyUI .
 SETVENV ComfyUI
 ```
 
-- `CLONEIT`: Clones ComfyUI to the target directory (`.`). If it exists, it updates it.
-- `SETVENV`: Ensures a venv exists inside `ComfyUI`. If `requirements.txt` is found, it installs it automatically.
+*   **`CLONEIT <url> <path>`**: Clones the git repository.
+    *   `https://...`: The URL of the repository to clone.
+    *   `.`: The dot means "install directly into the target directory" (e.g., `d:\temp\mytestcomfy`). If you put a name like `ComfyUI` here, it would create `d:\temp\mytestcomfy\ComfyUI\ComfyUI`.
+*   **`SETVENV <path>`**: Creates or configures the virtual environment.
+    *   `ComfyUI`: The folder where the venv should be checked/created. It also looks for `requirements.txt` here and installs it automatically.
 
 ### 2. Securing the Installation
 We add a check to ensure the repository was correctly installed.
@@ -81,7 +84,9 @@ We add a check to ensure the repository was correctly installed.
 ```bash
 HASFILE ComfyUI/main.py
 ```
-This ensures that running with `--safecheck` later will abort if the file is not found, preventing accidental overwrites of wrong directories.
+*   **`HASFILE <path>`**: Checks if a specific file exists.
+    *   `ComfyUI/main.py`: The file to look for relative to the install root.
+    *   This ensures that running with `--safecheck` later will abort if the file is not found, preventing accidental overwrites of wrong directories or broken installs.
 
 ### 3. Installing Accelerators
 ComfyUI comes by default with no accelerators installed. We use `REQFILE` to install a specific requirements file for NVIDIA RTX cards.
@@ -95,6 +100,10 @@ PRINTIT This step may take some time depending on your connection.
 REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch280cu129_lite.txt
 REQSCAN .
 ```
+*   **`PYTHON 3.13`**: Enforces that the system has Python 3.13. If not, the installer stops.
+*   **`PRINTIT <message>`**: Prints a message to the console to keep the user informed (useful for long downloads).
+*   **`REQFILE <url>`**: Installs a list of Python packages from a remote URL. Here we use a preset for Nvidia accelerators (CUDA 12.1 + Torch 2.4).
+*   **`REQSCAN .`**: Scans the current directory (`.`) for any other `requirements.txt` files and installs them.
 
 ### 4. Adding Custom Nodes (Plugins)
 We can clone plugins directly into `ComfyUI/custom_nodes`.
@@ -109,7 +118,10 @@ CLONEIT https://github.com/city96/ComfyUI-GGUF ComfyUI/custom_nodes
 # Install requirements for ALL plugins found
 REQSCAN ComfyUI/custom_nodes
 ```
-`REQSCAN` is powerful: it finds ANY repository in that folder, updates it, and installs its `requirements.txt`.
+*   **`CLONEIT <url> <path>`**:
+    *   `ComfyUI/custom_nodes`: This is the target folder for the plugins. Pynst will clone the repos *inside* this folder.
+*   **`REQSCAN <path>`**:
+    *   `ComfyUI/custom_nodes`: Pynst looks into every subfolder of this path. If it finds a git repo, it updates it. If it finds a `requirements.txt`, it installs those dependencies into your main virtual environment. This automates the setup of complex plugins!
 
 ### 5. Adding Starter Icons
 We want clickable desktop icons. Pynst creates platform-native icons automatically.
@@ -119,8 +131,11 @@ HOMEEXE "ComfyUI_cpu" ComfyUI/main.py --cpu --auto-launch
 DESKICO "ComfyUI GPU Mode" ComfyUI/main.py --gpu --use-sage-attention --auto-launch 
 DESKICO "ComfyUI CPU Mode" ComfyUI/main.py --cpu  --auto-launch 
 ```
-*   `DESKICO`: Desktop Icon
-*   `HOMEEXE`: Script in the installation folder
+*   **`DESKICO <Label> <Script> <Args>`**: Creates a Desktop Shortcut.
+    *   `"ComfyUI GPU Mode"`: The name of the icon on your desktop.
+    *   `ComfyUI/main.py`: The python script to run (relative to install dir).
+    *   `--gpu --use-sage-attention ...`: These are arguments passed to ComfyUI itself (start in GPU mode, use Sage Attention optimization, etc.).
+*   **`HOMEEXE`**: Same as `DESKICO` but creates a script file (like a `.bat` or `.sh`) in the installation directory instead of an icon on the desktop.
 
 ### The Final File
 

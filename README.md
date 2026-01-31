@@ -8,6 +8,8 @@ CrossOS Pynst is a **cross-platform (Windows, Linux, macOS)** Python project man
 
 From simple scripts to complex AI pipelines like ComfyUI or WAN2GP, Pynst handles the heavy lifting: cloning repos, building venvs, installing dependencies, and creating desktop shortcuts. All in your hands with a single command.
 
+Pynst is for hobbyist to pros.. To be fair: its not for the total beginner. You should know how to use the command line. but thats it.
+
 ## Why Pynst?
 
 In the world of AI, Python projects are the gold standard but they are difficult to install for newbies and even for pros they are complex and cumbersome. There has been a new wave of "one click installers" and intsall managers. The problem is usually one of those: 
@@ -20,6 +22,7 @@ In the world of AI, Python projects are the gold standard but they are difficult
 * and hey i already installed Comfy with sweat and tears last year.. why cant you just repair my current installation??
 
 wouldnt it be great if all that was solved?
+
 
 ### The "Sweet Spot" of Installation
 Pynst bridges the gap between fragile manual instructions, heavy setup and customization.

@@ -318,398 +318,6 @@ def crossos_make_shortcut(app_name, exec_line,  installpath, env_path, onDesktop
 
 
 
-#####ENGINE1 Blocky and pixely+++++++++++++
-import struct, zlib
-# Simple 8x8 rounded block font (A-Z, uppercase only)
-FONT = {
-    'A': ["00111100",
-          "01000010",
-          "10000001",
-          "10000001",
-          "11111111",
-          "10000001",
-          "10000001",
-          "00000000"],
-    'B': ["11111100",
-          "10000010",
-          "10000010",
-          "11111100",
-          "10000010",
-          "10000010",
-          "11111100",
-          "00000000"],
-    'C': ["00111110",
-          "01000001",
-          "10000000",
-          "10000000",
-          "10000000",
-          "10000000",
-          "01000001",
-          "00111110"],
-    'D': ["11111000",
-          "10000100",
-          "10000010",
-          "10000010",
-          "10000010",
-          "10000100",
-          "11111000",
-          "00000000"],
-    'E': ["11111111",
-          "10000000",
-          "10000000",
-          "11111110",
-          "10000000",
-          "10000000",
-          "11111111",
-          "00000000"],
-    'F': ["11111111",
-          "10000000",
-          "10000000",
-          "11111110",
-          "10000000",
-          "10000000",
-          "10000000",
-          "00000000"],
-    'G': ["00111110",
-          "01000001",
-          "10000000",
-          "10000000",
-          "10001111",
-          "10000001",
-          "01000001",
-          "00111110"],
-    'H': ["10000001",
-          "10000001",
-          "10000001",
-          "11111111",
-          "10000001",
-          "10000001",
-          "10000001",
-          "00000000"],
-    'I': ["11111111",
-          "00011000",
-          "00011000",
-          "00011000",
-          "00011000",
-          "00011000",
-          "11111111",
-          "00000000"],
-    'J': ["00011111",
-          "00000100",
-          "00000100",
-          "00000100",
-          "10000100",
-          "01000100",
-          "00111000",
-          "00000000"],
-    'K': ["10000010",
-          "10000100",
-          "10001000",
-          "11110000",
-          "10001000",
-          "10000100",
-          "10000010",
-          "00000000"],
-    'L': ["10000000",
-          "10000000",
-          "10000000",
-          "10000000",
-          "10000000",
-          "10000000",
-          "11111111",
-          "00000000"],
-    'M': ["10000001",
-          "11000011",
-          "10100101",
-          "10011001",
-          "10000001",
-          "10000001",
-          "10000001",
-          "00000000"],
-    'N': ["10000001",
-          "11000001",
-          "10100001",
-          "10010001",
-          "10001001",
-          "10000101",
-          "10000011",
-          "00000000"],
-    'O': ["00111100",
-          "01000010",
-          "10000001",
-          "10000001",
-          "10000001",
-          "10000001",
-          "01000010",
-          "00111100"],
-    'P': ["11111100",
-          "10000010",
-          "10000010",
-          "11111100",
-          "10000000",
-          "10000000",
-          "10000000",
-          "00000000"],
-    'Q': ["00111100",
-          "01000010",
-          "10000001",
-          "10000001",
-          "10000001",
-          "10001001",
-          "01000010",
-          "00111101"],
-    'R': ["11111100",
-          "10000010",
-          "10000010",
-          "11111100",
-          "10001000",
-          "10000100",
-          "10000010",
-          "00000000"],
-    'S': ["01111110",
-          "10000001",
-          "10000000",
-          "01111100",
-          "00000010",
-          "10000001",
-          "01111110",
-          "00000000"],
-    'T': ["11111111",
-          "00011000",
-          "00011000",
-          "00011000",
-          "00011000",
-          "00011000",
-          "00011000",
-          "00000000"],
-    'U': ["10000001",
-          "10000001",
-          "10000001",
-          "10000001",
-          "10000001",
-          "10000001",
-          "01000010",
-          "00111100"],
-    'V': ["10000001",
-          "10000001",
-          "10000001",
-          "10000001",
-          "01000010",
-          "01000010",
-          "00100100",
-          "00011000"],
-    'W': ["10000001",
-          "10000001",
-          "10000001",
-          "10000001",
-          "10011001",
-          "10100101",
-          "11000011",
-          "10000001"],
-    'X': ["10000001",
-          "01000010",
-          "00100100",
-          "00011000",
-          "00100100",
-          "01000010",
-          "10000001",
-          "00000000"],
-    'Y': ["10000001",
-          "01000010",
-          "00100100",
-          "00011000",
-          "00011000",
-          "00011000",
-          "00011000",
-          "00000000"],
-    'Z': ["11111111",
-          "00000010",
-          "00000100",
-          "00001000",
-          "00010000",
-          "00100000",
-          "11111111",
-          "00000000"]
-}
-
-def hex_to_rgba(hex_str):
-    hex_str = hex_str.lstrip('#')
-    if len(hex_str) == 6:
-        r, g, b = int(hex_str[0:2], 16), int(hex_str[2:4], 16), int(hex_str[4:6], 16)
-        return (r, g, b, 255)
-    elif len(hex_str) == 8:
-        r, g, b, a = int(hex_str[0:2], 16), int(hex_str[2:4], 16), int(hex_str[4:6], 16), int(hex_str[6:8], 16)
-        return (r, g, b, a)
-    else:
-        raise ValueError("Invalid hex color")
-
-
-
-
-def render_letter(letter, fg, bg, scale):
-    grid = FONT.get(letter.upper(), FONT['C'])
-    w, h = len(grid[0]), len(grid)
-    img = [[bg for _ in range(w * scale)] for _ in range(h * scale)]
-    radius = scale * 0.3
-    for gy, row in enumerate(grid):
-        for gx, cell in enumerate(row):
-            if cell == '1':
-                for sy in range(scale):
-                    for sx in range(scale):
-                        px = gx * scale + sx
-                        py = gy * scale + sy
-                        img[py][px] = fg
-    return img
-
-def combine_letters(l1, l2, fg, bg, size, mode):
-    if mode == 'sbs':
-        letter_width = size // 2
-        scale = letter_width // 8
-    else:
-        scale = size // 8
-    img1 = render_letter(l1, fg, bg, scale)
-    img2 = render_letter(l2, fg, bg, scale)
-    h, w = len(img1), len(img1[0])
-    canvas = [[bg for _ in range(size)] for _ in range(size)]
-    if mode == 'sbs':
-        off_y = (size - h) // 2
-        off_x1 = (letter_width - w) // 2
-        off_x2 = letter_width + (letter_width - w) // 2
-        for y in range(h):
-            for x in range(w):
-                canvas[off_y + y][off_x1 + x] = img1[y][x]
-                canvas[off_y + y][off_x2 + x] = img2[y][x]
-    else:
-        off_y = (size - h) // 2
-        off_x = (size - w) // 2
-        for y in range(h):
-            for x in range(w):
-                if img1[y][x] != bg:
-                    canvas[off_y + y][off_x + x] = img1[y][x]
-                if img2[y][x] != bg:
-                    canvas[off_y + y][off_x + x] = img2[y][x]
-    return canvas
-
-def write_png(path, pixels):
-    height, width = len(pixels), len(pixels[0])
-    raw_data = b''.join(b'\x00' + b''.join(struct.pack('BBBB', *px) for px in row) for row in pixels)
-    def chunk(tag, data):
-        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
-    png = b'\x89PNG\r\n\x1a\n'
-    png += chunk(b'IHDR', struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
-    png += chunk(b'IDAT', zlib.compress(raw_data, 9))
-    png += chunk(b'IEND', b'')
-    with open(path, 'wb') as f:
-        f.write(png)
-
-def make_icon(path, base_pixels):
-    sizes = [256, 128, 64, 32, 16]
-    images = []
-    for s in sizes:
-        factor = len(base_pixels) // s
-        small = [[base_pixels[y*factor][x*factor] for x in range(s)] for y in range(s)]
-        raw_data = b''.join(b'\x00' + b''.join(struct.pack('BBBB', *px) for px in row) for row in small)
-        def chunk(tag, data):
-            return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
-        png_data = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack(">IIBBBBB", s, s, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(raw_data, 9)) + chunk(b'IEND', b'')
-        images.append(png_data)
-    ico = struct.pack('<HHH', 0, 1, len(images))
-    offset = 6 + len(images) * 16
-    for i, img in enumerate(images):
-        w = h = sizes[i] if sizes[i] < 256 else 0
-        ico += struct.pack('<BBBBHHII', w, h, 0, 0, 1, 32, len(img), offset)
-        offset += len(img)
-    for img in images:
-        ico += img
-    with open(path, 'wb') as f:
-        f.write(ico)
-
-
-
-# Global defaults
-DEFAULT_FIRST = "X"
-DEFAULT_SECOND = "Y"
-def get_two_letters(input_str):
-    global DEFAULT_FIRST, DEFAULT_SECOND
-    if not isinstance(input_str, str):
-        input_str = str(input_str or "")
-    
-    input_str = input_str.strip()    
-    # Empty - defaults
-    if not input_str:
-        return DEFAULT_FIRST, DEFAULT_SECOND
-    # Manual split into words (alphabetic chunks, unicode-aware)
-    words = []
-    current = []
-    for ch in input_str:
-        if ch.isalpha():  # True for accented and non-Latin letters too
-            current.append(ch)
-        else:
-            if current:
-                words.append("".join(current))
-                current = []
-    if current:
-        words.append("".join(current))
-    # Pick letters based on rules
-    if len(words) >= 2:
-        return words[0][0].upper(), words[1][0].upper()
-    elif len(words) == 1:
-        if len(words[0]) >= 2:
-            return words[0][0].upper(), words[0][1].upper()
-        else:
-            return words[0][0].upper(), DEFAULT_SECOND
-    else:
-        return DEFAULT_FIRST, DEFAULT_SECOND
-
-def crossos_make_icon(word, fg_hex, bg_hex, placement='sbs', size=256, path='logo'):
-    
-    l1, l2 = get_two_letters(word)
-    fmt=path[-3:]
-    fg, bg = hex_to_rgba(fg_hex), hex_to_rgba(bg_hex)
-    pixels = combine_letters(l1, l2, fg, bg, size, placement)
-    if fmt == 'png':
-        write_png(f"{path}", pixels)
-    elif fmt == 'ico':
-        make_icon(f"{path}", pixels)
-    else:
-        raise ValueError("Format must be 'png' or 'ico'")
-
-
-###***END***  #####ENGINE1 Blocky and pixely+++++++++++++
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#####ENGINE2 better+++++++++++++
-
-
-
 #!/usr/bin/env python3
 # Pure-stdlib logo generator with anti-aliased vector strokes.
 # - Accepts a string, extracts first 2 letters of first 2 words (or first 2 of one word)
@@ -1122,20 +730,95 @@ def draw_disk(mask, w, h, cx, cy, r):
                 mask[base + x] = 1.0  # binary coverage; AA comes from downsample
 
 
-def draw_thick_segment(mask, w, h, x1, y1, x2, y2, radius):
-    """Draw a thick line segment by splatting overlapping disks along the path."""
-    seg_len = math.hypot(x2 - x1, y2 - y1)
-    if seg_len == 0:
-        draw_disk(mask, w, h, x1, y1, radius)
+def swept_points(x1, y1, x2, y2, n=8, strength=1.0):
+    """Return n points along the segment with a smooth perpendicular bow.
+
+    `strength` is in pixels and controls how much the stroke bows outward
+    (positive bows to one side; the caller can invert sign to flip).
+    """
+    pts = []
+    dx = x2 - x1
+    dy = y2 - y1
+    seg_len = math.hypot(dx, dy)
+    if seg_len < 1e-6:
+        return [(x1, y1)] * n
+    nx = -dy / seg_len
+    ny = dx / seg_len
+    for i in range(n):
+        t = i / (n - 1)
+        bx = x1 + dx * t
+        by = y1 + dy * t
+        # smooth bell-shaped bow: sin(pi * t)
+        off = math.sin(math.pi * t) * strength
+        pts.append((bx + nx * off, by + ny * off))
+    return pts
+
+
+def draw_thick_segment(mask, w, h, x1, y1, x2, y2, radius, start_radius=None, end_radius=None, ox=0.0, oy=0.0):
+    """Draw a thick line segment with optional taper and offset.
+
+    - `start_radius`, `end_radius`: if provided the local radius is linearly
+      interpolated along the segment, allowing tapered strokes.
+    - `ox`, `oy`: apply a constant offset to the whole segment (useful for
+      rendering a subtle shadow/brush offset into a separate mask).
+    """
+    # Apply offset to the segment endpoints
+    if ox != 0.0 or oy != 0.0:
+        x1 += ox; x2 += ox; y1 += oy; y2 += oy
+
+    dx = x2 - x1
+    dy = y2 - y1
+    seg_len2 = dx * dx + dy * dy
+    if seg_len2 == 0:
+        draw_disk(mask, w, h, x1, y1, radius if start_radius is None else start_radius)
         return
-    # step at about radius/2 for solid coverage
-    step = max(1.0, radius * 0.5)
-    n = int(seg_len / step) + 1
-    for i in range(n + 1):
-        t = i / n
-        cx = lerp(x1, x2, t)
-        cy = lerp(y1, y2, t)
-        draw_disk(mask, w, h, cx, cy, radius)
+
+    # bounding box expanded by largest radius + 1 for AA
+    max_r = radius
+    if start_radius is not None:
+        max_r = max(max_r, start_radius)
+    if end_radius is not None:
+        max_r = max(max_r, end_radius)
+    x0 = int(math.floor(min(x1, x2) - max_r - 1))
+    x1i = int(math.ceil (max(x1, x2) + max_r + 1))
+    y0 = int(math.floor(min(y1, y2) - max_r - 1))
+    y1i = int(math.ceil (max(y1, y2) + max_r + 1))
+
+    inv_seg_len2 = 1.0 / seg_len2
+    for yy in range(y0, y1i + 1):
+        if yy < 0 or yy >= h:
+            continue
+        py = yy + 0.5
+        base = yy * w
+        for xx in range(x0, x1i + 1):
+            if xx < 0 or xx >= w:
+                continue
+            px = xx + 0.5
+            # Project point onto segment (param t in [0,1])
+            t = ((px - x1) * dx + (py - y1) * dy) * inv_seg_len2
+            if t <= 0.0:
+                cx = x1
+                cy = y1
+            elif t >= 1.0:
+                cx = x2
+                cy = y2
+            else:
+                cx = x1 + t * dx
+                cy = y1 + t * dy
+            # radius at this point (allow taper)
+            if start_radius is not None and end_radius is not None:
+                r_here = lerp(start_radius, end_radius, t)
+            else:
+                r_here = radius
+            dist = math.hypot(px - cx, py - cy)
+            # linear AA over 1.0 hi-res pixel
+            val = (r_here + 0.5 - dist)
+            if val <= 0.0:
+                continue
+            cov = 1.0 if val > 1.0 else val
+            idx = base + xx
+            if mask[idx] < cov:
+                mask[idx] = cov
 
 
 def render_glyphs_to_mask(letters, size, stroke_px=22, spacing=0.12, ss=4):
@@ -1148,10 +831,13 @@ def render_glyphs_to_mask(letters, size, stroke_px=22, spacing=0.12, ss=4):
     W = size * ss
     H = size * ss
     mask = [0.0] * (W * H)
+    # subtle shadow/brush pass and inner highlight
+    shadow_mask = [0.0] * (W * H)
+    highlight_mask = [0.0] * (W * H)
 
     # Layout: normalize glyph height to 1.0 box; scale to fit into vertical bounds
     # Leave uniform paddings
-    pad = 0.12  # normalized padding around
+    pad = 0.05  # normalized padding around (small edge on each side)
     box_h = 1.0 - 2 * pad
     # Compute total advance width
     advances = []
@@ -1170,24 +856,34 @@ def render_glyphs_to_mask(letters, size, stroke_px=22, spacing=0.12, ss=4):
     if advances:
         total_w -= spacing  # no trailing spacing
 
-    # Scale so that glyphs fit horizontally with padding
-    scale = (1.0 - 2 * pad) / max(1e-6, total_w)
-    # Convert normalized coords to pixels
-    def NX(x): return (pad + x) * scale * size * ss
-    def NY(y): return (pad + y) * box_h * size * ss
+    # Ensure a minimum pixel edge (so letters never touch the image border)
+    min_edge_px = 4  # in final pixels
+    min_edge_hi = min_edge_px * ss
 
-    # Baseline and centering vertically
-    # Our glyphs use [0..1] y; map TOP~pad to BOTTOM~(1-pad)
-    y_offset = (H - box_h * size * ss) * 0.5
+    # Compute pad in hi-res pixels (at least min_edge_hi)
+    pad_px = max(int(round(pad * size * ss)), min_edge_hi)
+
+    # Add a tiny extra hi-res padding on the right to guarantee a visible edge
+    extra_right_hi = ss  # one final output pixel worth of extra hi-res padding
+
+    # Scale so that glyphs fit horizontally into the available pixel width
+    pad_left = pad_px
+    pad_right = pad_px + extra_right_hi
+    avail_w = max(1, W - pad_left - pad_right)
+    scale_px = avail_w / max(1e-6, total_w)
+
+    # Convert normalized coords to pixels (within inner box)
+    def NX(x): return x * scale_px
+    def NY(y): return y * (H - pad_left - pad_right)
 
     # Stroke radius in hi-res pixels
     radius = stroke_px * ss / 2.0
 
-    # Draw each glyph
-    x_cursor = (W - total_w * scale * size * ss) * 0.5
+    # Draw each glyph; start at left pad (shifted 4 pixels left)
+    x_cursor = pad_left - 4 * ss
     for ch, adv in advances:
         if ch == " ":
-            x_cursor += adv * scale * size * ss + spacing * 0.6 * scale * size * ss
+            x_cursor += adv * scale_px + spacing * 0.6 * scale_px
             #reset radius after a space
             radius = stroke_px * ss / 2.0
             continue
@@ -1196,15 +892,43 @@ def render_glyphs_to_mask(letters, size, stroke_px=22, spacing=0.12, ss=4):
             x_cursor += spacing * scale * size * ss
             continue
         for (x1, y1, x2, y2) in g["strokes"]:
-            X1 = x_cursor + NX(x1) - NX(0)
-            X2 = x_cursor + NX(x2) - NX(0)
-            Y1 = y_offset + NY(y1)
-            Y2 = y_offset + NY(y2)
-            draw_thick_segment(mask, W, H, X1, Y1, X2, Y2, radius)
-        x_cursor += g["w"] * scale * size * ss + spacing * scale * size * ss
+            X1 = x_cursor + NX(x1)
+            X2 = x_cursor + NX(x2)
+            Y1 = pad_px + NY(y1)
+            Y2 = pad_px + NY(y2)
+            # compute perpendicular for subtle offset shadow
+            dx_px = X2 - X1
+            dy_px = Y2 - Y1
+            seg_len = math.hypot(dx_px, dy_px)
+            if seg_len > 1e-6:
+                nx = -dy_px / seg_len
+                ny = dx_px / seg_len
+            else:
+                nx = 0.0
+                ny = 0.0
+            # shadow: slightly offset in the perpendicular direction and a bit thinner
+            draw_thick_segment(shadow_mask, W, H,
+                               X1 + nx * radius * 0.35, Y1 + ny * radius * 0.35,
+                               X2 + nx * radius * 0.35, Y2 + ny * radius * 0.35,
+                               radius * 0.9,
+                               start_radius=radius * 0.9,
+                               end_radius=radius * 0.85)
+            # main stroke: tapered for an artistic brush-like profile
+            draw_thick_segment(mask, W, H, X1, Y1, X2, Y2, radius,
+                               start_radius=radius * 1.15,
+                               end_radius=radius * 0.6)
+            # inner highlight: thin stroke offset slightly opposite the shadow
+            draw_thick_segment(highlight_mask, W, H,
+                               X1 - nx * radius * 0.15, Y1 - ny * radius * 0.15,
+                               X2 - nx * radius * 0.15, Y2 - ny * radius * 0.15,
+                               radius * 0.4,
+                               start_radius=radius * 0.35,
+                               end_radius=radius * 0.25)
+        x_cursor += g["w"] * scale_px + spacing * scale_px
         #reduce radius for the second letter
         radius = (stroke_px*reduction_factor_for_second_letter) * ss / 2.0
-    return mask, W, H
+    # Return three hi-res masks for separate compositing
+    return mask, shadow_mask, highlight_mask, W, H
 
 
 # --------------------------
@@ -1280,17 +1004,44 @@ def crossos_make_icon_artsy(text: str,
     - supersample: supersampling factor for antialiasing (4 is good)
     """
     letters = extract_initial_letters(text)
-    # Render supersampled mask
-    mask_hi, W, H = render_glyphs_to_mask(letters, size=size, stroke_px=stroke_px, spacing=0.19, ss=supersample)
-    # Downsample to final mask
+    # Render supersampled masks (main, shadow, highlight)
+    mask_hi, shadow_hi, highlight_hi, W, H = render_glyphs_to_mask(letters, size=size, stroke_px=stroke_px, spacing=0.06, ss=supersample)
+    # Downsample each mask to final size
     mask, w, h = downsample_mask(mask_hi, W, H, supersample)
-    # Compose RGBA
+    shadow, _, _ = downsample_mask(shadow_hi, W, H, supersample)
+    highlight, _, _ = downsample_mask(highlight_hi, W, H, supersample)
+
+    # Precompute darker and lighter foreground variations
+    def darken(col, amt=40):
+        return (max(0, col[0] - amt), max(0, col[1] - amt), max(0, col[2] - amt), col[3])
+    def lighten(col, amt=40):
+        return (min(255, col[0] + amt), min(255, col[1] + amt), min(255, col[2] + amt), col[3])
+    dark_fg = darken(fg, 36)
+    light_fg = lighten(fg, 56)
+
+    # Compose RGBA using layered masks: shadow -> main -> highlight
     out = bytearray(w * h * 4)
     for y in range(h):
         for x in range(w):
-            a = clamp(mask[y * w + x], 0.0, 1.0)
-            r, g, b, a_out = compose_rgba_over(bg, fg, a)
-            i = (y * w + x) * 4
+            idx = y * w + x
+            sh_a = clamp(shadow[idx], 0.0, 1.0)
+            ma_a = clamp(mask[idx], 0.0, 1.0)
+            hi_a = clamp(highlight[idx], 0.0, 1.0)
+
+            # start with background
+            bg_col = bg
+            # shadow (subtle darkening)
+            if sh_a > 0.001:
+                bg_col = compose_rgba_over(bg_col, dark_fg, sh_a * 0.55)
+            # main stroke
+            if ma_a > 0.001:
+                bg_col = compose_rgba_over(bg_col, fg, ma_a)
+            # highlight on top
+            if hi_a > 0.001:
+                bg_col = compose_rgba_over(bg_col, light_fg, hi_a * 0.6)
+
+            r, g, b, a_out = bg_col
+            i = idx * 4
             out[i + 0] = r
             out[i + 1] = g
             out[i + 2] = b
@@ -1315,11 +1066,7 @@ def crossos_make_icon_artsy(text: str,
 
 
 
-
-
-#####END ENGINE2 Blocky and pixely+++++++++++++
-
-
+### END engine3
 
 
 

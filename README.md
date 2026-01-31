@@ -60,19 +60,27 @@ Gran one of the several read-to use install scripts in the "installers" folder a
 ```bash
 # Clone the repo
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
-
 # Create the venv & install requirements
-SETVENV .
-
+SETVENV ComfyUI
 # Create a desktop shortcut
-DESKICO "ComfyUI" main.py
+DESKICO "ComfyUI" ComfyUI/main.py --cpu --auto-launch 
 ```
 
 ### 2. Run It
 ```bash
 python pynst.py install.pynst.txt ./my_app
 ```
-**Done.** You now have a fully installed application with a desktop icon.
+**Done.** You now have a fully installed application with a desktop icon. Repeat this as many times as you like or on different locations... to remove it? just delete the icon and the folder you defined (./my_app) and its GONE!
+
+
+**Actual real world example**
+
+Pynst comes with batteries included! check out the installers folder for ready to use pynst recipes!. To install a full fledged cream of the crop ComfyUI with all accelerators just use the provided file:
+
+```bash
+python pynst.py  installers/comfy_installer_rtx_full.pynst.txt ./my_comfy
+```
+
 
 ---
 

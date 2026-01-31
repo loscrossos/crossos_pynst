@@ -4,16 +4,16 @@
 
 **One file. All platforms. Any Python project.**
 
-CrossOS Pynst is a **cross-platform (Windows, Linux, macOS)** single-file Python project manager. It automates the entire lifecycle of a Python application: installation, updates, repairs, and extensions.
+CrossOS Pynst is a **cross-platform (Windows, Linux, macOS)** Python project manager contained in a single small python file. It automates the entire lifecycle of a Python application: installation, updates, repairs, and extensions.
 
-From simple scripts to complex AI pipelines like ComfyUI or WAN2GP, Pynst handles the heavy lifting—cloning repos, building venvs, installing dependencies, and creating desktop shortcuts—with a single command.
+From simple scripts to complex AI pipelines like ComfyUI or WAN2GP, Pynst handles the heavy lifting: cloning repos, building venvs, installing dependencies, and creating desktop shortcuts. All in your hands with a single command.
 
 ## Why Pynst?
 
-In the world of AI Python projects are the gold standard but they are difficult to install for newbies and even for pros they are complex and cumbersome. There has been a new wave of "one click installers" and intsall managers. The problem is usually one of those: 
+In the world of AI, Python projects are the gold standard but they are difficult to install for newbies and even for pros they are complex and cumbersome. There has been a new wave of "one click installers" and intsall managers. The problem is usually one of those: 
 * you need to disable security features in your OS ("so guys the first we do is disable security...")
 * Some obscure installer does thing in the background but does not tell you what.
-* even if they tell you the installer installs lots of things you might not want or from strnge sources
+* even if they tell you the installer installs lots of things you might not want or from strange sources you can not see or change.
 * you are very dependent on the author to update with new libraries or projects and can not do that yourself in an easy way.
 * the instructions only work on linux... 
 * if something breaks there is no way to repair it
@@ -22,21 +22,25 @@ In the world of AI Python projects are the gold standard but they are difficult 
 wouldnt it be great if all that was solved?
 
 ### The "Sweet Spot" of Installation
-Pynst bridges the gap between fragile manual instructions and heavy setupd and customization.
+Pynst bridges the gap between fragile manual instructions, heavy setup and customization.
 
-| Method | Reproducible? | Cross-Platform? | Secure/Auditable? | Expandable? |
-| :--- | :---: | :---: | :---: | :---: |
-| **Manual Clicking** | ❌ | ❌ | ✅ | ✅ |
-| **One-Click / Managers**| ❌ | ❌ | ⚠️ (Obscure) | ❌ |
-| **Bash / Batch Scripts** | ❌ | ❌ | ✅ | ⚠️ (Complex) |
-| **Docker** | ✅ | ✅ | ✅ | ✅ |
-| **CrossOS Pynst** | ✅ | ✅ | ✅ (Plain Text) | ✅ |
+| Method                    | Reproducible? | Cross-Platform?   | Secure/Auditable? | Expandable?  | Lightweight? |
+| :---                      | :---:         | :---:             | :---:             | :---:        |:---:         |    
+| **Manual Clicking**       | ❌            | ❌                | ✅                | ✅           |✅            |
+| **One-Click / Managers**  | ✅            | ❌                | ⚠️ (Obscure)      | ❌           | ⚠️ (Complex)|
+| **Bash / Batch Scripts**  | ✅            | ❌                | ⚠️ (Complex)      | ⚠️ (Complex) |✅           |
+| **Docker**                | ✅            | ✅                | ✅                | ⚠️ (Complex) |❌           |
+| **CrossOS Pynst**         | ✅            | ✅                | ✅ (Plain Text)   | ✅           |✅           |
+
+---
+
+## Installation
 
 ### Key Features
 *   **Single File, Zero Dependencies**: No `pip install` required. Just `python pynst.py`.
 *   **Indestructible Environments**: Breaks happen. Use `--revenv` to nuke and rebuild the virtual environment instantly. It's "Have you tried turning it off and on again?" for your Python setup.
 *   **Write Once, Run Anywhere**: The same instruction file works on Windows, Linux, and macOS.
-*   **Native Desktop Integration**: Automatically generates clickable **native Desktop Icons** for your scripts.
+*   **Native Desktop Integration**: Automatically generates clickable **native Desktop Icons** for your projects. They feel like a native app but simply deleting the icon and install dir wipes everything.. no system installation!
 *   **Smart Dependency Management**:
     *   **`REQSCAN`**: Recursively finds and installs `requirements.txt` from all sub-folders (perfect for plugin systems).
     *   **`RFILTER`**: Global package filtering to solve dependency hell (e.g., "install everything *except* Torch").
@@ -47,7 +51,8 @@ Pynst bridges the gap between fragile manual instructions and heavy setupd and c
 ## 🚀 Quick Start
 
 ### 1. The "Hello World" Example
-Save this as `install.pynst.txt`:
+
+Gran one of the several read-to use install scripts in the "installers" folder and use them OR save this as `install.pynst.txt`:
 
 ```bash
 # Clone the repo

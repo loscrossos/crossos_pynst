@@ -6,7 +6,7 @@
 
 CrossOS Pynst is a **cross-platform (Windows, Linux, macOS)** Python project manager contained in a single small python file. It automates the entire lifecycle of a Python application: installation, updates, repairs, and extensions.
 
-From simple scripts to complex AI pipelines like ComfyUI or WAN2GP, Pynst handles the heavy lifting: cloning repos, building venvs, installing dependencies, and creating desktop shortcuts. All in your hands with a single command.
+From simple scripts to complex AI installations like ComfyUI or WAN2GP, Pynst handles the heavy lifting for you: cloning repos, building venvs, installing dependencies, and creating desktop shortcuts. All in your hands with a single command. Every single step of what is happening defined in a simple, easily readable (or editable) text file.
 
 Pynst is for hobbyist to pros.. To be fair: its not for the total beginner. You should know how to use the command line. but thats it.
 

@@ -20,7 +20,7 @@ In the world of AI, Python projects are the gold standard but they are difficult
 * **Control** even if they tell you the installer installs lots of things you might not want or from strange sources you can not see or change.
 * **Dependency** you are very dependent on the author to update with new libraries or projects and can not do that yourself in an easy way.
 * **Portability** the instructions only work on linux... 
-* **Fragility** if something in your installation breaks there is no way to repair it
+* **Robustness** if something in your installation breaks there is no way to repair it
 * **Flexibility** and hey i already installed Comfy with sweat and tears last year.. why cant you just repair my current installation??
 * **Customization** yea that installer installs abc.. but you also want to have defghijklm! but have to do it manually afterwards... manually... what is this.... the middle ages?? i like my cofee like i like my installers: customizable and open source!
 
@@ -30,21 +30,28 @@ wouldnt it be great if all that was solved?
 ### The "Sweet Spot" of Installation
 Pynst bridges the gap between fragile manual instructions, heavy setup and customization.
 
-| Method                    | EasyUSe| Safety| Reproducibility| Transparency| Control | Dependency| Portability| Fragility | Flexibility | Customization |
-| :---                      | :---:  |:---:  | :---:          | :---:       | :---:   | :---:     | :---:      | :---:     | :---:       | :---:         |
-| **Manual Clicking**       | ❌    | ✅    | ❌             | ✅         | ✅      | ❌       | ❌         | ❌       | ✅          | ✅            |
-| **One-Click / Managers**  | ✅    | ⚠️    | ✅             | ❌         | ❌      | ❌       | ❌         | ❌       | ❌          | ❌            |
-| **Bash / Batch Scripts**  | ✅    | ⚠️    | ✅             | ⚠️         | ⚠️      | ⚠️       | ❌         | ❌       | ⚠️          | ⚠️            |
-| **Docker**                | ❌    | ✅    | ✅             | ✅         | ⚠️      | ✅       | ✅         | ✅       | ⚠️          | ⚠️            |
-| **CrossOS Pynst**         | ✅    | ✅    | ✅             | ✅         | ✅      | ✅       | ✅         | ✅       | ✅          | ✅            |
+ Feature             | CrossOS Pynst | Docker | Bash Scripts | One-Click | Manual |
+ :---                | :---:         | :---:  | :---:        | :---:     | :---:  |
+ **Ease of Use**     | ✅            | ❌     | ✅           | ✅        | ❌     |
+ **Security**        | ✅            | ✅     | ⚠️           | ⚠️        | ✅     |
+ **Reproducibility** | ✅            | ✅     | ✅           | ✅        | ❌     |
+ **Transparency**    | ✅            | ⚠️     | ⚠️           | ❌        | ✅     |
+ **Control**         | ✅            | ⚠️     | ⚠️           | ❌        | ✅     |
+ **Dependency**      | ✅            | ✅     | ⚠️           | ❌        | ❌     |
+ **Portability**     | ✅            | ✅     | ❌           | ❌        | ❌     |
+ **Robustness**      | ✅            | ✅     | ❌           | ❌        | ❌     |
+ **Flexibility**     | ✅            | ⚠️     | ⚠️           | ❌        | ✅     |
+ **Customization**   | ✅            | ⚠️     | ⚠️           | ❌        | ✅     |
+  
 
 ---
 
 ## Installation------
 
 ### Key Features
-*   **Single File, Zero Dependencies**: No `pip install` required. Just `python pynst.py`.
-*   **Indestructible Environments**: Breaks happen. Use `--revenv` to nuke and rebuild the virtual environment instantly. It's "Have you tried turning it off and on again?" for your Python setup.
+*   **Single File, Zero Dependencies**: No `pip install` required. Just grab the file and run `python pynst.py`. Everything is contained there. bring it to your friends and casually install a sophisticated comfy on any PC (Windows, Linux or Mac!)!
+* **Customizable!** BYOB! Build your own installation! This is configuration-as-code in its best form. You can edit the instruction file (an easy to understand text file) with your own plugins and models and reinstall your whole comfy any time you like as often as you want! you can have one installation for daily use, another for testing new things, another for your Grandma who is coming to visit this weekend!
+*   **Iron-Clad Environments**: Breaks happen. Use `--revenv` to nuke and rebuild the virtual environment instantly. It's "Have you tried turning it off and on again?" for your Python setup.
 *   **Write Once, Run Anywhere**: The same instruction file works on Windows, Linux, and macOS.
 *   **Native Desktop Integration**: Automatically generates clickable **native Desktop Icons** for your projects. They feel like a native app but simply deleting the icon and install dir wipes everything.. no system installation!
 *   **Smart Dependency Management**:
@@ -56,14 +63,21 @@ Pynst bridges the gap between fragile manual instructions, heavy setup and custo
 
 ## 🚀 Quick Start
 
+Basically the whole principle is that the file `python pynst.py` is your all-in-one installer. 
+
+What it installs depends on instruction files (affectionally called pynsts). A Pynst instruction file is a simple text file with commands one after another. You can grab read-to-use examples in the `installers` folder, build your own or edit the existing ones to your liking.
+
+Lets build a simple example!
+
+
 ### 1. The "Hello World" Example
 
-Gran one of the several read-to use install scripts in the "installers" folder and use them OR save this as `install.pynst.txt`:
+Grab one of the several read-to use install scripts in the "installers" folder and use them OR save this as `install.pynst.txt`:
 
 ```bash
 # Clone the repo
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
-# Create the venv & install requirements
+# Create a venv in the ComfyUI folder. Requirements are installed automatically if found on that folder.
 SETVENV ComfyUI
 # Create a desktop shortcut
 DESKICO "ComfyUI" ComfyUI/main.py --cpu --auto-launch 
@@ -80,7 +94,7 @@ python pynst.py install.pynst.txt ./my_app
 
 Pynst comes with batteries included! 
 
-check out the installers folder for ready to use pynst recipes!. To install a full fledged cream of the crop ComfyUI with all accelerators just use the provided file:
+check out the installers folder for ready to use pynst recipes!. To install a full fledged cream of the crop ComfyUI with all accelerators for Nvidia RTX cards you can just use the provided file:
 
 ```bash
 python pynst.py  installers/comfy_installer_rtx_full.pynst.txt ./my_comfy
@@ -104,7 +118,7 @@ python pynst.py install.pynst.txt ./my_app --revenv
 ```
 
 **Safe Update ("Senso" Mode)**
-Update plugins and files *without* touching the core code.
+Update plugins and files *without* touching or updating code.
 ```bash
 python pynst.py install.pynst.txt ./my_app --senso
 ```

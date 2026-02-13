@@ -46,7 +46,7 @@ Pynst bridges the gap between fragile manual instructions, heavy setup and custo
 
 ---
 
-## Installation------
+## Installation
 
 ### Key Features
 *   **Single File, Zero Dependencies**: No `pip install` required. Just grab the file and run `python pynst.py`. Everything is contained there. bring it to your friends and casually install a sophisticated comfy on any PC (Windows, Linux or Mac!)!

@@ -12,14 +12,17 @@ Pynst is for hobbyist to pros.. To be fair: its not for the total beginner. You 
 
 ## Why Pynst?
 
-In the world of AI, Python projects are the gold standard but they are difficult to install for newbies and even for pros they are complex and cumbersome. There has been a new wave of "one click installers" and intsall managers. The problem is usually one of those: 
-* you need to disable security features in your OS ("so guys the first we do is disable security...")
-* Some obscure installer does thing in the background but does not tell you what.
-* even if they tell you the installer installs lots of things you might not want or from strange sources you can not see or change.
-* you are very dependent on the author to update with new libraries or projects and can not do that yourself in an easy way.
-* the instructions only work on linux... 
-* if something breaks there is no way to repair it
-* and hey i already installed Comfy with sweat and tears last year.. why cant you just repair my current installation??
+In the world of AI, Python projects are the gold standard but they are difficult to install for newbies and even for pros they are complex and cumbersome. There has been a new wave of "one click installers" and install managers. The problem is usually one of those: 
+* **ease of use** complex instructions make it difficult to follow and if you missclick, you realize the error several steps after when you are knee deep in dependency hell.
+* **Security** you need to disable security features in your OS ("hi guys welcome to my channel, the first we do is disable security, else this installer does not work...")
+* **Reproducibility** That guy shares his workflow and tells you the libraries names but who do you get them from? where do these files go? why is Gamorra?
+* **Transparency** Some obscure installer does *things* in the background but does not tell you what.
+* **Control** even if they tell you the installer installs lots of things you might not want or from strange sources you can not see or change.
+* **Dependency** you are very dependent on the author to update with new libraries or projects and can not do that yourself in an easy way.
+* **Portability** the instructions only work on linux... 
+* **Fragility** if something in your installation breaks there is no way to repair it
+* **Flexibility** and hey i already installed Comfy with sweat and tears last year.. why cant you just repair my current installation??
+* **Customization** yea that installer installs abc.. but you also want to have defghijklm! but have to do it manually afterwards... manually... what is this.... the middle ages?? i like my cofee like i like my installers: customizable and open source!
 
 wouldnt it be great if all that was solved?
 
@@ -27,17 +30,17 @@ wouldnt it be great if all that was solved?
 ### The "Sweet Spot" of Installation
 Pynst bridges the gap between fragile manual instructions, heavy setup and customization.
 
-| Method                    | Reproducible? | Cross-Platform?   | Secure/Auditable? | Expandable?  | Lightweight? |
-| :---                      | :---:         | :---:             | :---:             | :---:        |:---:         |    
-| **Manual Clicking**       | ❌            | ❌                | ✅                | ✅           |✅            |
-| **One-Click / Managers**  | ✅            | ❌                | ⚠️ (Obscure)      | ❌           | ⚠️ (Complex)|
-| **Bash / Batch Scripts**  | ✅            | ❌                | ⚠️ (Complex)      | ⚠️ (Complex) |✅           |
-| **Docker**                | ✅            | ✅                | ✅                | ⚠️ (Complex) |❌           |
-| **CrossOS Pynst**         | ✅            | ✅                | ✅ (Plain Text)   | ✅           |✅           |
+| Method                    | EasyUSe| Safety| Reproducibility| Transparency| Control | Dependency| Portability| Fragility | Flexibility | Customization |
+| :---                      | :---:  |:---:  | :---:          | :---:       | :---:   | :---:     | :---:      | :---:     | :---:       | :---:         |
+| **Manual Clicking**       | ❌    | ✅    | ❌             | ✅         | ✅      | ❌       | ❌         | ❌       | ✅          | ✅            |
+| **One-Click / Managers**  | ✅    | ⚠️    | ✅             | ❌         | ❌      | ❌       | ❌         | ❌       | ❌          | ❌            |
+| **Bash / Batch Scripts**  | ✅    | ⚠️    | ✅             | ⚠️         | ⚠️      | ⚠️       | ❌         | ❌       | ⚠️          | ⚠️            |
+| **Docker**                | ❌    | ✅    | ✅             | ✅         | ⚠️      | ✅       | ✅         | ✅       | ⚠️          | ⚠️            |
+| **CrossOS Pynst**         | ✅    | ✅    | ✅             | ✅         | ✅      | ✅       | ✅         | ✅       | ✅          | ✅            |
 
 ---
 
-## Installation
+## Installation------
 
 ### Key Features
 *   **Single File, Zero Dependencies**: No `pip install` required. Just `python pynst.py`.

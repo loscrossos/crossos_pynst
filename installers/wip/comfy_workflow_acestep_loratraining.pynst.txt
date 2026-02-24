@@ -1,0 +1,4 @@
+GETFILE https://raw.githubusercontent.com/filliptm/ComfyUI-FL-AceStep-Training/refs/heads/master/workflow/Example-WF.json   ComfyUI/user/default/workflows/
+
+CLONEIT https://github.com/filliptm/ComfyUI-FL-AceStep-Training                                    ComfyUI/custom_nodes 
+REQSCAN ComfyUI/custom_nodes

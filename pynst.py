@@ -1241,6 +1241,7 @@ import shutil
 import tempfile
 import urllib.request
 import urllib.parse
+import urllib.error
 import ssl
 import platform
 import re
@@ -1882,7 +1883,12 @@ def download_to_temp(url: str) -> Path:
     # Try to download with default SSL context first
     try:
         urllib.request.urlretrieve(url, p)
-    except ssl.SSLError:
+    except (ssl.SSLError, urllib.error.URLError) as e:
+        # Check if it's an SSL certificate error
+        if isinstance(e, urllib.error.URLError) and not ('SSL' in str(e) or 'certificate' in str(e).lower()):
+            # Not an SSL error, re-raise
+            raise
+        
         # If SSL certificate verification fails, retry with unverified context
         log_warning(f"SSL certificate verification failed. Retrying with unverified context...")
         ssl_context = ssl._create_unverified_context()
@@ -2468,7 +2474,12 @@ def get_file_size(url: str, verbose: bool = False):
         try:
             with urllib.request.urlopen(req) as response:
                 length = response.getheader("Content-Length")
-        except ssl.SSLError:
+        except (ssl.SSLError, urllib.error.URLError) as e:
+            # Check if it's an SSL certificate error
+            if isinstance(e, urllib.error.URLError) and not ('SSL' in str(e) or 'certificate' in str(e).lower()):
+                # Not an SSL error, re-raise
+                raise
+            
             # If SSL certificate verification fails, retry with unverified context
             ssl_context = ssl._create_unverified_context()
             opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
@@ -2517,7 +2528,12 @@ def check_if_file_is_aready_downloaded(url: str, filepath: str, verbose=False) -
         try:
             with urllib.request.urlopen(req) as response:
                 length = response.getheader("Content-Length")
-        except ssl.SSLError:
+        except (ssl.SSLError, urllib.error.URLError) as e:
+            # Check if it's an SSL certificate error
+            if isinstance(e, urllib.error.URLError) and not ('SSL' in str(e) or 'certificate' in str(e).lower()):
+                # Not an SSL error, re-raise
+                raise
+            
             # If SSL certificate verification fails, retry with unverified context
             ssl_context = ssl._create_unverified_context()
             opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
@@ -2626,7 +2642,12 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
         # Try to download with default SSL context first
         try:
             urllib.request.urlretrieve(url, filepath_decoded, reporthook=progress)
-        except ssl.SSLError as ssl_err:
+        except (ssl.SSLError, urllib.error.URLError) as e:
+            # Check if it's an SSL certificate error
+            if isinstance(e, urllib.error.URLError) and not ('SSL' in str(e) or 'certificate' in str(e).lower()):
+                # Not an SSL error, re-raise
+                raise
+            
             # If SSL certificate verification fails, retry with unverified context
             log_warning(f"SSL certificate verification failed. Retrying with unverified context...")
             ssl_context = ssl._create_unverified_context()

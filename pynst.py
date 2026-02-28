@@ -1878,7 +1878,22 @@ def download_to_temp(url: str) -> Path:
         # Create an empty file to keep flow consistent
         p.write_text("", encoding="utf-8")
         return p
-    urllib.request.urlretrieve(url, p)
+    
+    # Try to download with default SSL context first
+    try:
+        urllib.request.urlretrieve(url, p)
+    except ssl.SSLError:
+        # If SSL certificate verification fails, retry with unverified context
+        log_warning(f"SSL certificate verification failed. Retrying with unverified context...")
+        ssl_context = ssl._create_unverified_context()
+        opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
+        urllib.request.install_opener(opener)
+        try:
+            urllib.request.urlretrieve(url, p)
+        finally:
+            # Restore default opener
+            urllib.request.install_opener(urllib.request.build_opener())
+    
     return p
 
 
@@ -2446,11 +2461,21 @@ def get_file_size(url: str, verbose: bool = False):
     """
     Returns the file size from server as (size_in_bytes, human_readable_str).
     If Content-Length is missing, returns (None, None).
+    Handles SSL certificate verification issues by falling back to unverified context.
     """
     try:
         req = urllib.request.Request(url, method="HEAD")
-        with urllib.request.urlopen(req) as response:
-            length = response.getheader("Content-Length")
+        try:
+            with urllib.request.urlopen(req) as response:
+                length = response.getheader("Content-Length")
+        except ssl.SSLError:
+            # If SSL certificate verification fails, retry with unverified context
+            ssl_context = ssl._create_unverified_context()
+            opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
+            with opener.open(req) as response:
+                length = response.getheader("Content-Length")
+            # Restore default opener
+            urllib.request.install_opener(urllib.request.build_opener())
 
         if length is None:
             if verbose:

@@ -3,7 +3,7 @@ CLONEIT https://github.com/comfy-org/ComfyUI .
 HASFILE ComfyUI/main.py
 SETVENV .
 PRINTIT This step may take some time depending on your connection.
-REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch290cu130_full.txt
+REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch2.10cu130_lite.txt
 REQSCAN .
 
 CLONEIT https://github.com/ltdrdata/ComfyUI-Manager ComfyUI/custom_nodes

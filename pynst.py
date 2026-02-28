@@ -1240,6 +1240,8 @@ import subprocess
 import shutil
 import tempfile
 import urllib.request
+import urllib.parse
+import ssl
 import platform
 import re
 from pathlib import Path
@@ -2482,12 +2484,22 @@ def check_if_file_is_aready_downloaded(url: str, filepath: str, verbose=False) -
     """
     Check if the file at 'filepath' exists and is complete compared to the file size on the server.
     Returns True if the file exists and matches the server size, else False.
+    Handles SSL certificate verification issues by falling back to unverified context.
     """
     try:
         # Send a HEAD request
         req = urllib.request.Request(url, method="HEAD")
-        with urllib.request.urlopen(req) as response:
-            length = response.getheader("Content-Length")
+        try:
+            with urllib.request.urlopen(req) as response:
+                length = response.getheader("Content-Length")
+        except ssl.SSLError:
+            # If SSL certificate verification fails, retry with unverified context
+            ssl_context = ssl._create_unverified_context()
+            opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
+            with opener.open(req) as response:
+                length = response.getheader("Content-Length")
+            # Restore default opener
+            urllib.request.install_opener(urllib.request.build_opener())
         
         if length is None:
             # Can't determine size from server
@@ -2556,6 +2568,7 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
     Download the file from 'url' into 'filepath'.
     Decodes %20 etc. in the local filename, but leaves the URL untouched.
     If show_progress is True, displays a progress bar with human-readable file size.
+    Handles SSL certificate verification issues by falling back to unverified context.
     """
     total_human = None  # will be set once we know total size
 
@@ -2585,7 +2598,21 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
         fname = urllib.parse.unquote(fname)
         filepath_decoded = os.path.join(dirpath, fname)
 
-        urllib.request.urlretrieve(url, filepath_decoded, reporthook=progress)
+        # Try to download with default SSL context first
+        try:
+            urllib.request.urlretrieve(url, filepath_decoded, reporthook=progress)
+        except ssl.SSLError as ssl_err:
+            # If SSL certificate verification fails, retry with unverified context
+            log_warning(f"SSL certificate verification failed. Retrying with unverified context...")
+            ssl_context = ssl._create_unverified_context()
+            opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
+            urllib.request.install_opener(opener)
+            try:
+                urllib.request.urlretrieve(url, filepath_decoded, reporthook=progress)
+            finally:
+                # Restore default opener
+                urllib.request.install_opener(urllib.request.build_opener())
+        
         return filepath_decoded
     except Exception as e:
         abort(f"download_file error: {e}")

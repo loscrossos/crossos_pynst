@@ -1271,6 +1271,8 @@ STARTOPTION_FORCEGITLATEST="gitlatest"
 STARTOPTION_FORCEGITSTABLE="gitstable"#TODO
 STARTOPTION_DEBUGTEST="debugtest"
 STARTOPTION_SAFECHECK="safecheck"
+STARTOPTION_FORCEUPDATE = "forceupdate"
+STARTOPTION_FORCEUPGRADE = "forceupgrade"
     
 DEFAULT_PYTHON_VERSION = "3.13"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
@@ -2147,7 +2149,7 @@ def pip_upgrade_pip(python_exec: str):
     run_cmd(cmd=[python_exec, "-m", "pip", "install",   "--upgrade", "pip"],task_description="upgrading pip")
     ensure_uv_is_installed(python_exec=python_exec)
 
-def pip_install_requirements_file(python_exec: str, req_file: Path, current_filters: list[str], fail_label: str, force_reinstall=False, opt_upgrade=False):
+def pip_install_requirements_file(python_exec: str, req_file: Path, current_filters: list[str], fail_label: str, force_reinstall=False, opt_update=False):
     """
     Install requirements from a (possibly remote) file with RFILTER applied.
     """
@@ -2169,7 +2171,7 @@ def pip_install_requirements_file(python_exec: str, req_file: Path, current_filt
     #pip install --upgrade --force-reinstall --no-warn-script-location -r requirements.txt
     cmd=[python_exec, "-m", "uv", "pip", "install"]
 
-    if opt_upgrade:
+    if opt_update:
         cmd.extend([ "--upgrade"])
     
     if force_reinstall:
@@ -2899,7 +2901,9 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                          force_gitpull_mode=False, 
                          in_custom_venv_name=None, 
                          in_operation_mode=STARTOPTION_MODE_REBUILD,
-                         precheck_updatemode=False):
+                         precheck_updatemode=False,
+                         pip_force_reinstall=False,
+                         opt_update=False):
     # Ensure git available (not strictly required for repair flow, but keep parity)
     require_tool("git", "Please install Git and ensure it is on your PATH.")
 
@@ -3062,6 +3066,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             pip_force_reinstall=False
             if cmd== CMD_PIPREQFILE_FORCE:
                 pip_force_reinstall=True
+
             log_task(f"{output_prefix}{cmd} installing: {req_file_to_install}")
             check_that_file_exists_or_abort(venv_python_exec,"python executable")
             if re.match(r"^https?://", req_file_to_install, re.I):
@@ -3330,6 +3335,7 @@ def printargs(args):
 
 
 
+
 # ========= Main =========
 def main():
     global STARTER_NO_DESKTOP, DRYRUN, VERBOSE, BACKUP
@@ -3353,6 +3359,8 @@ def main():
     parser.add_argument(f"--{STARTOPTION_NOBLOB}", action="store_true",help="Disable Filedownloads marked as blobs. This can reduce band width usage but some files will be missing")
     parser.add_argument(f"--{STARTOPTION_VENVNAME}",type=str,default=None,help="Provide a custom name for the virtual environment")
     parser.add_argument(f"--{STARTOPTION_FORCEGITLATEST}", action="store_true",help="Force git repository code to the newest version on the main/master branch (sometimes called 'nightly')")
+    parser.add_argument(f"--{STARTOPTION_FORCEUPDATE}", action="store_true", help="Force update or libraries installed by req files")
+    parser.add_argument(f"--{STARTOPTION_FORCEUPGRADE}", action="store_true", help="Force upgrade or reinstall of libraries installed by req files(stronger than update, will do a reinstall even if version is the same)")
     #parser.add_argument(f"--{STARTOPTION_FORCEGITSTABLE}", action="store_true",help="Force git repository code to the newest release version on the main/master branch (sometimes called 'release')")
     parser.add_argument(f"--{STARTOPTION_SAFECHECK}", action="store_true",help="Pre-Check if the comand will create a new installation or update an existing one. This will check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one.")
     parser.add_argument(f"--{STARTOPTION_DEBUGTEST}", action="store_true",help="Show debug info and quit")
@@ -3450,6 +3458,8 @@ def main():
         in_operation_mode=operation_mode, 
         force_gitpull_mode=getattr(args, STARTOPTION_FORCEGITLATEST),
         precheck_updatemode=getattr(args, STARTOPTION_SAFECHECK),
+        pip_force_reinstall=getattr(args, STARTOPTION_FORCEUPGRADE),
+        opt_update=getattr(args, STARTOPTION_FORCEUPDATE)
         )
     log_app_section(f"=== CrossOS {APP_NAME}: END ===")
 

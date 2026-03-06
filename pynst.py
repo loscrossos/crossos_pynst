@@ -3359,7 +3359,7 @@ def main():
     parser.add_argument(f"--{STARTOPTION_NOBLOB}", action="store_true",help="Disable Filedownloads marked as blobs. This can reduce band width usage but some files will be missing")
     parser.add_argument(f"--{STARTOPTION_VENVNAME}",type=str,default=None,help="Provide a custom name for the virtual environment")
     parser.add_argument(f"--{STARTOPTION_FORCEGITLATEST}", action="store_true",help="Force git repository code to the newest version on the main/master branch (sometimes called 'nightly')")
-    parser.add_argument(f"--{STARTOPTION_FORCEUPDATE}", action="store_true", help="Force update or libraries installed by req files")
+    parser.add_argument(f"--{STARTOPTION_FORCEUPDATE}", action="store_true", help="Update all libraries installed by req files the newest version allowed by the req file (will not do a reinstall if version is the same)")
     parser.add_argument(f"--{STARTOPTION_FORCEUPGRADE}", action="store_true", help="Force upgrade or reinstall of libraries installed by req files(stronger than update, will do a reinstall even if version is the same)")
     #parser.add_argument(f"--{STARTOPTION_FORCEGITSTABLE}", action="store_true",help="Force git repository code to the newest release version on the main/master branch (sometimes called 'release')")
     parser.add_argument(f"--{STARTOPTION_SAFECHECK}", action="store_true",help="Pre-Check if the comand will create a new installation or update an existing one. This will check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one.")

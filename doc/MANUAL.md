@@ -71,6 +71,8 @@ python pynst.py installers/my_app.pynst.txt ./portable_app --embedded
 
 | Option | Description |
 | :--- | :--- |
+| `--update` | **update**: updates all existing libraries to the newest and shinniest. |
+| `--upgrade` | **force upgrade**: Force upgrade or reinstall of libraries installed by req files(stronger than update, will do a reinstall even if version is the same). |
 | `--revenv` | **Rebuild Venv**: Deletes (or empties) the existing virtual environment and rebuilds it from scratch. Essential for fixing broken environments. |
 | `--senso` | **Senso Mode**: "Sensitive/Conservative" installation. Only adds missing plugins/files. Does NOT update code (`git pull`) or remove existing files. Safe for updates where you don't want to touch the core. |
 | `--embedded` | **Embedded Mode**: Treats the installation as a portable one using a `python_embedded` folder instead of a standard system venv. |

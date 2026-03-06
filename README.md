@@ -106,9 +106,15 @@ python pynst.py  installers/comfy_installer_rtx_full.pynst.txt ./my_comfy
 ## 🛠️ Common Operations
 
 **Update an Installation**
-Run the same file again. Pynst updates code and installs new requirements automatically.
+Run the same file again. Pynst updates code and installs new requirements automatically. Existing libraries only when really needed.
 ```bash
 python pynst.py install.pynst.txt ./my_app
+```
+
+update new requirements and all existing libraries to the newest and shinniest:
+
+```bash
+python pynst.py install.pynst.txt ./my_app --update
 ```
 
 **Repair a Broken Venv**

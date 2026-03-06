@@ -1271,8 +1271,8 @@ STARTOPTION_FORCEGITLATEST="gitlatest"
 STARTOPTION_FORCEGITSTABLE="gitstable"#TODO
 STARTOPTION_DEBUGTEST="debugtest"
 STARTOPTION_SAFECHECK="safecheck"
-STARTOPTION_FORCEUPDATE = "forceupdate"
-STARTOPTION_FORCEUPGRADE = "forceupgrade"
+STARTOPTION_FORCEUPDATE = "update"
+STARTOPTION_FORCEUPGRADE = "upgrade"
     
 DEFAULT_PYTHON_VERSION = "3.13"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
@@ -3073,7 +3073,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 req_file_to_install = download_to_temp(req_file_to_install)
             else:
                 req_file_to_install=(in_basedir / req_file_to_install) if not Path(req_file_to_install).is_file() else Path(req_file_to_install)
-            pip_install_requirements_file(python_exec=venv_python_exec, req_file=req_file_to_install,current_filters= rfilters, fail_label=req_file_to_install,force_reinstall=pip_force_reinstall)
+            pip_install_requirements_file(python_exec=venv_python_exec, req_file=req_file_to_install,current_filters= rfilters, fail_label=req_file_to_install,force_reinstall=pip_force_reinstall, opt_update=opt_update)
 
 
         elif cmd == CMD_REQSCAN:
@@ -3096,7 +3096,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 git_dir=path.parent
                 log_subtask(f"{cmd} Repository found: {git_dir}")
                 do_git_pull(git_dir, operating_mode=in_operation_mode, force_gitpull_mode=force_gitpull_mode)
-                pip_install_requirements_file(python_exec=venv_python_exec, req_file=req, current_filters=rfilters, fail_label=str(req))
+                pip_install_requirements_file(python_exec=venv_python_exec, req_file=req, current_filters=rfilters, fail_label=str(req), opt_update=opt_update)
                 
 
         elif  cmd == CMD_SHORTCUT_BASE_ICON or cmd == CMD_SHORTCUT_DESK_ICON or cmd == CMD_SHORTCUT_BASE_SCRIPT or cmd == CMD_SHORTCUT_DESK_SCRIPT :

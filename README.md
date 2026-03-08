@@ -65,7 +65,7 @@ Pynst bridges the gap between fragile manual instructions, heavy setup and custo
 
 Basically the whole principle is that the file `python pynst.py` is your all-in-one installer. 
 
-What it installs depends on instruction files (affectionally called pynsts). A Pynst instruction file is a simple text file with commands one after another. You can grab read-to-use examples in the `installers` folder, build your own or edit the existing ones to your liking.
+What it installs depends on instruction files (affectionally called pynstallers). A Pynst instruction file is a simple text file with commands one after another. You can grab read-to-use examples in the `installers` folder, build your own or edit the existing ones to your liking. They are also great if you want someone to help you install software. That person can easily write a pynstaller and pass it along so you get a perfect installation from the get go. Your very own "one click installer"-maker!
 
 Lets build a simple example!
 
@@ -99,6 +99,8 @@ check out the installers folder for ready to use pynst recipes!. To install a fu
 ```bash
 python pynst.py  installers/comfy_installer_rtx_full.pynst.txt ./my_comfy
 ```
+
+Check out the [ComfyUI Pynstaller Tutorial](doc/tutorial_comfy.md) for a step-by-step explanation of what is happening there!
 
 
 ---

@@ -32,7 +32,7 @@ Pynst always installs into a directory that contains all files and repositories.
 
 ## Pre-requisites
 
-On an OS level, you need **Git** and **Python 3.8+** installed.
+On an OS level, you need **Git** and **Python 3.8+** installed - plus ideally MSVC 2022.
 
 **Recommended: The Easy Way**
 If you want to save time and avoid manual configuration, I highly recommend using the **CrossOS Auto-Setup** tool. It is free, open-source, and automatically installs everything you need (Git, Python, Visual C++ runtimes, etc.) for AI projects on Windows, Mac, or Linux.
@@ -64,19 +64,49 @@ brew install git python@3.13
 
 Let's build a pynstaller that installs a brand new ComfyUI preloaded with accelerators and plugins!
 
+this is an example of my optimal Comfy configuration:
+
+| Action    | Item                                                                                                                   | Destination/Args                                           |
+|:----------|:-----------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------|
+| `PYTHON`  | `3.13`                                                                                                                 |                                                            |
+| `CLONEIT` | `https://github.com/comfy-org/ComfyUI`                                                                                 | `.`                                                        |
+| `HASFILE` | `ComfyUI/main.py`                                                                                                      |                                                            |
+| `SETVENV` | `.`                                                                                                                    |                                                            |
+| `PRINTIT` | `This step may take some time depending on your connection.`                                                           |                                                            |
+| `REQFILE` | `https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch2.10cu130_lite.txt` |                                                            |
+| `REQSCAN` | `.`                                                                                                                    |                                                            |
+| `CLONEIT` | `https://github.com/ltdrdata/ComfyUI-Manager`                                                                          | `ComfyUI/custom_nodes`                                     |
+| `CLONEIT` | `https://github.com/kijai/ComfyUI-KJNodes`                                                                             | `ComfyUI/custom_nodes`                                     |
+| `CLONEIT` | `https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet`                                                              | `ComfyUI/custom_nodes`                                     |
+| `CLONEIT` | `https://github.com/kijai/ComfyUI-WanVideoWrapper`                                                                     | `ComfyUI/custom_nodes`                                     |
+| `CLONEIT` | `https://github.com/city96/ComfyUI-GGUF`                                                                               | `ComfyUI/custom_nodes`                                     |
+| `REQSCAN` | `ComfyUI/custom_nodes`                                                                                                 |                                                            |
+| `HOMEEXE` | `"ComfyUI_cpu"`                                                                                                        | `ComfyUI/main.py --cpu --auto-launch`                      |
+| `DESKICO` | `"ComfyUI GPU Mode"`                                                                                                   | `ComfyUI/main.py --gpu --use-sage-attention --auto-launch` |
+| `DESKICO` | `"ComfyUI CPU Mode"`                                                                                                   | `ComfyUI/main.py --cpu --auto-launch`                      |
+
+
+
+
 ### 1. Installing the Repo
+
+First we define the python version to be enforced. this is optional but adviced. If this is not installed in the target system installation will abort.
+```bash
+PYTHON  3.13
+```
+
 The most basic setup is to clone the repository and create a virtual environment.
 
 ```bash
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
-SETVENV ComfyUI
+SETVENV .
 ```
 
 *   **`CLONEIT <url> <path>`**: Clones the git repository.
     *   `https://...`: The URL of the repository to clone.
     *   `.`: The dot means "install directly into the target directory" (e.g., `d:\temp\mytestcomfy`). If you put a name like `ComfyUI` here, it would create `d:\temp\mytestcomfy\ComfyUI\ComfyUI`.
 *   **`SETVENV <path>`**: Creates or configures the virtual environment.
-    *   `ComfyUI`: The folder where the venv should be checked/created. It also looks for `requirements.txt` here and installs it automatically.
+    *   `.`: The folder where the venv should be checked/created. It also looks for `requirements.txt` here and installs it automatically. In this case we are setting the base dir above comfy. So we will install the requirements file separately.
 
 ### 2. Securing the Installation
 We add a check to ensure the repository was correctly installed.
@@ -86,10 +116,10 @@ HASFILE ComfyUI/main.py
 ```
 *   **`HASFILE <path>`**: Checks if a specific file exists.
     *   `ComfyUI/main.py`: The file to look for relative to the install root.
-    *   This ensures that running with `--safecheck` later will abort if the file is not found, preventing accidental overwrites of wrong directories or broken installs.
+    *   If you are not installing but updating, this ensures that running with `--safecheck` later will abort if the file is not found, preventing accidental overwrites of wrong directories or broken installs.
 
 ### 3. Installing Accelerators
-ComfyUI comes by default with no accelerators installed. We use `REQFILE` to install a specific requirements file for NVIDIA RTX cards.
+ComfyUI comes by default with no accelerators installed. We use `REQFILE` to install a specific requirements file for NVIDIA RTX cards. This must be installed prior to the comfy requirements file.
 
 ```bash
 PYTHON 3.13

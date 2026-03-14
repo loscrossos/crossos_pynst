@@ -1273,6 +1273,7 @@ STARTOPTION_DEBUGTEST="debugtest"
 STARTOPTION_SAFECHECK="safecheck"
 STARTOPTION_FORCEUPDATE = "update"
 STARTOPTION_FORCEUPGRADE = "upgrade"
+STARTOPTION_SYSREPORT = "sysreport"
     
 DEFAULT_PYTHON_VERSION = "3.13"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
@@ -1290,7 +1291,54 @@ BACKUP = False
 GLOBAL_OPTION_FORCE_REINSTALL =False 
 
 
- 
+def get_sysreport():
+    """Generate anonymized system report for debugging."""
+    import platform
+    import socket
+    import hashlib
+    import getpass
+    
+    report = {}
+    report['platform'] = sys.platform
+    report['os'] = platform.system()
+    report['os_release'] = platform.release()
+    report['os_version'] = platform.version()
+    report['architecture'] = platform.architecture()
+    report['machine'] = platform.machine()
+    report['processor'] = platform.processor()
+    report['python_version'] = sys.version
+    report['python_executable'] = sys.executable
+    
+    # Anonymize hostname by hashing it
+    hostname = socket.gethostname()
+    report['hostname_hash'] = hashlib.sha256(hostname.encode()).hexdigest()[:16]  # first 16 chars of hash
+    
+    # CPU count
+    try:
+        report['cpu_count'] = os.cpu_count()
+    except:
+        report['cpu_count'] = 'unknown'
+    
+    # Get user name for anonymization
+    try:
+        user_name = getpass.getuser()
+    except:
+        user_name = os.environ.get('USERNAME') or os.environ.get('USER') or 'unknown'
+    
+    # Path-related environment variables
+    path_vars = {}
+    for key, value in os.environ.items():
+        if os.sep in value or (sys.platform == 'win32' and ';' in value and '\\' in value):  # likely a path variable
+            # Anonymize user name in the value
+            anonymized_value = value.replace(user_name, '<USER>')
+            # Also anonymize home directory
+            home = str(Path.home())
+            anonymized_value = anonymized_value.replace(home, '<HOME>')
+            path_vars[key] = anonymized_value
+    
+    report['path_vars'] = path_vars
+    
+    return report
 
 # Standard colors
 BLACK   = '\033[30m'
@@ -3348,8 +3396,8 @@ def main():
 
 
     
-    parser.add_argument(STARTOPTION_INPUTFILE,  help="Path to inputfile (will be coerced to UTF-8 if needed)")
-    parser.add_argument(STARTOPTION_INPUTDIR,  help="Base directory for install/repair")
+    parser.add_argument(STARTOPTION_INPUTFILE, nargs='?', help="Path to inputfile (will be coerced to UTF-8 if needed)")
+    parser.add_argument(STARTOPTION_INPUTDIR, nargs='?', help="Base directory for install/repair")
 
     parser.add_argument(f"--{STARTOPTION_EMBEDDED}", action="store_true", help="Treat venv installation as portable with a 'python_embedded' folder (or name defined with custom venv option)")
     parser.add_argument(f"--{STARTOPTION_NODESKTOP}", action="store_true", help="Do not create Dekstop shortcuts even when defined in the input file")
@@ -3364,6 +3412,7 @@ def main():
     #parser.add_argument(f"--{STARTOPTION_FORCEGITSTABLE}", action="store_true",help="Force git repository code to the newest release version on the main/master branch (sometimes called 'release')")
     parser.add_argument(f"--{STARTOPTION_SAFECHECK}", action="store_true",help="Pre-Check if the comand will create a new installation or update an existing one. This will check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one.")
     parser.add_argument(f"--{STARTOPTION_DEBUGTEST}", action="store_true",help="Show debug info and quit")
+    parser.add_argument(f"--{STARTOPTION_SYSREPORT}", action="store_true", help="Output anonymized system information for debugging and quit")
     args = parser.parse_args()
 
 
@@ -3376,6 +3425,16 @@ def main():
         log_warning("test warning")
         printargs(args=args)
         abort("end")
+
+    if getattr(args, STARTOPTION_SYSREPORT):
+        import json
+        report = get_sysreport()
+        print("System Report:")
+        print(json.dumps(report, indent=2))
+        sys.exit(0)
+
+    if not getattr(args, STARTOPTION_INPUTFILE) or not getattr(args, STARTOPTION_INPUTDIR):
+        parser.error("inputfile and targetdirectory are required")
 
     STARTER_NO_DESKTOP = getattr(args, STARTOPTION_NODESKTOP)
     DRYRUN = getattr(args, STARTOPTION_DRYRUN)

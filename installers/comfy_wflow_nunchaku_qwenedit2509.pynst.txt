@@ -1,12 +1,12 @@
-GETFILE https://raw.githubusercontent.com/nunchaku-tech/ComfyUI-nunchaku/refs/heads/main/example_workflows/nunchaku-qwen-image-edit-2509.json  ComfyUI/user/default/workflows/
+GETFILE https://raw.githubusercontent.com/nunchaku-tech/ComfyUI-nunchaku/refs/heads/main/example_workflows/nunchaku-qwen-image-edit-2509.json ComfyUI/user/default/workflows/
 REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/req_lib_nunchaku130_torch2100.txt
 # Non Blackwell model
-GETBLOB https://huggingface.co/nunchaku-tech/nunchaku-qwen-image-edit-2509/resolve/main/svdq-int4_r128-qwen-image-edit-2509.safetensors        ComfyUI/models/unet
+GETBLOB https://huggingface.co/nunchaku-tech/nunchaku-qwen-image-edit-2509/resolve/main/svdq-int4_r128-qwen-image-edit-2509.safetensors       ComfyUI/models/unet
 # Blackwell model
-GETBLOB https://huggingface.co/nunchaku-tech/nunchaku-qwen-image-edit-2509/resolve/main/svdq-fp4_r128-qwen-image-edit-2509.safetensors         ComfyUI/models/unet
-GETBLOB https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors       ComfyUI/models/text_encoders
-GETBLOB https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors                            ComfyUI/models/vae
+GETBLOB https://huggingface.co/nunchaku-tech/nunchaku-qwen-image-edit-2509/resolve/main/svdq-fp4_r128-qwen-image-edit-2509.safetensors        ComfyUI/models/unet
+GETBLOB https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors      ComfyUI/models/text_encoders
+GETBLOB https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors                           ComfyUI/models/vae
 # this fixes a bug on windows python3.13
 REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/reqinsightface.txt
-CLONEIT https://github.com/nunchaku-tech/ComfyUI-nunchaku                                                                                      ComfyUI/custom_nodes 
+CLONEIT https://github.com/nunchaku-tech/ComfyUI-nunchaku                                                                                     ComfyUI/custom_nodes 
 REQSCAN ComfyUI/custom_nodes

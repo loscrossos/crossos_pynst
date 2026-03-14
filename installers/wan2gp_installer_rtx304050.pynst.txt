@@ -1,6 +1,7 @@
+PYTHON  3.13
 CLONEIT https://github.com/deepbeepmeep/Wan2GP.git .
 SETVENV .
-REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_python313torch280cu129_lite.txt
+REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch2.10cu130_lite.txt
 REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/opencv_python313.txt
 REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/reqinsightface.txt
 REQFILE Wan2GP/requirements.txt

@@ -5,6 +5,6 @@ REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/he
 REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/opencv_python313.txt
 REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/reqinsightface.txt
 REQFILE Wan2GP/requirements.txt
-#add gguf req for 3.11
+REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/req_llama_cpp_gguf_cuda.txt
 DESKICO "Wan2GP" Wan2GP/wgp.py --open-browser --attention auto
 

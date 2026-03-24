@@ -58,6 +58,7 @@ Pynst bridges the gap between fragile manual instructions, heavy setup and custo
     *   **`REQSCAN`**: Recursively finds and installs `requirements.txt` from all sub-folders (perfect for plugin systems).
     *   **`RFILTER`**: Global package filtering to solve dependency hell (e.g., "install everything *except* Torch").
 *   **Portable/Embedded Mode**: fully supports "Portable" installations (like ComfyUI Portable). Can even convert a portable install into a full system install.
+*   **Smart Downloading & Local Caching**: Save bandwidth and disk space! Define local model directories (`BLOBREPO_1`, `BLOB_COLLECT_DIR`, etc.) in an `.env` file. Pynst will automatically search these directories when downloading files (like large AI models). If found, it creates a hardlink instead of downloading it again. Works seamlessly across Windows, Linux, and macOS.
 
 ---
 
@@ -144,7 +145,8 @@ python pynst.py install.pynst.txt ./my_app --senso
 
 | Command | Description |
 | :--- | :--- |
-| `CLONEIT <url> <path>` | Clone or update a git repository. |
+| `CLONEIT <url> <path> [target_dir]` | Clone or update a git repository. If `[target_dir]` is omitted, the default repo name is used. |
+| `CLONELF <url> <path> [target_dir]` | Like `CLONEIT`, but deletes the `.git` history after cloning to save space. |
 | `SETVENV <path>` | Ensure a virtual environment exists (and install its requirements). |
 | `REQFILE <path/url>` | Install a requirements file (local or remote). |
 | `REQSCAN <path>` | Recursively find and install `requirements.txt` in subdirectories. |

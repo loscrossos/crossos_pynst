@@ -1291,6 +1291,16 @@ BACKUP = False
 GLOBAL_OPTION_FORCE_REINSTALL =False 
 
 
+
+#download options
+BLOB_COLLECT_DIR="BLOB_COLLECT_DIR"
+BLOB_SOURCE_PREFIX="BLOBREPO_"
+ENV_FILENAME = ".env"
+ENV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ENV_FILENAME)
+
+
+
+
 def get_sysreport():
     """Generate anonymized system report for debugging."""
     import platform
@@ -1382,7 +1392,8 @@ CMD_PIPREQFILE=             "REQFILE" #|**Arguments:** a file path relative to t
 CMD_PIPREQFILE_FORCE=       "REQFILEFORCE" #|**Arguments:** a file path relative to the target directory or a remote url to a file. <br> **Description**:  installs a requirements file to the current venv. local or remote.
 CMD_PIPREQPACKAGE=          "PIPINST" #|**Arguments:** a list of arguments to be passed directly to "pip install". <br> **Description**:  installs wheels or modules to the current venv. Can be wheel file URL (not a file path) or a pip package
 CMD_RFILTER=                "RFILTER" #|**Arguments:** a list of words. <br> **Description**:  Filter out packages (from REQ* commands) from now on. Filter is reset when the command is used again with no parameters. these packages will not be installed if present on req files. can be reset by putting single command with no params. The words are filtered by looking at the start of a line until a not allowed letter appears (any letter apart from A-Z, a-z, '-' or '_'). We anchor at start (ignoring leading whitespace). Example "torch" matches: 'torch==2.1.0', 'torch ', 'torch[extra]', 'torch\t', 'torch; python_version<"3.12"'. Does NOT match 'torchaudio' or 'torchvision'.
-CMD_GITCLONE=               "CLONEIT" #|**Arguments:** an url to a repository AND a directory path relative to target. <br> **Description**:  clone a repo into a dir. The directory will be created if it does not exist.
+CMD_GITCLONE=               "CLONEIT" #|**Arguments:** an url to a repository AND a directory path relative to target AND an optional target directory name. <br> **Description**:  clone a repo into a dir. The directory will be created if it does not exist. If target directory name is omitted, default repo name is used.
+CMD_BLOBCLONE=              "CLONELF" #|**Arguments:** an url to a repository AND a directory path relative to target AND an optional target directory name. <br> **Description**:  clone a repo into a dir. Deletes the .git history after cloning to save space. The directory will be created if it does not exist. If target directory name is omitted, default repo name is used.
 CMD_REQSCAN=                "REQSCAN" #|**Arguments:** a directory path relative to the target directory. <br> **Description**:  Specifies a directory to scan for subdirectories (git repositories) with "requirements.txt" to install. git repositories found, will be updated first. Will not update code in senso mode  
 CMD_GETFILE=                "GETFILE" #|**Arguments:** url to a file. <br> **Description**:  Downloads a file to a directory. Only downloads if the file does not exist or has a different size than the remote file.  
 CMD_GETBLOB=                "GETBLOB" #|**Arguments:** url to a file. <br> **Description**:  Downloads a file to a directory. Used for large files (e.g. models). Same as GETFILE but this command has an option to disable the downloads of this kind.
@@ -2284,7 +2295,7 @@ def _force_remove_readonly(func, path, excinfo):
 
 def remove_dir_force(target: Path):
     if DRYRUN:
-        log_subsubtask(f"[DRYRUN] Would remove existing directory before clone: {target}")
+        log_subsubtask(f"[DRYRUN] Would remove existing directory: {target}")
     else:
         if target.exists():
             if target.is_file() or target.is_symlink():
@@ -2293,7 +2304,7 @@ def remove_dir_force(target: Path):
                 shutil.rmtree(target, onerror=_force_remove_readonly)
 
 
-def do_git_clone(url: str, target: Path, operating_mode=None, force_gitpull_mode=False):
+def do_git_clone(url: str, target: Path, operating_mode=None, force_gitpull_mode=False, git_blob_mode=False):
 
     if DRYRUN:
         log_subsubtask(f"[DRYRUN]: would ensure repo parent dir exists: {target.parent}")
@@ -2310,9 +2321,17 @@ def do_git_clone(url: str, target: Path, operating_mode=None, force_gitpull_mode
                 do_git_pull(repo_path=target, operating_mode=operating_mode, force_gitpull_mode=force_gitpull_mode)
             return
 
+
     rc = run_cmd(cmd=["git", "clone", url, str(target)],cwd=str(target.parent),task_description="Cloning repo...")
     if rc != 0:
         abort(f"Git clone failed for {url}")
+    if git_blob_mode:
+        # In git-blob mode, we only want the latest commit's files without .git history. 
+        # After cloning, we can remove the .git directory to save space and avoid issues with git pull later.
+        git_dir = target / ".git"
+        if git_dir.exists() and git_dir.is_dir():
+            remove_dir_force(git_dir)
+            log_subsubtask("Removed .git directory for git-blob mode.")
     log_subsubtask(f"Cloned to: {target}")
 
 
@@ -2510,108 +2529,58 @@ def task_pause(message:str = None):
 
 
 # ========= Download helpers =========
+ 
 
-import urllib.request
+ 
+def load_env():
+    env_vars = {}
+    if os.path.exists(ENV_FILE):
+        with open(ENV_FILE, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    parts = line.split('=', 1)
+                    if len(parts) == 2:
+                        env_vars[parts[0].strip()] = parts[1].strip()
+    return env_vars
 
-def get_file_size(url: str, verbose: bool = False):
-    """
-    Returns the file size from server as (size_in_bytes, human_readable_str).
-    If Content-Length is missing, returns (None, None).
-    Handles SSL certificate verification issues by falling back to unverified context.
-    """
+def get_remote_file_size(url: str, verbose=False) -> int:
     try:
         req = urllib.request.Request(url, method="HEAD")
         try:
             with urllib.request.urlopen(req) as response:
                 length = response.getheader("Content-Length")
         except (ssl.SSLError, urllib.error.URLError) as e:
-            # Check if it's an SSL certificate error
             if isinstance(e, urllib.error.URLError) and not ('SSL' in str(e) or 'certificate' in str(e).lower()):
-                # Not an SSL error, re-raise
                 raise
-            
-            # If SSL certificate verification fails, retry with unverified context
             ssl_context = ssl._create_unverified_context()
             opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
             with opener.open(req) as response:
                 length = response.getheader("Content-Length")
-            # Restore default opener
             urllib.request.install_opener(urllib.request.build_opener())
-
         if length is None:
             if verbose:
-                log_subsubtask(f"Server did not provide Content-Length for {url}")
-            return None, None
-
-        size_bytes = int(length)
-        size_str = human_readable_size(size_bytes)
-        return size_bytes, size_str
-
+                log_subsubtask(f"file does not exist on server: {url}")
+            return -1
+        return int(length)
     except Exception as e:
         if verbose:
-            log_subsubtask(f"Error fetching file size for {url}: {e}")
-        return None, None
-
-
-def human_readable_size(num_bytes: int) -> str:
-    """Convert bytes into human-readable string with appropriate unit."""
-    for unit in ["bytes", "KB", "MB", "GB", "TB"]:
-        if num_bytes < 1024.0 or unit == "TB":
-            return f"{num_bytes:.2f} {unit}" if unit != "bytes" else f"{num_bytes} {unit}"
-        num_bytes /= 1024.0
-
-
-
-import os
-import urllib.request
-import sys
+            log_subsubtask(f"get_remote_file_size error: {e}")
+        return -1
 
 def check_if_file_is_aready_downloaded(url: str, filepath: str, verbose=False) -> bool:
     """
     Check if the file at 'filepath' exists and is complete compared to the file size on the server.
-    Returns True if the file exists and matches the server size, else False.
-    Handles SSL certificate verification issues by falling back to unverified context.
     """
-    try:
-        # Send a HEAD request
-        req = urllib.request.Request(url, method="HEAD")
-        try:
-            with urllib.request.urlopen(req) as response:
-                length = response.getheader("Content-Length")
-        except (ssl.SSLError, urllib.error.URLError) as e:
-            # Check if it's an SSL certificate error
-            if isinstance(e, urllib.error.URLError) and not ('SSL' in str(e) or 'certificate' in str(e).lower()):
-                # Not an SSL error, re-raise
-                raise
-            
-            # If SSL certificate verification fails, retry with unverified context
-            ssl_context = ssl._create_unverified_context()
-            opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
-            with opener.open(req) as response:
-                length = response.getheader("Content-Length")
-            # Restore default opener
-            urllib.request.install_opener(urllib.request.build_opener())
-        
-        if length is None:
-            # Can't determine size from server
-            if verbose:
-                log_subsubtask(f"file does not exist on server: {url}")
-            return os.path.exists(filepath)
-        
-        expected_size = int(length)
-        if os.path.exists(filepath):
-            actual_size = os.path.getsize(filepath)
-            if actual_size != expected_size:
-                log_subsubtask(f"Size on server different than file size! Server Size: {expected_size}. actual size {actual_size}")
-            return actual_size == expected_size
-        else:
-            return False
-    except Exception as e:
-        log_subsubtask(f"check_file error: {e}")
-        return False
-
-import sys
-import urllib.request
+    expected_size = get_remote_file_size(url, verbose)
+    if expected_size == -1:
+        return os.path.exists(filepath)
+    if os.path.exists(filepath):
+        actual_size = os.path.getsize(filepath)
+        if actual_size != expected_size:
+            log_subsubtask(f"Size on server different than file size! Server Size: {expected_size}. actual size {actual_size}")
+        return actual_size == expected_size
+    return False
 
 def human_readable_size(num_bytes: int) -> str:
     """Convert bytes into human-readable string with appropriate unit."""
@@ -2620,39 +2589,16 @@ def human_readable_size(num_bytes: int) -> str:
             return f"{num_bytes:.2f} {unit}" if unit != "bytes" else f"{num_bytes} {unit}"
         num_bytes /= 1024.0
 
-def download_file_old(url: str, filepath: str, show_progress: bool = False):
-    """
-    Download the file from 'url' into 'filepath'.
-    If show_progress is True, displays a progress bar with human-readable file size.
-    """
-
-    total_human = None  # will be set once we know total size
-
-    def progress(block_num, block_size, total_size):
-        nonlocal total_human
-        if not show_progress:
-            return
-        if total_size > 0 and total_human is None:
-            total_human = human_readable_size(total_size)
-
-        downloaded = block_num * block_size
-        percent = downloaded * 100 / total_size if total_size > 0 else 0
-        percent = min(100, percent)
-        bar_len = 50
-        filled_len = int(bar_len * percent // 100)
-        bar = '=' * filled_len + '-' * (bar_len - filled_len)
-
-        downloaded_human = human_readable_size(min(downloaded, total_size))
-        sys.stdout.write(f"\r[{bar}] {percent:6.2f}% ({downloaded_human} / {total_human})      ")
-        sys.stdout.flush()
-        if downloaded >= total_size:
-            print()  # newline after completion
-
-    try:
-        urllib.request.urlretrieve(url, filepath, reporthook=progress)
-    except Exception as e:
-        abort(f"download_file error: {e}")
-
+def find_file_in_repos(filename: str, expected_size: int, repos: list) -> str:
+    for repo in repos:
+        if not os.path.isdir(repo):
+            continue
+        for root, dirs, files in os.walk(repo):
+            if filename in files:
+                full_path = os.path.join(root, filename)
+                if expected_size == -1 or os.path.getsize(full_path) == expected_size:
+                    return full_path
+    return None
 
 def download_file(url: str, filepath: str, show_progress: bool = False):
     """
@@ -2661,7 +2607,7 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
     If show_progress is True, displays a progress bar with human-readable file size.
     Handles SSL certificate verification issues by falling back to unverified context.
     """
-    total_human = None  # will be set once we know total size
+    total_human = None
 
     def progress(block_num, block_size, total_size):
         nonlocal total_human
@@ -2681,60 +2627,160 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
         sys.stdout.write(f"\r[{bar}] {percent:6.2f}% ({downloaded_human} / {total_human})")
         sys.stdout.flush()
         if downloaded >= total_size:
-            print()  # newline after completion
+            print()
 
     try:
-        # decode the filename part only
         dirpath, fname = os.path.split(filepath)
+        if not fname:
+            fname = os.path.basename(urlparse(url).path)
         fname = urllib.parse.unquote(fname)
         filepath_decoded = os.path.join(dirpath, fname)
 
-        # Try to download with default SSL context first
+        if os.path.exists(filepath_decoded) and check_if_file_is_aready_downloaded(url, filepath_decoded, verbose=False):
+            log_subsubtask(f"File already exists and is complete: {filepath_decoded}")
+            # Populate collect if needed
+            env_vars = load_env()
+            blob_collect_dir = env_vars.get(BLOB_COLLECT_DIR)
+            if blob_collect_dir:
+                collect_path = os.path.join(blob_collect_dir, fname)
+                if not os.path.exists(collect_path):
+                    os.makedirs(blob_collect_dir, exist_ok=True)
+                    expected_size = get_remote_file_size(url)
+                    if expected_size == -1 or os.path.getsize(filepath_decoded) == expected_size:
+                        try:
+                            os.link(filepath_decoded, collect_path)
+                            log_subsubtask(f"Linked existing file from {filepath_decoded} to {collect_path}")
+                        except OSError:
+                            shutil.copyfile(filepath_decoded, collect_path)
+                            log_subsubtask(f"Copied existing file from {filepath_decoded} to {collect_path}")
+            return filepath_decoded
+
+        env_vars = load_env()
+        blob_repos = [v for k, v in env_vars.items() if k.startswith(BLOB_SOURCE_PREFIX)]
+        blob_collect_dir = env_vars.get(BLOB_COLLECT_DIR)
+        
+        is_feature_enabled = os.path.exists(ENV_FILE) and (blob_repos or blob_collect_dir)
+        download_target = filepath_decoded
+        link_after_download = False
+        
+        if is_feature_enabled:
+            expected_size = get_remote_file_size(url)
+            
+            # Check BLOBREPO_XX
+            if blob_repos:
+                found_path = find_file_in_repos(fname, expected_size, blob_repos)
+                if found_path:
+                    try:
+                        os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
+                        if os.path.exists(filepath_decoded):
+                            os.remove(filepath_decoded)
+                        os.link(found_path, filepath_decoded)
+                        log_subsubtask(f"Linked existing file from {found_path} to {filepath_decoded}")
+                        return filepath_decoded
+                    except OSError:
+                        log_warning(f"File exists at {found_path} but is on a different drive. Downloading anyway...")
+            
+            # Check BLOB_COLLECT_DIR
+            if blob_collect_dir:
+                os.makedirs(blob_collect_dir, exist_ok=True)
+                collect_path = os.path.join(blob_collect_dir, fname)
+                
+                # If file exists in target but not in collect, link/copy to collect
+                if not os.path.exists(collect_path) and os.path.exists(filepath_decoded):
+                    if expected_size == -1 or os.path.getsize(filepath_decoded) == expected_size:
+                        try:
+                            os.link(filepath_decoded, collect_path)
+                            log_subsubtask(f"Linked existing file from {filepath_decoded} to {collect_path}")
+                        except OSError:
+                            shutil.copyfile(filepath_decoded, collect_path)
+                            log_subsubtask(f"Copied existing file from {filepath_decoded} to {collect_path}")
+                        # Target already has the file, so return
+                        return filepath_decoded
+                
+                if os.path.exists(collect_path):
+                    if expected_size == -1 or os.path.getsize(collect_path) == expected_size:
+                        try:
+                            os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
+                            if os.path.exists(filepath_decoded):
+                                os.remove(filepath_decoded)
+                            os.link(collect_path, filepath_decoded)
+                            log_subsubtask(f"Linked collected file from {collect_path} to {filepath_decoded}")
+                            return filepath_decoded
+                        except OSError:
+                            log_warning(f"File exists at {collect_path} but linking failed (different drive). Downloading anyway...")
+                    else:
+                        url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
+                        sub_dir_name = f"{fname}_{url_hash}"
+                        sub_dir_path = os.path.join(blob_collect_dir, sub_dir_name)
+                        
+                        suffix = 0
+                        matched_in_subfolder = False
+                        while os.path.exists(sub_dir_path):
+                            potential_file = os.path.join(sub_dir_path, fname)
+                            if os.path.exists(potential_file) and (expected_size == -1 or os.path.getsize(potential_file) == expected_size):
+                                try:
+                                    os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
+                                    if os.path.exists(filepath_decoded):
+                                        os.remove(filepath_decoded)
+                                    os.link(potential_file, filepath_decoded)
+                                    log_subsubtask(f"Linked collected file from {potential_file} to {filepath_decoded}")
+                                    return filepath_decoded
+                                except OSError:
+                                    log_warning(f"File exists at {potential_file} but linking failed (different drive). Downloading anyway...")
+                                matched_in_subfolder = True
+                                break
+                            
+                            suffix += 1
+                            sub_dir_path = os.path.join(blob_collect_dir, f"{sub_dir_name}_{suffix}")
+                            
+                        if not matched_in_subfolder:
+                            os.makedirs(sub_dir_path, exist_ok=True)
+                            download_target = os.path.join(sub_dir_path, fname)
+                            link_after_download = True
+                else:
+                    download_target = collect_path
+                    link_after_download = True
+
+        os.makedirs(os.path.dirname(download_target), exist_ok=True)
+
         try:
-            urllib.request.urlretrieve(url, filepath_decoded, reporthook=progress)
+            urllib.request.urlretrieve(url, download_target, reporthook=progress)
         except (ssl.SSLError, urllib.error.URLError) as e:
-            # Check if it's an SSL certificate error
             if isinstance(e, urllib.error.URLError) and not ('SSL' in str(e) or 'certificate' in str(e).lower()):
-                # Not an SSL error, re-raise
                 raise
             
-            # If SSL certificate verification fails, retry with unverified context
             log_warning(f"SSL certificate verification failed. Retrying with unverified context...")
             ssl_context = ssl._create_unverified_context()
             opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
             urllib.request.install_opener(opener)
             try:
-                urllib.request.urlretrieve(url, filepath_decoded, reporthook=progress)
+                urllib.request.urlretrieve(url, download_target, reporthook=progress)
             finally:
-                # Restore default opener
                 urllib.request.install_opener(urllib.request.build_opener())
+                
+        if link_after_download:
+            try:
+                os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
+                if os.path.exists(filepath_decoded):
+                    os.remove(filepath_decoded)
+                os.link(download_target, filepath_decoded)
+                log_subsubtask(f"Linked downloaded file from {download_target} to {filepath_decoded}")
+            except OSError:
+                log_warning(f"Linking failed after download (different drive). Copying instead...")
+                shutil.copyfile(download_target, filepath_decoded)
         
         return filepath_decoded
     except Exception as e:
         abort(f"download_file error: {e}")
         return None
 
-#url = "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/wan2.2-i2v-rapid-aio-example.json"
-#path = "d:/resources/"
-#download_only_if_not_existent(url, path, verbose=False, show_progress=True)
-
-
-
-from urllib.parse import urlparse
-import os
-
 def download_only_if_not_existent(url, directory_target_path, verbose=False, show_progress=True):
-    # Ensure target directory exists
     os.makedirs(directory_target_path, exist_ok=True)
-
-    # Extract filename from URL
     filename = os.path.basename(urlparse(url).path)
     filepath = os.path.join(directory_target_path, filename)
+    download_file(url, filepath, show_progress=show_progress)
 
-    if check_if_file_is_aready_downloaded(url, filepath, verbose=True):
-        log_subsubtask(f"File already exists and is complete: {filepath}")
-    else:
-        download_file(url, filepath, show_progress=True)
+
 
 
  
@@ -2996,13 +3042,26 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
         for cmd, params in in_commands:
             if cmd == CMD_GITCLONE:
                 elements_to_check_exist=True
-                if len(params) != 2:
-                    abort(f"{cmd} requires exactly 2 parameters: <url> <path_suffix>")
-                url, suffix = params
-                targetparentdir = (in_basedir / suffix).resolve()
-                repo_project_name=extract_project_name(url)
-                targetrepo = targetparentdir / repo_project_name
-                
+
+                if len(params) < 2 or len(params) > 3:
+                    abort(msg=f"{output_prefix}{cmd} requires 2 mandatory parameters and 1 optional: <url> <path_suffix> <optional: targetname>")
+                url=None
+                suffix=None
+                optional_targetname=None
+                log_task(msg=f"{output_prefix}{cmd} cloning: {url}")
+                if len(params)==2:
+                    url, suffix = params
+                elif len(params)==3:
+                    url, suffix, optional_targetname = params
+                    
+                basetarget = (in_basedir / suffix).resolve()
+                if optional_targetname:
+                    target = basetarget / optional_targetname
+                else:
+                    repo_project_name=extract_project_name(url)
+                    targetrepo = basetarget / repo_project_name
+
+    
                 if os.path.exists(targetrepo)==False:
                     #on first violation show header
                     if not precheckwarning:
@@ -3196,18 +3255,36 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 abort(f"Failed to exec command: {str(exec_command)}")
 
 
-        elif cmd in (CMD_GITCLONE):
+        elif cmd in (CMD_GITCLONE, CMD_BLOBCLONE):
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
                 output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
-            if len(params) != 2:
-                abort(msg=f"{output_prefix}{cmd} requires exactly 2 parameters: <url> <path_suffix>")
-            url, suffix = params
+
+            git_blob_mode = False
+            if cmd == CMD_BLOBCLONE:
+                git_blob_mode = True
+
+            if len(params) < 2 or len(params) > 3:
+                abort(msg=f"{output_prefix}{cmd} requires 2 mandatory parameters and 1 optional: <url> <path_suffix> <optional: targetname>")
+            url=None
+            suffix=None
+            optional_targetname=None
             log_task(msg=f"{output_prefix}{cmd} cloning: {url}")
-                        
-            target = (in_basedir / suffix).resolve()
-            target = target / extract_project_name(url)
-            do_git_clone(url=url, target=target,operating_mode=in_operation_mode, force_gitpull_mode=force_gitpull_mode)
+            if len(params)==2:
+                url, suffix = params
+            elif len(params)==3:
+                url, suffix, optional_targetname = params
+                
+            basetarget = (in_basedir / suffix).resolve()
+            if optional_targetname:
+                target = basetarget / optional_targetname
+            else:
+                repo_project_name=extract_project_name(url)
+                target = basetarget / repo_project_name
+           
+            log_task(msg=f"{output_prefix}{cmd} target: {url}")
+            
+            do_git_clone(url=url, target=target, operating_mode=in_operation_mode, force_gitpull_mode=force_gitpull_mode, git_blob_mode=git_blob_mode)
             
             
         elif cmd == CMD_GETFILE or cmd==CMD_GETBLOB:
@@ -3459,6 +3536,7 @@ def main():
         CMD_XRUNCOMMAND_PIP,
         CMD_RFILTER,
         CMD_GITCLONE,
+        CMD_BLOBCLONE,
         CMD_REQSCAN,
         CMD_GETFILE,
         CMD_GETBLOB,

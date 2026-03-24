@@ -99,14 +99,19 @@ Asserts that the system has a specific Python version available. If `--embedded`
 PYTHON 3.10
 ```
 
-#### `CLONEIT <url> <path>`
-Clones a Git repository into `[TargetDir]/[path]/[RepoName]`.
+#### `CLONEIT <url> <path> [target_dir]`
+Clones a Git repository into `[TargetDir]/[path]/[target_dir]`. If `target_dir` is omitted, the default repository name is used (`[TargetDir]/[path]/[RepoName]`).
 *   If the repo exists, it updates it (unless `--senso` is used).
 *   If `--gitlatest` is used, it forces a checkout of the latest main/master branch.
 ```bash
 CLONEIT https://github.com/comfyanonymous/ComfyUI .
 # Result: [TargetDir]/ComfyUI
+CLONEIT https://github.com/comfyanonymous/ComfyUI . my_comfy
+# Result: [TargetDir]/my_comfy
 ```
+
+#### `CLONELF <url> <path> [target_dir]`
+Same as `CLONEIT`, but designed for large repositories. It deletes the `.git` directory history after cloning to save disk space. Note that this prevents future updates via `git pull`.
 
 #### `SETVENV <path>`
 Ensures a virtual environment exists at `[TargetDir]/[path]`.
@@ -158,6 +163,8 @@ REQSCAN ComfyUI/custom_nodes
 #### `GETFILE <url> <path_suffix>`
 Downloads a file to `[TargetDir]/[path_suffix]`.
 *   Only downloads if the file is missing or the server file size differs.
+*   **Smart Caching**: Can create hardlinks instead of downloading if the file exists in your local cache. See [Smart Downloading & Caching](#smart-downloading--caching) for details.
+*   If the target path is a directory (e.g., `d:/resources/`), it automatically extracts the filename from the URL.
 ```bash
 GETFILE https://example.com/workflow.json ComfyUI/user/workflows
 ```
@@ -165,6 +172,7 @@ GETFILE https://example.com/workflow.json ComfyUI/user/workflows
 #### `GETBLOB <url> <path_suffix>`
 Same as `GETFILE`, but intended for large binary files (models, weights).
 *   Can be skipped by the user with the `--noblob` CLI flag.
+*   Also supports Smart Caching.
 ```bash
 GETBLOB https://huggingface.co/model.safetensors ComfyUI/models/checkpoints
 ```
@@ -226,6 +234,28 @@ Use `--embedded` to manage portable installations (like ComfyUI Portable).
 *   Pynst looks for a folder named `python_embedded` (or `python_embeded`) in the target directory.
 *   It uses the Python executable inside that folder.
 *   `--revenv` in this mode will **empty** the site-packages of the embedded python instead of deleting the folder.
+
+### Smart Downloading & Caching
+To save bandwidth and storage space, Pynst can check local directories for existing files before downloading them. If a file with the exact name and size is found, Pynst will create a file link (hardlink) to the target destination instead of downloading it again. Hardlinks require no admin privileges.
+
+**How to Enable:**
+Create an `.env` file in the same directory as your `pynst.py` script. The feature is only activated if this file exists and contains specific variables. The file is parsed natively without external dependencies.
+
+**Configuration Variables:**
+*   `BLOBREPO_XX` (e.g., `BLOBREPO_1`, `BLOBREPO_2`): Define up to 100 search directories. Pynst will search these directories (and all their subdirectories) for a matching file by name and size.
+    ```env
+    BLOBREPO_1=D:\models
+    BLOBREPO_2=F:\resources\safetensors
+    ```
+*   `BLOB_COLLECT_DIR`: If defined, all new downloads will be saved to this directory first, and then linked to the target destination. This builds your local cache automatically.
+    ```env
+    BLOB_COLLECT_DIR=D:\pynst_cache
+    ```
+
+**Notes:**
+*   Pynst uses a `HEAD` request to verify the remote file size before downloading to ensure an exact match.
+*   If a file with the same name but a different size is downloaded to `BLOB_COLLECT_DIR`, Pynst automatically creates a subdirectory with a short MD5 hash derived from the URL to avoid collisions. If there are still collisions, it appends a sequential suffix (e.g., `_1`, `_2`).
+*   **Cross-Drive Linking Fallback**: Hardlinks generally only work when the source and destination are on the same drive. If a cross-drive link is attempted (or any other linking error occurs), Pynst will output a warning and gracefully fall back to downloading/copying the file directly.
 
 ### Package Filtering
 The `RFILTER` command is powerful for managing conflicting dependencies, especially with AI libraries like PyTorch.

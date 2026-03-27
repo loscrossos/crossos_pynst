@@ -30,8 +30,8 @@ wouldnt it be great if all that was solved?
 ### The "Sweet Spot" of Installation
 Pynst bridges the gap between fragile manual instructions, heavy setup and customization.
 
- Feature             | CrossOS Pynst | Docker | Bash Scripts | One-Click | Manual |
- :---                | :---:         | :---:  | :---:        | :---:     | :---:  |
+ Feature             | CrossOS Pynst | Docker | Bash Scripts | One-Click | Manual   |
+ :---                | :---:         | :---:  | :---:        | :---:     | :---:    |
  **Ease of Use**     | ✅            | ❌     | ✅           | ✅        | ❌     |
  **Security**        | ✅            | ✅     | ⚠️           | ⚠️        | ✅     |
  **Reproducibility** | ✅            | ✅     | ✅           | ✅        | ❌     |
@@ -58,7 +58,7 @@ Pynst bridges the gap between fragile manual instructions, heavy setup and custo
     *   **`REQSCAN`**: Recursively finds and installs `requirements.txt` from all sub-folders (perfect for plugin systems).
     *   **`RFILTER`**: Global package filtering to solve dependency hell (e.g., "install everything *except* Torch").
 *   **Portable/Embedded Mode**: fully supports "Portable" installations (like ComfyUI Portable). Can even convert a portable install into a full system install.
-*   **Smart Downloading & Local Caching**: Save bandwidth and disk space! Define local model directories (`BLOBREPO_1`, `BLOB_COLLECT_DIR`, etc.) in an `.env` file. Pynst will automatically search these directories when downloading files (like large AI models). If found, it creates a hardlink instead of downloading it again. Works seamlessly across Windows, Linux, and macOS.
+*   **Smart Downloading & Local Caching**: Save bandwidth and disk space! Define local model directories (`BLOBREPO_1`, `BLOB_COLLECT_DIR`, etc.) in an `.env` file. Pynst will automatically search these directories when downloading files (like large AI models) or cloning repositories in "blob" mode (`CLONELF`). By comparing remote file lists and sizes via lightweight metadata checks, Pynst can create hardlinks or symlinks to locally cached files and repos instead of downloading them again. Works seamlessly across Windows, Linux, and macOS.
 
 ---
 

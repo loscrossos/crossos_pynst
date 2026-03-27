@@ -112,6 +112,7 @@ CLONEIT https://github.com/comfyanonymous/ComfyUI . my_comfy
 
 #### `CLONELF <url> <path> [target_dir]`
 Same as `CLONEIT`, but designed for large repositories. It deletes the `.git` directory history after cloning to save disk space. Note that this prevents future updates via `git pull`.
+*   **Smart Caching**: `CLONELF` supports Smart Caching! It can check your local cache for a directory matching the remote repository's files and link the entire directory instead of downloading it. See [Smart Downloading & Caching](#smart-downloading--caching) for details.
 
 #### `SETVENV <path>`
 Ensures a virtual environment exists at `[TargetDir]/[path]`.
@@ -236,30 +237,31 @@ Use `--embedded` to manage portable installations (like ComfyUI Portable).
 *   `--revenv` in this mode will **empty** the site-packages of the embedded python instead of deleting the folder.
 
 ### Smart Downloading & Caching
-To save bandwidth and storage space, Pynst can check local directories for existing files before downloading them. If a file with the exact name and size is found, Pynst will create a file link (hardlink) to the target destination instead of downloading it again. Hardlinks require no admin privileges.
+To save bandwidth and storage space, Pynst can check local directories for existing files or entire repositories before downloading them. If a file with the exact name and size is found, Pynst will create a file link (hardlink) to the target destination instead of downloading it again. For large repositories cloned via `CLONELF`, Pynst can use lightweight metadata checks (`git ls-tree`) to find a matching local directory and link (symlink/junction) the entire directory at once. These linking methods require no admin privileges in most setups.
 
 **How to Enable:**
-Create an `.env` file in the same directory as your `pynst.py` script. The feature is only activated if this file exists and contains specific variables. The file is parsed natively without external dependencies.
+Create an `.env` file in the same directory as your `pynst.py` script. The feature is only activated if this file exists and contains an existing directory path.
 
 **Configuration Variables:**
-*   `BLOBREPO_XX` (e.g., `BLOBREPO_1`, `BLOBREPO_2`): Define up to 100 search directories. Pynst will search these directories (and all their subdirectories) for a matching file by name and size.
+*   `BLOBREPO_XX` (e.g., `BLOBREPO_1`, `BLOBREPO_2`): Define up to 100 search directories. Pynst will search these directories (and all their subdirectories) for a matching file by name and size. For `CLONELF`, it will search for directories that exactly match the remote repository files.
     ```env
     BLOBREPO_1=D:\models
     BLOBREPO_2=F:\resources\safetensors
     ```
-*   `BLOB_COLLECT_DIR`: If defined, all new downloads will be saved to this directory first, and then linked to the target destination. This builds your local cache automatically.
+*   `BLOB_COLLECT_DIR`: If defined, all new file downloads and `CLONELF` repository clones will be saved to this directory first, and then linked to the target destination. This builds your local cache automatically.
     ```env
     BLOB_COLLECT_DIR=D:\pynst_cache
     ```
 
-**Notes:**
-*   Pynst uses a `HEAD` request to verify the remote file size before downloading to ensure an exact match.
-*   If a file with the same name but a different size is downloaded to `BLOB_COLLECT_DIR`, Pynst automatically creates a subdirectory with a short MD5 hash derived from the URL to avoid collisions. If there are still collisions, it appends a sequential suffix (e.g., `_1`, `_2`).
-*   **Cross-Drive Linking Fallback**: Hardlinks generally only work when the source and destination are on the same drive. If a cross-drive link is attempted (or any other linking error occurs), Pynst will output a warning and gracefully fall back to downloading/copying the file directly.
+**Technical Notes:**
+*   For files, Pynst uses a `HEAD` request to verify the remote file size before downloading to ensure an exact match.
+*   For repositories (`CLONELF`), Pynst uses `git clone --filter=blob:none` to fetch only the tree metadata (saving ~99.9% bandwidth) and compares it against local directories to find an exact match before linking.
+*   If a file with the same name but a different size is downloaded to `BLOB_COLLECT_DIR`, Pynst automatically creates a subdirectory with a short MD5 hash derived from the URL to avoid collisions. If there are still collisions, it appends a sequential suffix (e.g., `_1`, `_2`). Repositories are stored similarly with a hash to avoid name collisions.
+*   **Cross-Drive Linking Fallback**: Hardlinks generally only work when the source and destination are on the same drive. If a cross-drive link is attempted (or any other linking error occurs), Pynst will output a warning and gracefully fall back to downloading/copying the file or directory directly.
 
 ### Package Filtering
 The `RFILTER` command is powerful for managing conflicting dependencies, especially with AI libraries like PyTorch.
-1.  **Filter**: `RFILTER torch`
+1.  **Filter**: `RFILTER torch` or multiple words separated by spaces: `RFILTER torch torchvision numpy`.
 2.  **Install**: `REQFILE requirements.txt` (skips torch)
 3.  **Manual Install**: `PIPINST torch==2.1.0+cu121 ...` (installs correct version)
 4.  **Clear**: `RFILTER`

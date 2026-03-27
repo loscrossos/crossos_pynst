@@ -1,28 +1,17 @@
 #!/usr/bin/env python3
 
 """
-#TODO
-DONE: criticalfilecheck.
-TODO: warnfilecheck
-
-FILECHECK crit ComfyUI/myfile "this does not seem to be a Comfy installation"
-FILECHECK warn ComfyUI/main.py  "Not having this file will slowdown your processes"
-
-FILECRITX
-FILEWARNX
-
-
 
 
 
 
 UseCases:
--Install repository
--repair repository
--install plugins
--install files
--verify installation integrity
--update installation code
+xInstall repository
+xrepair repository
+xinstall plugins
+xinstall files
+xverify installation integrity
+xupdate installation code
 
 
 ComfyUI.
@@ -1274,6 +1263,7 @@ STARTOPTION_SAFECHECK="safecheck"
 STARTOPTION_FORCEUPDATE = "update"
 STARTOPTION_FORCEUPGRADE = "upgrade"
 STARTOPTION_SYSREPORT = "sysreport"
+STARTOPTION_ENVINIT = "envinit"
     
 DEFAULT_PYTHON_VERSION = "3.13"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
@@ -1297,6 +1287,7 @@ BLOB_COLLECT_DIR="BLOB_COLLECT_DIR"
 BLOB_SOURCE_PREFIX="BLOBREPO_"
 ENV_FILENAME = ".env"
 ENV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ENV_FILENAME)
+_cache_config_logged = False
 
 
 
@@ -2321,6 +2312,45 @@ def do_git_clone(url: str, target: Path, operating_mode=None, force_gitpull_mode
                 do_git_pull(repo_path=target, operating_mode=operating_mode, force_gitpull_mode=force_gitpull_mode)
             return
 
+    if git_blob_mode:
+        blob_repos, blob_collect_dir = get_cache_config()
+        is_cache_feature_enabled = os.path.exists(ENV_FILE) and (blob_repos or blob_collect_dir)
+        if is_cache_feature_enabled:
+            files_info = get_remote_git_tree_info(url)
+            if files_info:
+                cache_dirs = []
+                if blob_collect_dir:
+                    cache_dirs.append(blob_collect_dir)
+                cache_dirs.extend(blob_repos)
+                
+                matched_dir = find_matching_directory_in_caches(files_info, cache_dirs)
+                if matched_dir:
+                    link_or_copy_directory(matched_dir, str(target))
+                    return
+                else:
+                    if blob_collect_dir:
+                        import hashlib
+                        url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
+                        repo_name = url.split('/')[-1]
+                        if repo_name.endswith('.git'):
+                            repo_name = repo_name[:-4]
+                        
+                        collect_target = os.path.join(blob_collect_dir, f"{repo_name}_{url_hash}")
+                        suffix = 0
+                        base_collect_target = collect_target
+                        while os.path.exists(collect_target):
+                            suffix += 1
+                            collect_target = f"{base_collect_target}_{suffix}"
+                        
+                        os.makedirs(blob_collect_dir, exist_ok=True)
+                        rc = run_cmd(cmd=["git", "clone", url, collect_target], cwd=blob_collect_dir, task_description="Cloning repo into cache...")
+                        if rc == 0:
+                            git_dir = Path(collect_target) / ".git"
+                            if git_dir.exists() and git_dir.is_dir():
+                                remove_dir_force(git_dir)
+                            
+                            link_or_copy_directory(collect_target, str(target))
+                            return
 
     rc = run_cmd(cmd=["git", "clone", url, str(target)],cwd=str(target.parent),task_description="Cloning repo...")
     if rc != 0:
@@ -2532,7 +2562,9 @@ def task_pause(message:str = None):
  
 
  
-def load_env():
+def get_cache_config():
+    global _cache_config_logged
+    #load env vars from .env file if exists, looking for keys starting with BLOB_SOURCE_PREFIX and BLOB_COLLECT_DIR
     env_vars = {}
     if os.path.exists(ENV_FILE):
         with open(ENV_FILE, 'r', encoding='utf-8') as f:
@@ -2542,7 +2574,159 @@ def load_env():
                     parts = line.split('=', 1)
                     if len(parts) == 2:
                         env_vars[parts[0].strip()] = parts[1].strip()
-    return env_vars
+                        
+    blob_repos = [v for k, v in env_vars.items() if k.startswith(BLOB_SOURCE_PREFIX) and os.path.isdir(v)]
+    blob_collect_dir = env_vars.get(BLOB_COLLECT_DIR)
+    
+    if blob_collect_dir and not os.path.isdir(blob_collect_dir):
+        blob_collect_dir = None
+        
+    if not _cache_config_logged:
+        _cache_config_logged = True
+        if blob_collect_dir:
+            log_subsubtask(f"Cache collector successfully set to: {blob_collect_dir}")
+        if blob_repos:
+            log_subsubtask(f"Cache repositories found: {len(blob_repos)} ({', '.join(blob_repos[:2])}{'...' if len(blob_repos) > 2 else ''})")
+            
+    return blob_repos, blob_collect_dir
+
+def get_remote_git_tree_info(url: str):
+    import tempfile, subprocess
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cmd = ["git", "clone", "-n", "--depth", "1", "--filter=blob:none", url, tmpdir]
+        rc = run_cmd(cmd=cmd, task_description="Fetching remote repository tree info")
+        if rc != 0:
+            return None
+        
+        cmd_ls = ["git", "ls-tree", "-r", "-l", "HEAD"]
+        try:
+            out = subprocess.check_output(cmd_ls, cwd=tmpdir, stderr=subprocess.DEVNULL)
+        except Exception:
+            return None
+        
+        files_info = {}
+        for line in out.decode("utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split('\t', 1)
+            if len(parts) == 2:
+                meta, path = parts
+                meta_parts = meta.split()
+                if len(meta_parts) >= 4:
+                    size_str = meta_parts[3]
+                    if size_str.isdigit():
+                        files_info[path.replace('\\', '/')] = int(size_str)
+        return files_info
+
+def directory_matches_files_info(dir_path: str, files_info: dict) -> bool:
+    # Filter out .git from files_info just in case the remote had them tracked
+    filtered_files_info = {k: v for k, v in files_info.items() if not k.startswith('.git/') and '/.git/' not in k}
+
+    actual_files = {}
+    for root, dirs, files in os.walk(dir_path):
+        if '.git' in dirs:
+            dirs.remove('.git')  # Prevent walking into .git
+        for f in files:
+            full_path = os.path.join(root, f)
+            rel_path = os.path.relpath(full_path, dir_path).replace(os.sep, '/')
+            try:
+                actual_files[rel_path] = os.path.getsize(full_path)
+            except OSError:
+                pass
+    
+    missing_locally = []
+    different_size = []
+    
+    for k, v in filtered_files_info.items():
+        if k not in actual_files:
+            missing_locally.append(k)
+        elif actual_files[k] != v:
+            # Check if it's an LFS pointer remotely (typically < 200 bytes) and larger locally
+            if v < 200 and actual_files[k] > v:
+                pass # Treat as match (LFS resolved locally)
+            else:
+                different_size.append(k)
+                
+    extra_locally = [k for k in actual_files if k not in filtered_files_info]
+    
+    # If there are files missing, different size, or extra files, check if we should log it
+    if missing_locally or different_size or extra_locally:
+        total_expected = len(filtered_files_info)
+        match_ratio = max(0, (total_expected - len(missing_locally) - len(different_size)) / max(1, total_expected))
+        
+        # Consider it a mismatch if any of these conditions occur
+        if match_ratio >= 0.75 or (match_ratio == 1.0 and extra_locally):
+            log_subsubtask(f"Directory {dir_path} missed match: missing={len(missing_locally)}, diff_size={len(different_size)}, extra={len(extra_locally)} (Match Ratio: {match_ratio*100:.1f}%)")
+            if len(missing_locally) <= 5 and missing_locally:
+                for m in missing_locally:
+                    log_subsubtask(f"    Missing: {m}")
+            if len(different_size) <= 5 and different_size:
+                for d in different_size:
+                    log_subsubtask(f"    Diff size: {d} (Remote: {filtered_files_info[d]} Local: {actual_files.get(d, 0)})")
+            if len(extra_locally) <= 5 and extra_locally:
+                for e in extra_locally:
+                    log_subsubtask(f"    Extra locally: {e}")
+        return False
+            
+    return True
+
+def find_matching_directory_in_caches(files_info: dict, cache_dirs: list) -> str:
+    if not files_info:
+        return None
+        
+    filtered_files_info = {k: v for k, v in files_info.items() if not k.startswith('.git/') and '/.git/' not in k}
+    if not filtered_files_info:
+        return None
+    
+    target_file = max(filtered_files_info.items(), key=lambda x: x[1])[0]
+    target_size = filtered_files_info[target_file]
+    target_file_parts = target_file.split('/')
+    target_filename = target_file_parts[-1]
+    
+    for cache_dir in cache_dirs:
+        if not os.path.isdir(cache_dir):
+            continue
+        for root, dirs, files in os.walk(cache_dir):
+            if '.git' in dirs:
+                dirs.remove('.git')
+            if target_filename in files:
+                full_path = os.path.join(root, target_filename)
+                try:
+                    if os.path.getsize(full_path) == target_size:
+                        repo_root = full_path
+                        for _ in target_file_parts:
+                            repo_root = os.path.dirname(repo_root)
+                        
+                        if directory_matches_files_info(repo_root, files_info):
+                            return repo_root
+                except OSError:
+                    pass
+    return None
+
+def link_or_copy_directory(src: str, dst: str) -> bool:
+    try:
+        os.symlink(src, dst, target_is_directory=True)
+        log_subsubtask(f"Symlinked existing directory from {src} to {dst}")
+        return True
+    except OSError:
+        try:
+            import _winapi
+            import sys
+            if sys.platform == "win32":
+                _winapi.CreateJunction(str(src), str(dst))
+                log_subsubtask(f"Junctioned existing directory from {src} to {dst}")
+                return True
+        except Exception:
+            pass
+            
+        try:
+            shutil.copytree(src, dst)
+            log_subsubtask(f"Copied existing directory from {src} to {dst}")
+            return False
+        except Exception as e:
+            abort(f"Failed to copy directory: {e}")
+
 
 def get_remote_file_size(url: str, verbose=False) -> int:
     try:
@@ -2632,15 +2816,14 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
     try:
         dirpath, fname = os.path.split(filepath)
         if not fname:
-            fname = os.path.basename(urlparse(url).path)
+            fname = os.path.basename(urllib.parse.urlparse(url).path)
         fname = urllib.parse.unquote(fname)
         filepath_decoded = os.path.join(dirpath, fname)
 
         if os.path.exists(filepath_decoded) and check_if_file_is_aready_downloaded(url, filepath_decoded, verbose=False):
             log_subsubtask(f"File already exists and is complete: {filepath_decoded}")
             # Populate collect if needed
-            env_vars = load_env()
-            blob_collect_dir = env_vars.get(BLOB_COLLECT_DIR)
+            blob_repos, blob_collect_dir = get_cache_config()
             if blob_collect_dir:
                 collect_path = os.path.join(blob_collect_dir, fname)
                 if not os.path.exists(collect_path):
@@ -2649,15 +2832,13 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
                     if expected_size == -1 or os.path.getsize(filepath_decoded) == expected_size:
                         try:
                             os.link(filepath_decoded, collect_path)
-                            log_subsubtask(f"Linked existing file from {filepath_decoded} to {collect_path}")
+                            log_subsubtask(f"Populate collect folder with file: Linked existing file from {filepath_decoded} to {collect_path}")
                         except OSError:
                             shutil.copyfile(filepath_decoded, collect_path)
-                            log_subsubtask(f"Copied existing file from {filepath_decoded} to {collect_path}")
+                            log_subsubtask(f"Populate collect folder with file: Copied existing file from {filepath_decoded} to {collect_path}")
             return filepath_decoded
 
-        env_vars = load_env()
-        blob_repos = [v for k, v in env_vars.items() if k.startswith(BLOB_SOURCE_PREFIX)]
-        blob_collect_dir = env_vars.get(BLOB_COLLECT_DIR)
+        blob_repos, blob_collect_dir = get_cache_config()
         
         is_feature_enabled = os.path.exists(ENV_FILE) and (blob_repos or blob_collect_dir)
         download_target = filepath_decoded
@@ -2670,6 +2851,7 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
             if blob_repos:
                 found_path = find_file_in_repos(fname, expected_size, blob_repos)
                 if found_path:
+                    log_subsubtask(f"Found file in cache repo: {found_path}. Attempting to link to target location...")
                     try:
                         os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
                         if os.path.exists(filepath_decoded):
@@ -2690,10 +2872,10 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
                     if expected_size == -1 or os.path.getsize(filepath_decoded) == expected_size:
                         try:
                             os.link(filepath_decoded, collect_path)
-                            log_subsubtask(f"Linked existing file from {filepath_decoded} to {collect_path}")
+                            log_subsubtask(f"Cached filled: Linked existing file from {filepath_decoded} to {collect_path}")
                         except OSError:
                             shutil.copyfile(filepath_decoded, collect_path)
-                            log_subsubtask(f"Copied existing file from {filepath_decoded} to {collect_path}")
+                            log_subsubtask(f"Cached filled: Copied existing file from {filepath_decoded} to {collect_path}")
                         # Target already has the file, so return
                         return filepath_decoded
                 
@@ -2776,7 +2958,7 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
 
 def download_only_if_not_existent(url, directory_target_path, verbose=False, show_progress=True):
     os.makedirs(directory_target_path, exist_ok=True)
-    filename = os.path.basename(urlparse(url).path)
+    filename = os.path.basename(urllib.parse.urlparse(url).path)
     filepath = os.path.join(directory_target_path, filename)
     download_file(url, filepath, show_progress=show_progress)
 
@@ -3269,12 +3451,12 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             url=None
             suffix=None
             optional_targetname=None
-            log_task(msg=f"{output_prefix}{cmd} cloning: {url}")
+
             if len(params)==2:
                 url, suffix = params
             elif len(params)==3:
                 url, suffix, optional_targetname = params
-                
+            log_task(msg=f"{output_prefix}{cmd} cloning: {url}")                
             basetarget = (in_basedir / suffix).resolve()
             if optional_targetname:
                 target = basetarget / optional_targetname
@@ -3282,7 +3464,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 repo_project_name=extract_project_name(url)
                 target = basetarget / repo_project_name
            
-            log_task(msg=f"{output_prefix}{cmd} target: {url}")
+            log_subsubtask(msg=f"target: {target}")
             
             do_git_clone(url=url, target=target, operating_mode=in_operation_mode, force_gitpull_mode=force_gitpull_mode, git_blob_mode=git_blob_mode)
             
@@ -3490,6 +3672,7 @@ def main():
     parser.add_argument(f"--{STARTOPTION_SAFECHECK}", action="store_true",help="Pre-Check if the comand will create a new installation or update an existing one. This will check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one.")
     parser.add_argument(f"--{STARTOPTION_DEBUGTEST}", action="store_true",help="Show debug info and quit")
     parser.add_argument(f"--{STARTOPTION_SYSREPORT}", action="store_true", help="Output anonymized system information for debugging and quit")
+    parser.add_argument(f"--{STARTOPTION_ENVINIT}", action="store_true", help="Create a dummy .env file with all needed variables and quit")
     args = parser.parse_args()
 
 
@@ -3508,6 +3691,19 @@ def main():
         report = get_sysreport()
         print("System Report:")
         print(json.dumps(report, indent=2))
+        sys.exit(0)
+
+    if getattr(args, STARTOPTION_ENVINIT):
+        env_content = f"""# Pynst Environment Configuration
+# Add real paths to use them. These dummy values are ignored by default.
+
+{BLOB_COLLECT_DIR}=/path/to/dummy/blob/collect/dir
+{BLOB_SOURCE_PREFIX}1=/path/to/dummy/blob/repo1
+{BLOB_SOURCE_PREFIX}2=/path/to/dummy/blob/repo2
+"""
+        with open(ENV_FILE, 'w', encoding='utf-8') as f:
+            f.write(env_content)
+        print(f"Created dummy {ENV_FILENAME} file at {ENV_FILE}")
         sys.exit(0)
 
     if not getattr(args, STARTOPTION_INPUTFILE) or not getattr(args, STARTOPTION_INPUTDIR):

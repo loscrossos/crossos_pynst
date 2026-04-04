@@ -1264,6 +1264,8 @@ STARTOPTION_FORCEUPDATE = "update"
 STARTOPTION_FORCEUPGRADE = "upgrade"
 STARTOPTION_SYSREPORT = "sysreport"
 STARTOPTION_ENVINIT = "envinit"
+STARTOPTION_COPYMODE = "copymode"
+STARTOPTION_MATCHMODE = "matchmode"
     
 DEFAULT_PYTHON_VERSION = "3.13"
 COMFYUI_PYTHON_EMBEDDED_FOLDER_NAME="python_embedded"
@@ -1279,12 +1281,15 @@ DRYRUN = False
 VERBOSE = False
 BACKUP = False
 GLOBAL_OPTION_FORCE_REINSTALL =False 
-
+OVERRIDE_COPYMODE = None
+OVERRIDE_MATCHMODE = None
 
 
 #download options
 BLOB_COLLECT_DIR="BLOB_COLLECT_DIR"
 BLOB_SOURCE_PREFIX="BLOBREPO_"
+COPYMODE_VAR="COPYMODE"
+MATCHMODE_VAR="MATCHMODE"
 ENV_FILENAME = ".env"
 ENV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ENV_FILENAME)
 _cache_config_logged = False
@@ -1432,11 +1437,12 @@ def log_app_section(msg: str):
 def log_task(msg: str):
     print(f"{COLOR_TASK}{TOKEN_TASK_DELIM}{msg}{COLOR_RESET}")
 
-def log_subsubtask(msg: str):
-    print(f"{COLOR_SUBSUBTASK}{TOKEN_SUB_TASK_DELIM}{msg}{COLOR_RESET}")
 
 def log_subtask(msg: str):
     print(f"{COLOR_SUBTASK}{TOKEN_SUBSUB_TASK_DELIM}{msg}{COLOR_RESET}")
+
+def log_subsubtask(msg: str):
+    print(f"{COLOR_SUBSUBTASK}{TOKEN_SUB_TASK_DELIM}{msg}{COLOR_RESET}")
 
 def log_warning(msg: str):
     print(f"{COLOR_WARNING}{msg}{COLOR_RESET}")
@@ -1915,7 +1921,7 @@ def apply_rfilter_to_file(src_path: Path, filters: list[str]) -> Path:
         for line in src:
             # Preserve comments and blank lines as-is unless they match (they won't)
             if pat and pat.search(line):
-                print(f"filtering out this line: {line}")
+                log_subsubtask(f"filtering out this line: {line}")
                 continue
             dst.write(line)
             
@@ -2307,50 +2313,58 @@ def do_git_clone(url: str, target: Path, operating_mode=None, force_gitpull_mode
             remove_dir_force(target)
         else:
             log_subsubtask(f"Repository already exists. Not cloning...")
-            if operating_mode==STARTOPTION_MODE_INSTALL or operating_mode==STARTOPTION_MODE_REBUILD:
+            if operating_mode==STARTOPTION_MODE_INSTALL or operating_mode==STARTOPTION_MODE_REBUILD and git_blob_mode==False:
                 log_subsubtask("Repository: updating code")
                 do_git_pull(repo_path=target, operating_mode=operating_mode, force_gitpull_mode=force_gitpull_mode)
             return
 
     if git_blob_mode:
-        blob_repos, blob_collect_dir = get_cache_config()
-        is_cache_feature_enabled = os.path.exists(ENV_FILE) and (blob_repos or blob_collect_dir)
+        blob_repos, blob_collect_dirs, copymode, matchmode = get_config()
+        is_cache_feature_enabled = os.path.exists(ENV_FILE) and (blob_repos or blob_collect_dirs)
         if is_cache_feature_enabled:
             files_info = get_remote_git_tree_info(url)
             if files_info:
-                cache_dirs = []
-                if blob_collect_dir:
-                    cache_dirs.append(blob_collect_dir)
-                cache_dirs.extend(blob_repos)
+                required_size = sum(files_info.values())
+                cache_dirs = blob_collect_dirs + blob_repos
                 
-                matched_dir = find_matching_directory_in_caches(files_info, cache_dirs)
+                matched_dir = find_matching_directory_in_caches(files_info, cache_dirs, matchmode, extract_project_name(url))
                 if matched_dir:
-                    link_or_copy_directory(matched_dir, str(target))
+                    log_subsubtask(f"Found matching directory in cache: {matched_dir}. Linking/copying to target: {target}")
+                    link_or_copy_directory(matched_dir, str(target), copymode=copymode)
                     return
                 else:
-                    if blob_collect_dir:
-                        import hashlib
-                        url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
-                        repo_name = url.split('/')[-1]
-                        if repo_name.endswith('.git'):
-                            repo_name = repo_name[:-4]
-                        
-                        collect_target = os.path.join(blob_collect_dir, f"{repo_name}_{url_hash}")
+                    log_subsubtask(f"No matching directory found in caches for repo {url}. Required size: {required_size} bytes. Will attempt to download and cache.")
+                    import hashlib
+                    url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
+                    repo_name = url.split('/')[-1]
+                    if repo_name.endswith('.git'):
+                        repo_name = repo_name[:-4]
+
+                    def cache_path_resolver(cdir):
+                        base = os.path.join(cdir, f"{repo_name}_{url_hash}")
+                        ct = base
                         suffix = 0
-                        base_collect_target = collect_target
-                        while os.path.exists(collect_target):
+                        while os.path.exists(ct):
                             suffix += 1
-                            collect_target = f"{base_collect_target}_{suffix}"
-                        
-                        os.makedirs(blob_collect_dir, exist_ok=True)
-                        rc = run_cmd(cmd=["git", "clone", url, collect_target], cwd=blob_collect_dir, task_description="Cloning repo into cache...")
+                            ct = f"{base}_{suffix}"
+                        return ct
+
+                    def download_func(path):
+                        p = Path(path)
+                        p.parent.mkdir(parents=True, exist_ok=True)
+                        rc = run_cmd(cmd=["git", "clone", url, str(p)], cwd=str(p.parent), task_description="Cloning repo...")
                         if rc == 0:
-                            git_dir = Path(collect_target) / ".git"
+                            git_dir = p / ".git"
                             if git_dir.exists() and git_dir.is_dir():
                                 remove_dir_force(git_dir)
-                            
-                            link_or_copy_directory(collect_target, str(target))
-                            return
+                            return True
+                        return False
+
+                    def link_wrapper(src, dst):
+                        return link_or_copy_directory(src, dst, copymode=copymode)
+
+                    if save_cached(url, blob_collect_dirs, required_size, str(target), download_func, link_wrapper, cache_path_resolver):
+                        return
 
     rc = run_cmd(cmd=["git", "clone", url, str(target)],cwd=str(target.parent),task_description="Cloning repo...")
     if rc != 0:
@@ -2372,6 +2386,11 @@ def do_git_pull( repo_path: Path, operating_mode=None, force_gitpull_mode=False)
     """     
     if not repo_path.exists():
         abort(f"Directory to perform git pull not found: {repo_path}")
+
+    # Check if it's a git repo
+    if not (repo_path / ".git").is_dir():
+        log_subsubtask(f"Not a git repository, skipping pull: {repo_path}")
+        return
 
     if force_gitpull_mode==True:
         try:
@@ -2435,7 +2454,7 @@ def do_force_git_pull_on_repository(directory: str) -> bool:
             capture_output=True, text=True
         )
         if result.returncode != 0 or result.stdout.strip() != "true":
-            print(f"Error: {directory} is not a Git repository")
+            log_subsubtask(f"Error: {directory} is not a Git repository")
             return False
         log_subsubtask("Force-pull: Git directory detected. attempting to move code version to 'nightly'")
         # Check current branch or detached HEAD state
@@ -2462,7 +2481,7 @@ def do_force_git_pull_on_repository(directory: str) -> bool:
         elif "origin/master" in [b.strip() for b in remote_branches]:
             target_branch = "master"
         else:
-            print("Error: Neither main nor master branch found in remote")
+            log_subsubtask("Error: Neither main nor master branch found in remote")
             return False
 
         # If not on the target branch or in detached HEAD, switch to it
@@ -2559,14 +2578,30 @@ def task_pause(message:str = None):
 
 
 # ========= Download helpers =========
- 
+    """
+    the function get_config looks for one istance of BLOB_COLLECT_DIR.
+
+it shall look for any variables that start with it and check if they exist.
+if they exist add them to blob_collect_dir which is now an array.
+also the functions using it will do so through a central function save_cached that takes the first path from the array that has enough storage space and stores it there before linking. if no paths have enough storage then a wanrning is given to the user. and the cache is not used also if the target file system has not enough storage then the process is aborted with an error message. any questions 
+    """
 
  
-def get_cache_config():
-    global _cache_config_logged
-    #load env vars from .env file if exists, looking for keys starting with BLOB_SOURCE_PREFIX and BLOB_COLLECT_DIR
+def get_free_space(path):
+    p = Path(path)
+    while not p.exists() and p.parent != p:
+        p = p.parent
+    try:
+        usage = shutil.disk_usage(str(p))
+        return usage.free
+    except Exception:
+        return 0
+
+def get_config():
+    global _cache_config_logged, OVERRIDE_COPYMODE, OVERRIDE_MATCHMODE
     env_vars = {}
-    if os.path.exists(ENV_FILE):
+    env_exists = os.path.exists(ENV_FILE)
+    if env_exists:
         with open(ENV_FILE, 'r', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
@@ -2574,22 +2609,104 @@ def get_cache_config():
                     parts = line.split('=', 1)
                     if len(parts) == 2:
                         env_vars[parts[0].strip()] = parts[1].strip()
-                        
-    blob_repos = [v for k, v in env_vars.items() if k.startswith(BLOB_SOURCE_PREFIX) and os.path.isdir(v)]
-    blob_collect_dir = env_vars.get(BLOB_COLLECT_DIR)
+
+    # Collect raw paths
+    raw_blob_repos = [v for k, v in env_vars.items() if k.startswith(BLOB_SOURCE_PREFIX)]
     
-    if blob_collect_dir and not os.path.isdir(blob_collect_dir):
-        blob_collect_dir = None
-        
+    raw_blob_collect_dirs = []
+    # Collect BLOB_COLLECT_DIR and any BLOB_COLLECT_DIR_*
+    for k in sorted([k for k in env_vars.keys() if k.startswith(BLOB_COLLECT_DIR)]):
+        if env_vars[k] not in raw_blob_collect_dirs:
+            raw_blob_collect_dirs.append(env_vars[k])
+
+    # Filter out non-existent paths
+    blob_repos = [v for v in raw_blob_repos if os.path.isdir(v)]
+    blob_collect_dirs = [v for v in raw_blob_collect_dirs if os.path.isdir(v)]
+
+    # Get copymode
+    copymode = env_vars.get(COPYMODE_VAR, "link").lower()
+    if OVERRIDE_COPYMODE:
+        copymode = OVERRIDE_COPYMODE.lower()
+
+    # Get matchmode
+    matchmode = env_vars.get(MATCHMODE_VAR, "filelistandsize").lower()
+    if OVERRIDE_MATCHMODE:
+        matchmode = OVERRIDE_MATCHMODE.lower()
+
     if not _cache_config_logged:
         _cache_config_logged = True
-        if blob_collect_dir:
-            log_subsubtask(f"Cache collector successfully set to: {blob_collect_dir}")
-        if blob_repos:
-            log_subsubtask(f"Cache repositories found: {len(blob_repos)} ({', '.join(blob_repos[:2])}{'...' if len(blob_repos) > 2 else ''})")
-            
-    return blob_repos, blob_collect_dir
+        if not env_exists:
+            log_subsubtask(f"Cache config: No {ENV_FILENAME} file found. Caching disabled.")
+        else:
+            if not raw_blob_collect_dirs and not raw_blob_repos:
+                log_subsubtask(f"Cache config: No cache variables found in {ENV_FILENAME}. Caching disabled.")
+            else:
+                log_subsubtask(f"Cache config: Loaded from {ENV_FILENAME}")
+                
+                if blob_collect_dirs:
+                    log_subsubtask(f"Cache collectors active: {', '.join(blob_collect_dirs)}")
+                elif raw_blob_collect_dirs:
+                    log_subsubtask(f"Cache collectors active: None (paths not found)")
+                    
+                if blob_repos:
+                    log_subsubtask(f"Cache repositories active: {len(blob_repos)} ({', '.join(blob_repos[:2])}{'...' if len(blob_repos) > 2 else ''})")
+                elif raw_blob_repos:
+                    log_subsubtask(f"Cache repositories active: None (paths not found)")
 
+                invalid_collects = [p for p in raw_blob_collect_dirs if not os.path.isdir(p)]
+                if invalid_collects:
+                    log_subsubtask(f"Cache collectors ignored (path not found): {', '.join(invalid_collects)}")
+
+                invalid_repos = [p for p in raw_blob_repos if not os.path.isdir(p)]
+                if invalid_repos:
+                    log_subsubtask(f"Cache repositories ignored (path not found): {', '.join(invalid_repos)}")
+                
+                if copymode != "link":
+                    log_subsubtask(f"Copy mode: {copymode}")
+                    
+                if matchmode != "filelistandsize":
+                    log_subsubtask(f"Match mode: {matchmode}")
+
+    return blob_repos, blob_collect_dirs, copymode, matchmode
+
+def save_cached(identifier: str, blob_collect_dirs: list, required_size: int, target_path: str, download_func, link_func, cache_path_resolver):
+    """
+    Central function to handle caching with space checks.
+    - identifier: Name/URL for logging.
+    - blob_collect_dirs: List of cache directories.
+    - required_size: Size in bytes.
+    - target_path: Final destination.
+    - download_func: Function(path) -> bool (True if success).
+    - link_func: Function(cache_path, target_path).
+    - cache_path_resolver: Function(cache_dir) -> cache_path.
+    """
+    # 1. Target filesystem check
+    target_parent = os.path.dirname(os.path.abspath(target_path))
+    free_target = get_free_space(target_parent)
+    if required_size > 0 and free_target < required_size:
+        abort(f"Not enough storage space on target filesystem for {identifier}. Required: {human_readable_size(required_size)}, Available: {human_readable_size(free_target)}")
+
+    # 2. Cache selection
+    selected_collect_dir = None
+    for d in blob_collect_dirs:
+        if get_free_space(d) > required_size:
+            selected_collect_dir = d
+            break
+            
+    if selected_collect_dir:
+        os.makedirs(selected_collect_dir, exist_ok=True)
+        cache_target = cache_path_resolver(selected_collect_dir)
+        if download_func(cache_target):
+            link_func(cache_target, target_path)
+            return True
+        else:
+            return False 
+    else:
+        if blob_collect_dirs:
+            log_warning(f"No cache directories have enough storage space for {identifier} ({human_readable_size(required_size)}). Cache will not be used.")
+            
+    # 3. Direct download to target
+    return download_func(target_path)
 def get_remote_git_tree_info(url: str):
     import tempfile, subprocess
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -2619,7 +2736,7 @@ def get_remote_git_tree_info(url: str):
                         files_info[path.replace('\\', '/')] = int(size_str)
         return files_info
 
-def directory_matches_files_info(dir_path: str, files_info: dict) -> bool:
+def directory_matches_files_info(dir_path: str, files_info: dict, match_mode: str = "filelistandsize") -> bool:
     # Filter out .git from files_info just in case the remote had them tracked
     filtered_files_info = {k: v for k, v in files_info.items() if not k.startswith('.git/') and '/.git/' not in k}
 
@@ -2650,31 +2767,41 @@ def directory_matches_files_info(dir_path: str, files_info: dict) -> bool:
                 
     extra_locally = [k for k in actual_files if k not in filtered_files_info]
     
-    # If there are files missing, different size, or extra files, check if we should log it
-    if missing_locally or different_size or extra_locally:
+    # If there are files missing or different size, it is a mismatch. Extra files are OK.
+    is_mismatch = False
+    if match_mode == "filelist":
+        is_mismatch = bool(missing_locally)
+    else:
+        is_mismatch = bool(missing_locally or different_size)
+            
+    if is_mismatch:
         total_expected = len(filtered_files_info)
         match_ratio = max(0, (total_expected - len(missing_locally) - len(different_size)) / max(1, total_expected))
         
-        # Consider it a mismatch if any of these conditions occur
-        if match_ratio >= 0.75 or (match_ratio == 1.0 and extra_locally):
-            log_subsubtask(f"Directory {dir_path} missed match: missing={len(missing_locally)}, diff_size={len(different_size)}, extra={len(extra_locally)} (Match Ratio: {match_ratio*100:.1f}%)")
+        # Only log details if it was almost a match (>= 75%) or if in filelist mode
+        if match_mode == "filelist" or match_ratio >= 0.75:
+            if match_mode != "filelist":
+                log_subsubtask(f"Directory {dir_path} missed match: missing={len(missing_locally)}, diff_size={len(different_size)}, extra={len(extra_locally)} (Match Ratio: {match_ratio*100:.1f}%)")
+            else:
+                log_subsubtask(f"Directory {dir_path} missed match: missing={len(missing_locally)} (Match Mode: filelist)")
+
             if len(missing_locally) <= 5 and missing_locally:
                 for m in missing_locally:
                     log_subsubtask(f"    Missing: {m}")
-            if len(different_size) <= 5 and different_size:
+            if match_mode != "filelist" and len(different_size) <= 5 and different_size:
                 for d in different_size:
                     log_subsubtask(f"    Diff size: {d} (Remote: {filtered_files_info[d]} Local: {actual_files.get(d, 0)})")
-            if len(extra_locally) <= 5 and extra_locally:
+            if match_mode != "filelist" and len(extra_locally) <= 5 and extra_locally:
                 for e in extra_locally:
                     log_subsubtask(f"    Extra locally: {e}")
         return False
             
     return True
 
-def find_matching_directory_in_caches(files_info: dict, cache_dirs: list) -> str:
+def find_matching_directory_in_caches(files_info: dict, cache_dirs: list, match_mode: str = "filelistandsize", target_name: str = None) -> str:
     if not files_info:
         return None
-        
+    log_subsubtask(f"Looking for matching directory in caches with match mode: {match_mode}")
     filtered_files_info = {k: v for k, v in files_info.items() if not k.startswith('.git/') and '/.git/' not in k}
     if not filtered_files_info:
         return None
@@ -2693,18 +2820,30 @@ def find_matching_directory_in_caches(files_info: dict, cache_dirs: list) -> str
             if target_filename in files:
                 full_path = os.path.join(root, target_filename)
                 try:
-                    if os.path.getsize(full_path) == target_size:
+                    if match_mode == "filelist" or os.path.getsize(full_path) == target_size:
                         repo_root = full_path
                         for _ in target_file_parts:
                             repo_root = os.path.dirname(repo_root)
                         
-                        if directory_matches_files_info(repo_root, files_info):
+                        if target_name and os.path.basename(repo_root) != target_name:
+                            continue
+                        log_subsubtask(f"Found candidate cache directory: {repo_root}, verifying...")
+                        if directory_matches_files_info(repo_root, files_info, match_mode):
+                            log_subsubtask(f"Cache directory {repo_root} matches remote repository structure and sizes.")
                             return repo_root
                 except OSError:
                     pass
     return None
 
-def link_or_copy_directory(src: str, dst: str) -> bool:
+def link_or_copy_directory(src: str, dst: str, copymode: str = "link") -> bool:
+    if copymode == "copy":
+        try:
+            shutil.copytree(src, dst)
+            log_subsubtask(f"Copied existing directory from {src} to {dst}")
+            return False
+        except Exception as e:
+            abort(f"Failed to copy directory: {e}")
+
     try:
         os.symlink(src, dst, target_is_directory=True)
         log_subsubtask(f"Symlinked existing directory from {src} to {dst}")
@@ -2820,138 +2959,180 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
         fname = urllib.parse.unquote(fname)
         filepath_decoded = os.path.join(dirpath, fname)
 
+        expected_size = get_remote_file_size(url)
+
         if os.path.exists(filepath_decoded) and check_if_file_is_aready_downloaded(url, filepath_decoded, verbose=False):
             log_subsubtask(f"File already exists and is complete: {filepath_decoded}")
             # Populate collect if needed
-            blob_repos, blob_collect_dir = get_cache_config()
-            if blob_collect_dir:
-                collect_path = os.path.join(blob_collect_dir, fname)
+            blob_repos, blob_collect_dirs, copymode, matchmode = get_config()
+            actual_size = os.path.getsize(filepath_decoded)
+            for collect_dir in blob_collect_dirs:
+                collect_path = os.path.join(collect_dir, fname)
                 if not os.path.exists(collect_path):
-                    os.makedirs(blob_collect_dir, exist_ok=True)
-                    expected_size = get_remote_file_size(url)
-                    if expected_size == -1 or os.path.getsize(filepath_decoded) == expected_size:
+                    if get_free_space(collect_dir) > actual_size:
+                        os.makedirs(collect_dir, exist_ok=True)
                         try:
-                            os.link(filepath_decoded, collect_path)
-                            log_subsubtask(f"Populate collect folder with file: Linked existing file from {filepath_decoded} to {collect_path}")
+                            if copymode == "copy":
+                                shutil.copyfile(filepath_decoded, collect_path)
+                                log_subsubtask(f"Populate cache with file: Copied existing file from {filepath_decoded} to {collect_path}")
+                            else:
+                                os.link(filepath_decoded, collect_path)
+                                log_subsubtask(f"Populate cache with file: Linked existing file from {filepath_decoded} to {collect_path}")
                         except OSError:
                             shutil.copyfile(filepath_decoded, collect_path)
-                            log_subsubtask(f"Populate collect folder with file: Copied existing file from {filepath_decoded} to {collect_path}")
+                            log_subsubtask(f"Populate cache with file: Copied existing file from {filepath_decoded} to {collect_path}")
+                        break
             return filepath_decoded
 
-        blob_repos, blob_collect_dir = get_cache_config()
-        
-        is_feature_enabled = os.path.exists(ENV_FILE) and (blob_repos or blob_collect_dir)
-        download_target = filepath_decoded
-        link_after_download = False
+        blob_repos, blob_collect_dirs, copymode, matchmode = get_config()
+        is_feature_enabled = os.path.exists(ENV_FILE) and (blob_repos or blob_collect_dirs)
         
         if is_feature_enabled:
-            expected_size = get_remote_file_size(url)
-            
             # Check BLOBREPO_XX
             if blob_repos:
                 found_path = find_file_in_repos(fname, expected_size, blob_repos)
                 if found_path:
-                    log_subsubtask(f"Found file in cache repo: {found_path}. Attempting to link to target location...")
+                    # Check target space even if linking
+                    target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
+                    if expected_size > 0 and get_free_space(target_parent) < expected_size:
+                         abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
+
+                    log_subsubtask(f"Found file in cache repo: {found_path}. Attempting to {'copy' if copymode == 'copy' else 'link'} to target location...")
                     try:
                         os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
                         if os.path.exists(filepath_decoded):
                             os.remove(filepath_decoded)
-                        os.link(found_path, filepath_decoded)
-                        log_subsubtask(f"Linked existing file from {found_path} to {filepath_decoded}")
+                        if copymode == "copy":
+                            shutil.copyfile(found_path, filepath_decoded)
+                            log_subsubtask(f"Copied existing file from {found_path} to {filepath_decoded}")
+                        else:
+                            os.link(found_path, filepath_decoded)
+                            log_subsubtask(f"Linked existing file from {found_path} to {filepath_decoded}")
                         return filepath_decoded
                     except OSError:
-                        log_warning(f"File exists at {found_path} but is on a different drive. Downloading anyway...")
+                        log_warning(f"File exists at {found_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
             
-            # Check BLOB_COLLECT_DIR
-            if blob_collect_dir:
-                os.makedirs(blob_collect_dir, exist_ok=True)
-                collect_path = os.path.join(blob_collect_dir, fname)
+            # Check all BLOB_COLLECT_DIRs for existing file
+            for collect_dir in blob_collect_dirs:
+                collect_path = os.path.join(collect_dir, fname)
                 
-                # If file exists in target but not in collect, link/copy to collect
+                # If file exists in target but not in this collect, link/copy to collect
                 if not os.path.exists(collect_path) and os.path.exists(filepath_decoded):
                     if expected_size == -1 or os.path.getsize(filepath_decoded) == expected_size:
-                        try:
-                            os.link(filepath_decoded, collect_path)
-                            log_subsubtask(f"Cached filled: Linked existing file from {filepath_decoded} to {collect_path}")
-                        except OSError:
-                            shutil.copyfile(filepath_decoded, collect_path)
-                            log_subsubtask(f"Cached filled: Copied existing file from {filepath_decoded} to {collect_path}")
-                        # Target already has the file, so return
-                        return filepath_decoded
+                        if get_free_space(collect_dir) > os.path.getsize(filepath_decoded):
+                            try:
+                                os.makedirs(collect_dir, exist_ok=True)
+                                if copymode == "copy":
+                                    shutil.copyfile(filepath_decoded, collect_path)
+                                    log_subsubtask(f"Cached filled: Copied existing file from {filepath_decoded} to {collect_path}")
+                                else:
+                                    os.link(filepath_decoded, collect_path)
+                                    log_subsubtask(f"Cached filled: Linked existing file from {filepath_decoded} to {collect_path}")
+                            except OSError:
+                                shutil.copyfile(filepath_decoded, collect_path)
+                                log_subsubtask(f"Cached filled: Copied existing file from {filepath_decoded} to {collect_path}")
+                            return filepath_decoded
                 
                 if os.path.exists(collect_path):
                     if expected_size == -1 or os.path.getsize(collect_path) == expected_size:
+                        # Check target space
+                        target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
+                        if expected_size > 0 and get_free_space(target_parent) < expected_size:
+                             abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
+
                         try:
                             os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
                             if os.path.exists(filepath_decoded):
                                 os.remove(filepath_decoded)
-                            os.link(collect_path, filepath_decoded)
-                            log_subsubtask(f"Linked collected file from {collect_path} to {filepath_decoded}")
+                            if copymode == "copy":
+                                shutil.copyfile(collect_path, filepath_decoded)
+                                log_subsubtask(f"Copied collected file from {collect_path} to {filepath_decoded}")
+                            else:
+                                os.link(collect_path, filepath_decoded)
+                                log_subsubtask(f"Linked collected file from {collect_path} to {filepath_decoded}")
                             return filepath_decoded
                         except OSError:
-                            log_warning(f"File exists at {collect_path} but linking failed (different drive). Downloading anyway...")
+                            log_warning(f"File exists at {collect_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
                     else:
+                        import hashlib
                         url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
                         sub_dir_name = f"{fname}_{url_hash}"
-                        sub_dir_path = os.path.join(blob_collect_dir, sub_dir_name)
+                        sub_dir_path = os.path.join(collect_dir, sub_dir_name)
+                        potential_file = os.path.join(sub_dir_path, fname)
                         
-                        suffix = 0
-                        matched_in_subfolder = False
-                        while os.path.exists(sub_dir_path):
-                            potential_file = os.path.join(sub_dir_path, fname)
-                            if os.path.exists(potential_file) and (expected_size == -1 or os.path.getsize(potential_file) == expected_size):
-                                try:
-                                    os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
-                                    if os.path.exists(filepath_decoded):
-                                        os.remove(filepath_decoded)
+                        if os.path.exists(potential_file) and (expected_size == -1 or os.path.getsize(potential_file) == expected_size):
+                            # Check target space
+                            target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
+                            if expected_size > 0 and get_free_space(target_parent) < expected_size:
+                                 abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
+
+                            try:
+                                os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
+                                if os.path.exists(filepath_decoded):
+                                    os.remove(filepath_decoded)
+                                if copymode == "copy":
+                                    shutil.copyfile(potential_file, filepath_decoded)
+                                    log_subsubtask(f"Copied collected file from {potential_file} to {filepath_decoded}")
+                                else:
                                     os.link(potential_file, filepath_decoded)
                                     log_subsubtask(f"Linked collected file from {potential_file} to {filepath_decoded}")
-                                    return filepath_decoded
-                                except OSError:
-                                    log_warning(f"File exists at {potential_file} but linking failed (different drive). Downloading anyway...")
-                                matched_in_subfolder = True
-                                break
-                            
-                            suffix += 1
-                            sub_dir_path = os.path.join(blob_collect_dir, f"{sub_dir_name}_{suffix}")
-                            
-                        if not matched_in_subfolder:
-                            os.makedirs(sub_dir_path, exist_ok=True)
-                            download_target = os.path.join(sub_dir_path, fname)
-                            link_after_download = True
+                                return filepath_decoded
+                            except OSError:
+                                log_warning(f"File exists at {potential_file} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
+
+        def download_func(path):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            try:
+                urllib.request.urlretrieve(url, path, reporthook=progress)
+                return True
+            except (ssl.SSLError, urllib.error.URLError) as e:
+                if isinstance(e, urllib.error.URLError) and not ('SSL' in str(e) or 'certificate' in str(e).lower()):
+                    raise
+                log_warning(f"SSL certificate verification failed. Retrying with unverified context...")
+                ssl_context = ssl._create_unverified_context()
+                opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
+                urllib.request.install_opener(opener)
+                try:
+                    urllib.request.urlretrieve(url, path, reporthook=progress)
+                    return True
+                finally:
+                    urllib.request.install_opener(urllib.request.build_opener())
+            except Exception as e:
+                abort(f"download_file error: {e}")
+                return False
+
+        def link_func(cache_path, target_path):
+            try:
+                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                if os.path.exists(target_path):
+                    os.remove(target_path)
+                if copymode == "copy":
+                    shutil.copyfile(cache_path, target_path)
+                    log_subsubtask(f"Copied downloaded file from {cache_path} to {target_path}")
                 else:
-                    download_target = collect_path
-                    link_after_download = True
-
-        os.makedirs(os.path.dirname(download_target), exist_ok=True)
-
-        try:
-            urllib.request.urlretrieve(url, download_target, reporthook=progress)
-        except (ssl.SSLError, urllib.error.URLError) as e:
-            if isinstance(e, urllib.error.URLError) and not ('SSL' in str(e) or 'certificate' in str(e).lower()):
-                raise
-            
-            log_warning(f"SSL certificate verification failed. Retrying with unverified context...")
-            ssl_context = ssl._create_unverified_context()
-            opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
-            urllib.request.install_opener(opener)
-            try:
-                urllib.request.urlretrieve(url, download_target, reporthook=progress)
-            finally:
-                urllib.request.install_opener(urllib.request.build_opener())
-                
-        if link_after_download:
-            try:
-                os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
-                if os.path.exists(filepath_decoded):
-                    os.remove(filepath_decoded)
-                os.link(download_target, filepath_decoded)
-                log_subsubtask(f"Linked downloaded file from {download_target} to {filepath_decoded}")
+                    os.link(cache_path, target_path)
+                    log_subsubtask(f"Linked downloaded file from {cache_path} to {target_path}")
             except OSError:
                 log_warning(f"Linking failed after download (different drive). Copying instead...")
-                shutil.copyfile(download_target, filepath_decoded)
-        
+                shutil.copyfile(cache_path, target_path)
+
+        def cache_path_resolver(cdir):
+            cp = os.path.join(cdir, fname)
+            if os.path.exists(cp) and expected_size != -1 and os.path.getsize(cp) != expected_size:
+                import hashlib
+                url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
+                sub_dir_name = f"{fname}_{url_hash}"
+                sub_dir_path = os.path.join(cdir, sub_dir_name)
+                suffix = 0
+                while os.path.exists(sub_dir_path):
+                    suffix += 1
+                    sub_dir_path = os.path.join(cdir, f"{sub_dir_name}_{suffix}")
+                cp = os.path.join(sub_dir_path, fname)
+            return cp
+
+        save_cached(url, blob_collect_dirs, expected_size, filepath_decoded, download_func, link_func, cache_path_resolver)
         return filepath_decoded
+
     except Exception as e:
         abort(f"download_file error: {e}")
         return None
@@ -3673,6 +3854,8 @@ def main():
     parser.add_argument(f"--{STARTOPTION_DEBUGTEST}", action="store_true",help="Show debug info and quit")
     parser.add_argument(f"--{STARTOPTION_SYSREPORT}", action="store_true", help="Output anonymized system information for debugging and quit")
     parser.add_argument(f"--{STARTOPTION_ENVINIT}", action="store_true", help="Create a dummy .env file with all needed variables and quit")
+    parser.add_argument(f"--{STARTOPTION_COPYMODE}", type=str, choices=['link', 'copy'], help=f"Override {COPYMODE_VAR} from {ENV_FILENAME} (link or copy)")
+    parser.add_argument(f"--{STARTOPTION_MATCHMODE}", type=str, choices=['filelistandsize', 'filelist'], help=f"Override {MATCHMODE_VAR} from {ENV_FILENAME} (filelistandsize or filelist)")
     args = parser.parse_args()
 
 
@@ -3694,17 +3877,33 @@ def main():
         sys.exit(0)
 
     if getattr(args, STARTOPTION_ENVINIT):
+        if os.path.exists(ENV_FILE):
+            log_subsubtask(f"Found existing {ENV_FILENAME} file at {ENV_FILE}. Loading configuration...")
+            blob_repos, blob_collect_dirs, copymode, matchmode = get_config()
+            sys.exit(0)
+            
         env_content = f"""# Pynst Environment Configuration
 # Add real paths to use them. These dummy values are ignored by default.
 
 {BLOB_COLLECT_DIR}=/path/to/dummy/blob/collect/dir
+{BLOB_COLLECT_DIR}_1=/path/to/dummy/blob/collect/dir2
 {BLOB_SOURCE_PREFIX}1=/path/to/dummy/blob/repo1
 {BLOB_SOURCE_PREFIX}2=/path/to/dummy/blob/repo2
+
+# Copy mode: 'link' (default) or 'copy'
+{COPYMODE_VAR}=link
+
+# Match mode: 'filelistandsize' (default) or 'filelist'
+{MATCHMODE_VAR}=filelistandsize
 """
         with open(ENV_FILE, 'w', encoding='utf-8') as f:
             f.write(env_content)
         print(f"Created dummy {ENV_FILENAME} file at {ENV_FILE}")
         sys.exit(0)
+
+    global OVERRIDE_COPYMODE, OVERRIDE_MATCHMODE
+    OVERRIDE_COPYMODE = getattr(args, STARTOPTION_COPYMODE)
+    OVERRIDE_MATCHMODE = getattr(args, STARTOPTION_MATCHMODE)
 
     if not getattr(args, STARTOPTION_INPUTFILE) or not getattr(args, STARTOPTION_INPUTDIR):
         parser.error("inputfile and targetdirectory are required")

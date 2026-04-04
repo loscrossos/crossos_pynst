@@ -82,6 +82,8 @@ python pynst.py installers/my_app.pynst.txt ./portable_app --embedded
 | `--venvname <name>` | **Custom Venv Name**: Use a specific name for the virtual environment folder (e.g., `venv_gpu`, `venv_cpu`) instead of the default `.env_{os}`. |
 | `--noblob` | **No Blobs**: Skips commands marked as `GETBLOB`. Useful for updating code/dependencies without downloading massive model files again. |
 | `--nodesktop` | **No Desktop Shortcuts**: Prevents creation of desktop icons, even if the installer file requests them. |
+| `--copymode <mode>` | **Copy Mode Override**: Overrides `COPYMODE` from `.env`. Choices: `link`, `copy`. |
+| `--matchmode <mode>` | **Match Mode Override**: Overrides `MATCHMODE` from `.env`. Choices: `filelistandsize`, `filelist`. |
 | `--dryrun` | **Dry Run**: Simulates the execution without changing any files. Prints what would happen. |
 | `--verbose` | **Verbose**: Shows full output from subprocesses (pip, git) for debugging. |
 
@@ -248,12 +250,24 @@ Create an `.env` file in the same directory as your `pynst.py` script. The featu
     BLOBREPO_1=D:\models
     BLOBREPO_2=F:\resources\safetensors
     ```
-*   `BLOB_COLLECT_DIR`: If defined, all new file downloads and `CLONELF` repository clones will be saved to this directory first, and then linked to the target destination. This builds your local cache automatically.
+*   `BLOB_COLLECT_DIR` (and `BLOB_COLLECT_DIR_*`): If defined, all new file downloads and `CLONELF` repository clones will be saved to one of these directories first, and then linked to the target destination. This builds your local cache automatically. You can specify multiple cache directories by appending a suffix (e.g., `BLOB_COLLECT_DIR`, `BLOB_COLLECT_DIR_1`, `BLOB_COLLECT_DIR_2`). Pynst will automatically check the available storage space and select the first cache directory that has enough free space to store the file or repository. If no cache directory has sufficient space, Pynst will issue a warning and bypass the cache, downloading directly to the target.
     ```env
     BLOB_COLLECT_DIR=D:\pynst_cache
+    BLOB_COLLECT_DIR_1=E:\overflow_cache
+    ```
+*   `COPYMODE`: Specifies how files and directories are transferred from the cache to the target destination. By default, Pynst uses `"link"` (hardlinks for files, symlinks/junctions for directories) to save disk space. You can set this to `"copy"` to force Pynst to always copy the files and directories instead of linking them. This is useful if your filesystem does not support links or if you prefer independent copies. Can be overridden with the `--copymode` CLI flag.
+    ```env
+    COPYMODE=copy
+    ```
+*   `MATCHMODE`: Defines the strictness for matching a local cached directory (`CLONELF`) against a remote repository's files. Can be overridden with the `--matchmode` CLI flag.
+    *   `"filelistandsize"` (default): Checks that the directory has the exact same files *and* that all files match the remote sizes.
+    *   `"filelist"`: Only checks if the local directory has at least the same files (same filenames) as the remote repository, ignoring sizes. This is useful when local cache files might be modified or compressed versions of the original.
+    ```env
+    MATCHMODE=filelist
     ```
 
 **Technical Notes:**
+*   **Storage Space Verification**: Before any download or clone operation, Pynst rigorously checks if the target file system has enough free storage space. If the target drive lacks sufficient space, the process will be safely aborted with an error message to prevent corrupted or partial installations.
 *   For files, Pynst uses a `HEAD` request to verify the remote file size before downloading to ensure an exact match.
 *   For repositories (`CLONELF`), Pynst uses `git clone --filter=blob:none` to fetch only the tree metadata (saving ~99.9% bandwidth) and compares it against local directories to find an exact match before linking.
 *   If a file with the same name but a different size is downloaded to `BLOB_COLLECT_DIR`, Pynst automatically creates a subdirectory with a short MD5 hash derived from the URL to avoid collisions. If there are still collisions, it appends a sequential suffix (e.g., `_1`, `_2`). Repositories are stored similarly with a hash to avoid name collisions.

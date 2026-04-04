@@ -1,6 +1,0 @@
-PYTHON 3.12
-SETVENV .
-# this  is neeeded for cuda13 torch 2.10
-# github.com/pytorch/ao/issues/2919
-PIPINST pycow
-# PIPINST torchao==0.16.0 torchcodec>=0.9.1

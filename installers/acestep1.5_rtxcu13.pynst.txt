@@ -1,20 +1,23 @@
-PYTHON 3.12
+PYTHON 3.13
 SETVENV .
 CLONEIT https://github.com/ace-step/ACE-Step-1.5 .
 PRINTIT This step may take some time depending on your connection.
-# REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch2.10cu130_lite.txt
+REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch2.10cu130_lite.txt
 
 
 # this  is neeeded for cuda13 torch 2.10
 # github.com/pytorch/ao/issues/2919
 # for torch 2.7.1
-PIPINST torchao==0.12.0 torchcodec>=0.9.1
+# PIPINST torchao==0.12.0 torchcodec>=0.9.1
 
 # for torch2.10
-# PIPINST torchao==0.16.0 torchcodec>=0.9.1
+# github.com/pytorch/ao/issues/2919
+# see torchcodec table at https://github.com/meta-pytorch/torchcodec
+PIPINST torchao==0.16.0 torchcodec==0.10.0
+
 # install ace step built in library req file
-# RFILTER torch torchvision torchaudio torchao
+RFILTER torch torchvision torchaudio torchao  flash-attn
 REQSCAN .
 # litevvllm
 CLONELF https://huggingface.co/ACE-Step/Ace-Step1.5 ACE-Step-1.5 checkpoints
-DESKICO "ACEStep Ex" ACE-Step-1.5\acestep\acestep_v15_pipeline.py --init_service true --config_path acestep-v15-turbo --lm_model_path acestep-5Hz-lm-1.7B --device cuda
+DESKICO "ACEStep Ex" ACE-Step-1.5/acestep/acestep_v15_pipeline.py --init_service true --config_path acestep-v15-turbo --lm_model_path acestep-5Hz-lm-1.7B --device cuda

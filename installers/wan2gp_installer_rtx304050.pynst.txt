@@ -1,10 +1,14 @@
-PYTHON  3.11
+PYTHON  3.13
 CLONEIT https://github.com/deepbeepmeep/Wan2GP.git .
 SETVENV .
 REQFILE https://raw.githubusercontent.com/loscrossos/crossOS_acceleritor/refs/heads/main/acceleritor_torch2.10cu130_lite.txt
-REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/opencv_python313.txt
+PIPINST https://github.com/loscrossos/lib_compileguides/releases/download/2026.03/opencv_python-50.0.1-py3-none-any.whl
+PIPINST opencv-python-headless
 REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/reqinsightface.txt
+# open-cvpython has a bug in linux
+RFILTER opencv-python
 REQFILE Wan2GP/requirements.txt
 REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/req_llama_cpp_gguf_cuda.txt
+REQFILE https://raw.githubusercontent.com/loscrossos/lib_compileguides/refs/heads/main/reqfiles/req_deepbeepmeep_lightx2v_kernel.req
 DESKICO "Wan2GP" Wan2GP/wgp.py --open-browser --attention auto
 

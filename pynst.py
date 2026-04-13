@@ -1219,7 +1219,7 @@ Implements commands (case-insensitive) from the .txt, in order:
   - REQSCAN <path_suffix>
   - STARTER <label or "label with spaces"> <args...>
 
-See the user’s spec for full semantics.
+See the user's spec for full semantics.
 """
 
 import argparse
@@ -1239,7 +1239,7 @@ from pathlib import Path
 
 
 # ========= Global defaults & flags =========
-APP_NAME="Pynst"
+APP_NAME="Pynst 1.0"
 GLOBAL_EXPERIMENTAL_FEATURE_UV=True
 GLOBAL_SETTING_SHOW_CMD_NR=True
 #main modes of operation

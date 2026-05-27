@@ -1293,9 +1293,8 @@ MATCHMODE_VAR="MATCHMODE"
 ENV_FILENAME = ".env"
 ENV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ENV_FILENAME)
 _cache_config_logged = False
-
-
-
+PLACEHOLDERDIR_LIN="/testdirplaceholder"
+PLACEHOLDERDIR_WIN="C:\\testdirplaceholder"
 
 def get_sysreport():
     """Generate anonymized system report for debugging."""
@@ -2653,11 +2652,11 @@ def get_config():
                 elif raw_blob_repos:
                     log_subsubtask(f"Cache repositories active: None (paths not found)")
 
-                invalid_collects = [p for p in raw_blob_collect_dirs if not os.path.isdir(p)]
+                invalid_collects = [p for p in raw_blob_collect_dirs if not os.path.isdir(p) and p not in (PLACEHOLDERDIR_LIN, PLACEHOLDERDIR_WIN)]
                 if invalid_collects:
                     log_subsubtask(f"Cache collectors ignored (path not found): {', '.join(invalid_collects)}")
 
-                invalid_repos = [p for p in raw_blob_repos if not os.path.isdir(p)]
+                invalid_repos = [p for p in raw_blob_repos if not os.path.isdir(p) and p not in (PLACEHOLDERDIR_LIN, PLACEHOLDERDIR_WIN)]
                 if invalid_repos:
                     log_subsubtask(f"Cache repositories ignored (path not found): {', '.join(invalid_repos)}")
                 
@@ -3883,12 +3882,12 @@ def main():
             sys.exit(0)
             
         env_content = f"""# Pynst Environment Configuration
-# Add real paths to use them. These dummy values are ignored by default.
+# Add real paths to use them. Non existent values are ignored by default.
 
-{BLOB_COLLECT_DIR}=/path/to/dummy/blob/collect/dir
-{BLOB_COLLECT_DIR}_1=/path/to/dummy/blob/collect/dir2
-{BLOB_SOURCE_PREFIX}1=/path/to/dummy/blob/repo1
-{BLOB_SOURCE_PREFIX}2=/path/to/dummy/blob/repo2
+{BLOB_COLLECT_DIR}1={PLACEHOLDERDIR_WIN}
+{BLOB_COLLECT_DIR}2={PLACEHOLDERDIR_LIN}
+{BLOB_SOURCE_PREFIX}1={PLACEHOLDERDIR_WIN}
+{BLOB_SOURCE_PREFIX}2={PLACEHOLDERDIR_LIN}
 
 # Copy mode: 'link' (default) or 'copy'
 {COPYMODE_VAR}=link

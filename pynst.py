@@ -1263,7 +1263,6 @@ STARTOPTION_SAFECHECK="safecheck"
 STARTOPTION_FORCEUPDATE = "update"
 STARTOPTION_FORCEUPGRADE = "upgrade"
 STARTOPTION_SYSREPORT = "sysreport"
-STARTOPTION_ENVINIT = "envinit"
 STARTOPTION_COPYMODE = "copymode"
 STARTOPTION_MATCHMODE = "matchmode"
     
@@ -3852,7 +3851,6 @@ def main():
     parser.add_argument(f"--{STARTOPTION_SAFECHECK}", action="store_true",help="Pre-Check if the comand will create a new installation or update an existing one. This will check if repositories to be cloned already exist and warn if they dont. This helps ensure an installation will be updated and the target exists. Else a typo would cause a full installation besides an existing one.")
     parser.add_argument(f"--{STARTOPTION_DEBUGTEST}", action="store_true",help="Show debug info and quit")
     parser.add_argument(f"--{STARTOPTION_SYSREPORT}", action="store_true", help="Output anonymized system information for debugging and quit")
-    parser.add_argument(f"--{STARTOPTION_ENVINIT}", action="store_true", help="Create a dummy .env file with all needed variables and quit")
     parser.add_argument(f"--{STARTOPTION_COPYMODE}", type=str, choices=['link', 'copy'], help=f"Override {COPYMODE_VAR} from {ENV_FILENAME} (link or copy)")
     parser.add_argument(f"--{STARTOPTION_MATCHMODE}", type=str, choices=['filelistandsize', 'filelist'], help=f"Override {MATCHMODE_VAR} from {ENV_FILENAME} (filelistandsize or filelist)")
     args = parser.parse_args()
@@ -3875,12 +3873,7 @@ def main():
         print(json.dumps(report, indent=2))
         sys.exit(0)
 
-    if getattr(args, STARTOPTION_ENVINIT):
-        if os.path.exists(ENV_FILE):
-            log_subsubtask(f"Found existing {ENV_FILENAME} file at {ENV_FILE}. Loading configuration...")
-            blob_repos, blob_collect_dirs, copymode, matchmode = get_config()
-            sys.exit(0)
-            
+    if not os.path.exists(ENV_FILE):
         env_content = f"""# Pynst Environment Configuration
 # Add real paths to use them. Non existent values are ignored by default.
 
@@ -3895,10 +3888,12 @@ def main():
 # Match mode: 'filelistandsize' (default) or 'filelist'
 {MATCHMODE_VAR}=filelistandsize
 """
-        with open(ENV_FILE, 'w', encoding='utf-8') as f:
-            f.write(env_content)
-        print(f"Created dummy {ENV_FILENAME} file at {ENV_FILE}")
-        sys.exit(0)
+        try:
+            with open(ENV_FILE, 'w', encoding='utf-8') as f:
+                f.write(env_content)
+            log_subsubtask(f"Created missing {ENV_FILENAME} file at {ENV_FILE}")
+        except Exception as e:
+            log_warning(f"Could not create {ENV_FILENAME} at {ENV_FILE}: {e}")
 
     global OVERRIDE_COPYMODE, OVERRIDE_MATCHMODE
     OVERRIDE_COPYMODE = getattr(args, STARTOPTION_COPYMODE)

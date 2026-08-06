@@ -2921,34 +2921,59 @@ def find_file_in_repos(filename: str, expected_size: int, repos: list) -> str:
                     return full_path
     return None
 
-def download_file(url: str, filepath: str, show_progress: bool = False):
+def download_file(url: str, filepath: str, show_progress: bool = False, use_cache: bool = False):
     """
     Download the file from 'url' into 'filepath'.
     Decodes %20 etc. in the local filename, but leaves the URL untouched.
     If show_progress is True, displays a progress bar with human-readable file size.
     Handles SSL certificate verification issues by falling back to unverified context.
+    When use_cache is True, the function may reuse the blob cache repositories/collectors.
     """
     total_human = None
+    last_reported_downloaded = 0
+    last_reported_percent = -1
 
     def progress(block_num, block_size, total_size):
-        nonlocal total_human
+        nonlocal total_human, last_reported_downloaded, last_reported_percent
         if not show_progress:
             return
-        if total_size > 0 and total_human is None:
-            total_human = human_readable_size(total_size)
 
         downloaded = block_num * block_size
-        percent = downloaded * 100 / total_size if total_size > 0 else 0
-        percent = min(100, percent)
-        bar_len = 50
-        filled_len = int(bar_len * percent // 100)
-        bar = '=' * filled_len + '-' * (bar_len - filled_len)
+        downloaded_human = human_readable_size(downloaded)
 
-        downloaded_human = human_readable_size(min(downloaded, total_size))
-        sys.stdout.write(f"\r[{bar}] {percent:6.2f}% ({downloaded_human} / {total_human})")
+        if total_size > 0:
+            if total_human is None:
+                total_human = human_readable_size(total_size)
+            percent = min(100, downloaded * 100 / total_size)
+            percent = max(0, percent)
+
+            if downloaded >= total_size:
+                sys.stdout.write(f"\rDownloading {os.path.basename(filepath)}: 100.00% ({downloaded_human} / {total_human})\n")
+                sys.stdout.flush()
+                return
+
+            threshold = max(1024 * 1024, int(total_size / 50))
+            if (downloaded - last_reported_downloaded) < threshold and (percent - last_reported_percent) < 2:
+                return
+
+            last_reported_downloaded = downloaded
+            last_reported_percent = percent
+            sys.stdout.write(f"\rDownloading {os.path.basename(filepath)}: {percent:6.2f}% ({downloaded_human} / {total_human})")
+            sys.stdout.flush()
+            return
+
+        if downloaded == 0:
+            sys.stdout.write(f"\rDownloading {os.path.basename(filepath)}: starting...")
+            sys.stdout.flush()
+            return
+
+        threshold = 1024 * 1024
+        if (downloaded - last_reported_downloaded) < threshold:
+            return
+
+        last_reported_downloaded = downloaded
+        sys.stdout.write(f"\rDownloading {os.path.basename(filepath)}: received {downloaded_human} so far (size unknown)")
         sys.stdout.flush()
-        if downloaded >= total_size:
-            print()
 
     try:
         dirpath, fname = os.path.split(filepath)
@@ -2961,121 +2986,116 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
 
         if os.path.exists(filepath_decoded) and check_if_file_is_aready_downloaded(url, filepath_decoded, verbose=False):
             log_subsubtask(f"File already exists and is complete: {filepath_decoded}")
-            # Populate collect if needed
-            blob_repos, blob_collect_dirs, copymode, matchmode = get_config()
-            actual_size = os.path.getsize(filepath_decoded)
-            for collect_dir in blob_collect_dirs:
-                collect_path = os.path.join(collect_dir, fname)
-                if not os.path.exists(collect_path):
-                    if get_free_space(collect_dir) > actual_size:
-                        os.makedirs(collect_dir, exist_ok=True)
-                        try:
-                            if copymode == "copy":
-                                shutil.copyfile(filepath_decoded, collect_path)
-                                log_subsubtask(f"Populate cache with file: Copied existing file from {filepath_decoded} to {collect_path}")
-                            else:
-                                os.link(filepath_decoded, collect_path)
-                                log_subsubtask(f"Populate cache with file: Linked existing file from {filepath_decoded} to {collect_path}")
-                        except OSError:
-                            shutil.copyfile(filepath_decoded, collect_path)
-                            log_subsubtask(f"Populate cache with file: Copied existing file from {filepath_decoded} to {collect_path}")
-                        break
-            return filepath_decoded
-
-        blob_repos, blob_collect_dirs, copymode, matchmode = get_config()
-        is_feature_enabled = os.path.exists(ENV_FILE) and (blob_repos or blob_collect_dirs)
-        
-        if is_feature_enabled:
-            # Check BLOBREPO_XX
-            if blob_repos:
-                found_path = find_file_in_repos(fname, expected_size, blob_repos)
-                if found_path:
-                    # Check target space even if linking
-                    target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
-                    if expected_size > 0 and get_free_space(target_parent) < expected_size:
-                         abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
-
-                    log_subsubtask(f"Found file in cache repo: {found_path}. Attempting to {'copy' if copymode == 'copy' else 'link'} to target location...")
-                    try:
-                        os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
-                        if os.path.exists(filepath_decoded):
-                            os.remove(filepath_decoded)
-                        if copymode == "copy":
-                            shutil.copyfile(found_path, filepath_decoded)
-                            log_subsubtask(f"Copied existing file from {found_path} to {filepath_decoded}")
-                        else:
-                            os.link(found_path, filepath_decoded)
-                            log_subsubtask(f"Linked existing file from {found_path} to {filepath_decoded}")
-                        return filepath_decoded
-                    except OSError:
-                        log_warning(f"File exists at {found_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
-            
-            # Check all BLOB_COLLECT_DIRs for existing file
-            for collect_dir in blob_collect_dirs:
-                collect_path = os.path.join(collect_dir, fname)
-                
-                # If file exists in target but not in this collect, link/copy to collect
-                if not os.path.exists(collect_path) and os.path.exists(filepath_decoded):
-                    if expected_size == -1 or os.path.getsize(filepath_decoded) == expected_size:
-                        if get_free_space(collect_dir) > os.path.getsize(filepath_decoded):
+            if use_cache:
+                # Populate collect if needed
+                blob_repos, blob_collect_dirs, copymode, matchmode = get_config()
+                actual_size = os.path.getsize(filepath_decoded)
+                for collect_dir in blob_collect_dirs:
+                    collect_path = os.path.join(collect_dir, fname)
+                    if not os.path.exists(collect_path):
+                        if get_free_space(collect_dir) > actual_size:
+                            os.makedirs(collect_dir, exist_ok=True)
                             try:
-                                os.makedirs(collect_dir, exist_ok=True)
                                 if copymode == "copy":
                                     shutil.copyfile(filepath_decoded, collect_path)
-                                    log_subsubtask(f"Cached filled: Copied existing file from {filepath_decoded} to {collect_path}")
+                                    log_subsubtask(f"Populate cache with file: Copied existing file from {filepath_decoded} to {collect_path}")
                                 else:
                                     os.link(filepath_decoded, collect_path)
-                                    log_subsubtask(f"Cached filled: Linked existing file from {filepath_decoded} to {collect_path}")
+                                    log_subsubtask(f"Populate cache with file: Linked existing file from {filepath_decoded} to {collect_path}")
                             except OSError:
                                 shutil.copyfile(filepath_decoded, collect_path)
-                                log_subsubtask(f"Cached filled: Copied existing file from {filepath_decoded} to {collect_path}")
-                            return filepath_decoded
-                
-                if os.path.exists(collect_path):
-                    if expected_size == -1 or os.path.getsize(collect_path) == expected_size:
-                        # Check target space
+                                log_subsubtask(f"Populate cache with file: Copied existing file from {filepath_decoded} to {collect_path}")
+                            break
+            return filepath_decoded
+
+        if use_cache:
+            blob_repos, blob_collect_dirs, copymode, matchmode = get_config()
+
+            def copy_or_link_cached_file(src: str, dst: str) -> bool:
+                try:
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                    if os.path.exists(dst):
+                        os.remove(dst)
+                    if copymode == "copy":
+                        shutil.copyfile(src, dst)
+                        log_subsubtask(f"Copied cached file from {src} to {dst}")
+                        return True
+                    try:
+                        os.link(src, dst)
+                        log_subsubtask(f"Linked cached file from {src} to {dst}")
+                        return True
+                    except OSError:
+                        log_warning(f"Linking failed for {src} -> {dst}. Copying instead...")
+                        shutil.copyfile(src, dst)
+                        log_subsubtask(f"Copied cached file from {src} to {dst}")
+                        return True
+                except OSError as e:
+                    log_warning(f"Failed to use cached file from {src}: {e}")
+                    return False
+
+            is_feature_enabled = os.path.exists(ENV_FILE) and (blob_repos or blob_collect_dirs)
+            
+            if is_feature_enabled:
+                # Check BLOBREPO_XX
+                if blob_repos:
+                    found_path = find_file_in_repos(fname, expected_size, blob_repos)
+                    if found_path:
+                        # Check target space even if linking
                         target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
                         if expected_size > 0 and get_free_space(target_parent) < expected_size:
                              abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
 
-                        try:
-                            os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
-                            if os.path.exists(filepath_decoded):
-                                os.remove(filepath_decoded)
-                            if copymode == "copy":
-                                shutil.copyfile(collect_path, filepath_decoded)
-                                log_subsubtask(f"Copied collected file from {collect_path} to {filepath_decoded}")
-                            else:
-                                os.link(collect_path, filepath_decoded)
-                                log_subsubtask(f"Linked collected file from {collect_path} to {filepath_decoded}")
+                        log_subsubtask(f"Found file in cache repo: {found_path}. Attempting to {'copy' if copymode == 'copy' else 'link'} to target location...")
+                        if copy_or_link_cached_file(found_path, filepath_decoded):
                             return filepath_decoded
-                        except OSError:
-                            log_warning(f"File exists at {collect_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
-                    else:
-                        import hashlib
-                        url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
-                        sub_dir_name = f"{fname}_{url_hash}"
-                        sub_dir_path = os.path.join(collect_dir, sub_dir_name)
-                        potential_file = os.path.join(sub_dir_path, fname)
-                        
-                        if os.path.exists(potential_file) and (expected_size == -1 or os.path.getsize(potential_file) == expected_size):
+                        log_warning(f"File exists at {found_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
+                
+                # Check all BLOB_COLLECT_DIRs for existing file
+                for collect_dir in blob_collect_dirs:
+                    collect_path = os.path.join(collect_dir, fname)
+                    
+                    # If file exists in target but not in this collect, link/copy to collect
+                    if not os.path.exists(collect_path) and os.path.exists(filepath_decoded):
+                        if expected_size == -1 or os.path.getsize(filepath_decoded) == expected_size:
+                            if get_free_space(collect_dir) > os.path.getsize(filepath_decoded):
+                                try:
+                                    os.makedirs(collect_dir, exist_ok=True)
+                                    if copymode == "copy":
+                                        shutil.copyfile(filepath_decoded, collect_path)
+                                        log_subsubtask(f"Cached filled: Copied existing file from {filepath_decoded} to {collect_path}")
+                                    else:
+                                        os.link(filepath_decoded, collect_path)
+                                        log_subsubtask(f"Cached filled: Linked existing file from {filepath_decoded} to {collect_path}")
+                                except OSError:
+                                    shutil.copyfile(filepath_decoded, collect_path)
+                                    log_subsubtask(f"Cached filled: Copied existing file from {filepath_decoded} to {collect_path}")
+                                return filepath_decoded
+                    
+                    if os.path.exists(collect_path):
+                        if expected_size == -1 or os.path.getsize(collect_path) == expected_size:
                             # Check target space
                             target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
                             if expected_size > 0 and get_free_space(target_parent) < expected_size:
                                  abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
 
-                            try:
-                                os.makedirs(os.path.dirname(filepath_decoded), exist_ok=True)
-                                if os.path.exists(filepath_decoded):
-                                    os.remove(filepath_decoded)
-                                if copymode == "copy":
-                                    shutil.copyfile(potential_file, filepath_decoded)
-                                    log_subsubtask(f"Copied collected file from {potential_file} to {filepath_decoded}")
-                                else:
-                                    os.link(potential_file, filepath_decoded)
-                                    log_subsubtask(f"Linked collected file from {potential_file} to {filepath_decoded}")
+                            if copy_or_link_cached_file(collect_path, filepath_decoded):
                                 return filepath_decoded
-                            except OSError:
+                            log_warning(f"File exists at {collect_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
+                        else:
+                            import hashlib
+                            url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
+                            sub_dir_name = f"{fname}_{url_hash}"
+                            sub_dir_path = os.path.join(collect_dir, sub_dir_name)
+                            potential_file = os.path.join(sub_dir_path, fname)
+                            
+                            if os.path.exists(potential_file) and (expected_size == -1 or os.path.getsize(potential_file) == expected_size):
+                                # Check target space
+                                target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
+                                if expected_size > 0 and get_free_space(target_parent) < expected_size:
+                                     abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
+
+                                if copy_or_link_cached_file(potential_file, filepath_decoded):
+                                    return filepath_decoded
                                 log_warning(f"File exists at {potential_file} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
 
         def download_func(path):
@@ -3128,18 +3148,21 @@ def download_file(url: str, filepath: str, show_progress: bool = False):
                 cp = os.path.join(sub_dir_path, fname)
             return cp
 
-        save_cached(url, blob_collect_dirs, expected_size, filepath_decoded, download_func, link_func, cache_path_resolver)
+        if use_cache:
+            save_cached(url, blob_collect_dirs, expected_size, filepath_decoded, download_func, link_func, cache_path_resolver)
+        if show_progress and os.path.exists(filepath_decoded):
+            print(f"\nCompleted download: {os.path.basename(filepath_decoded)} ({human_readable_size(os.path.getsize(filepath_decoded))})")
         return filepath_decoded
 
     except Exception as e:
         abort(f"download_file error: {e}")
         return None
 
-def download_only_if_not_existent(url, directory_target_path, verbose=False, show_progress=True):
+def download_only_if_not_existent(url, directory_target_path, verbose=False, show_progress=True, use_cache=False):
     os.makedirs(directory_target_path, exist_ok=True)
     filename = os.path.basename(urllib.parse.urlparse(url).path)
     filepath = os.path.join(directory_target_path, filename)
-    download_file(url, filepath, show_progress=show_progress)
+    download_file(url, filepath, show_progress=show_progress, use_cache=use_cache)
 
 
 
@@ -3668,7 +3691,13 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 log_subsubtask(msg=f"Downloading file to: {targetdir}")
                 #url = "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/wan2.2-i2v-rapid-aio-example.json"
                 #path = "d:/resources/"
-                download_only_if_not_existent(url=url, directory_target_path=targetdir, verbose=VERBOSE, show_progress=True)
+                download_only_if_not_existent(
+                    url=url,
+                    directory_target_path=targetdir,
+                    verbose=VERBOSE,
+                    show_progress=True,
+                    use_cache=(cmd == CMD_GETBLOB),
+                )
         
         
         elif cmd ==CMD_XRUNCOMMAND_PIP:

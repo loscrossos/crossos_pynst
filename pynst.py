@@ -2990,22 +2990,25 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
                 # Populate collect if needed
                 blob_repos, blob_collect_dirs, copymode, matchmode = get_config()
                 actual_size = os.path.getsize(filepath_decoded)
-                for collect_dir in blob_collect_dirs:
-                    collect_path = os.path.join(collect_dir, fname)
-                    if not os.path.exists(collect_path):
-                        if get_free_space(collect_dir) > actual_size:
-                            os.makedirs(collect_dir, exist_ok=True)
-                            try:
-                                if copymode == "copy":
+                if blob_collect_dirs and find_file_in_repos(fname, actual_size, blob_collect_dirs):
+                    log_subsubtask(f"File already exists in cache collectors. Skipping populate for {fname}.")
+                else:
+                    for collect_dir in blob_collect_dirs:
+                        collect_path = os.path.join(collect_dir, fname)
+                        if not os.path.exists(collect_path):
+                            if get_free_space(collect_dir) > actual_size:
+                                os.makedirs(collect_dir, exist_ok=True)
+                                try:
+                                    if copymode == "copy":
+                                        shutil.copyfile(filepath_decoded, collect_path)
+                                        log_subsubtask(f"Populate cache with file: Copied existing file from {filepath_decoded} to {collect_path}")
+                                    else:
+                                        os.link(filepath_decoded, collect_path)
+                                        log_subsubtask(f"Populate cache with file: Linked existing file from {filepath_decoded} to {collect_path}")
+                                except OSError:
                                     shutil.copyfile(filepath_decoded, collect_path)
                                     log_subsubtask(f"Populate cache with file: Copied existing file from {filepath_decoded} to {collect_path}")
-                                else:
-                                    os.link(filepath_decoded, collect_path)
-                                    log_subsubtask(f"Populate cache with file: Linked existing file from {filepath_decoded} to {collect_path}")
-                            except OSError:
-                                shutil.copyfile(filepath_decoded, collect_path)
-                                log_subsubtask(f"Populate cache with file: Copied existing file from {filepath_decoded} to {collect_path}")
-                            break
+                                break
             return filepath_decoded
 
         if use_cache:
@@ -3150,6 +3153,9 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
 
         if use_cache:
             save_cached(url, blob_collect_dirs, expected_size, filepath_decoded, download_func, link_func, cache_path_resolver)
+        else:
+            log_subsubtask(f"Downloading directly to target path: {filepath_decoded}")
+            download_func(filepath_decoded)
         if show_progress and os.path.exists(filepath_decoded):
             print(f"\nCompleted download: {os.path.basename(filepath_decoded)} ({human_readable_size(os.path.getsize(filepath_decoded))})")
         return filepath_decoded
@@ -3162,6 +3168,7 @@ def download_only_if_not_existent(url, directory_target_path, verbose=False, sho
     os.makedirs(directory_target_path, exist_ok=True)
     filename = os.path.basename(urllib.parse.urlparse(url).path)
     filepath = os.path.join(directory_target_path, filename)
+    log_subsubtask(f"Resolved download target file: {filepath}")
     download_file(url, filepath, show_progress=show_progress, use_cache=use_cache)
 
 

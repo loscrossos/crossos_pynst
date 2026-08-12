@@ -141,6 +141,24 @@ python pynst.py install.pynst.txt ./my_app --senso
 
 ---
 
+## 🤖 LLM Integration (Agent Skill)
+
+A custom Gemini CLI skill is provided in this repository under the `pynst-generator` directory. This skill teaches LLM agents how to dynamically generate and modify `.pynst.txt` recipes from text links, descriptions, or a ComfyUI workflow JSON.
+
+To link or install this skill into your Gemini CLI:
+
+```bash
+# Link the skill folder directly (recommended for developers)
+gemini skills link ./pynst-generator
+
+# Or install it globally in your user scope
+gemini skills install ./pynst-generator --scope user
+```
+
+*After installing, run `/skills reload` in your active Gemini CLI interactive REPL session to activate the skill.*
+
+---
+
 ## Command Summary
 
 | Command | Description |

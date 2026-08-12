@@ -259,9 +259,9 @@ Create an `.env` file in the same directory as your `pynst.py` script. The featu
     ```env
     COPYMODE=copy
     ```
-*   `MATCHMODE`: Defines the strictness for matching a local cached directory (`CLONELF`) against a remote repository's files. Can be overridden with the `--matchmode` CLI flag.
-    *   `"filelistandsize"` (default): Checks that the directory has the exact same files *and* that all files match the remote sizes.
-    *   `"filelist"`: Only checks if the local directory has at least the same files (same filenames) as the remote repository, ignoring sizes. This is useful when local cache files might be modified or compressed versions of the original.
+*   `MATCHMODE`: Defines the strictness for matching a local cached file or directory against a remote server. Can be overridden with the `--matchmode` CLI flag.
+    *   `"filelistandsize"` (default): For files, checks that both the filename and remote size match. For directories (`CLONELF`), checks that the directory has the exact same files *and* that all files match the remote sizes. Note: if no size is available from the server on a per-file basis, it automatically falls back to `"filelist"` mode.
+    *   `"filelist"`: Only checks if the filename or directory files match, ignoring sizes. If there are multiple files with the matching name in `"filelist"` mode, the subdirectory path of each candidate is scored against the download URL's directory structure to select the best match ("favorite") based on layout similarity.
     ```env
     MATCHMODE=filelist
     ```
@@ -270,7 +270,7 @@ Create an `.env` file in the same directory as your `pynst.py` script. The featu
 *   **Storage Space Verification**: Before any download or clone operation, Pynst rigorously checks if the target file system has enough free storage space. If the target drive lacks sufficient space, the process will be safely aborted with an error message to prevent corrupted or partial installations.
 *   For files, Pynst uses a `HEAD` request to verify the remote file size before downloading to ensure an exact match.
 *   For repositories (`CLONELF`), Pynst uses `git clone --filter=blob:none` to fetch only the tree metadata (saving ~99.9% bandwidth) and compares it against local directories to find an exact match before linking.
-*   If a file with the same name but a different size is downloaded to `BLOB_COLLECT_DIR`, Pynst automatically creates a subdirectory with a short MD5 hash derived from the URL to avoid collisions. If there are still collisions, it appends a sequential suffix (e.g., `_1`, `_2`). Repositories are stored similarly with a hash to avoid name collisions.
+*   For files, Pynst saves downloaded blobs to an organized structured layout under `BLOB_COLLECT_DIR`. It creates a main directory using the main domain name of the download URL combined with up to the first 2 filtered path segments (e.g., `huggingface_tresso_minimax`), and a subdirectory based on the remaining path segments (defaulting to `default` if none). If a file with the same name already exists but has a different size (collision), it appends an incremental suffix to the subdirectory name (e.g., `vae_2`, `vae_3`) to safely isolate the duplicate. Repositories are stored similarly with a hash to avoid name collisions.
 *   **Cross-Drive Linking Fallback**: Hardlinks generally only work when the source and destination are on the same drive. If a cross-drive link is attempted (or any other linking error occurs), Pynst will output a warning and gracefully fall back to downloading/copying the file or directory directly.
 
 ### Package Filtering
@@ -295,3 +295,32 @@ Pynst generates platform-native icons with text labels generated on the fly:
 *   **Windows**: `.lnk` shortcuts with `.ico` icons.
 *   **macOS**: `.app` bundles with `.icns` icons.
 *   **Linux**: `.desktop` entries with `.png` icons.
+
+---
+
+## LLM Integration & Skill
+
+A custom Gemini CLI skill is provided in this repository under the `pynst-generator` folder. This skill allows an LLM agent to automatically generate or update `.pynst.txt` installation scripts from text descriptions, links, or ComfyUI workflow JSON files.
+
+### Installing the Skill
+
+To load this skill into your Gemini CLI workspace, you can install or link the `pynst-generator` directory directly:
+
+1. **Development Link (Recommended):**
+   Creates a direct link/symlink to the folder in the repository so that any edits are immediately loaded:
+   ```bash
+   gemini skills link ./pynst-generator
+   ```
+
+2. **Direct Folder Install:**
+   Copies the folder directly to your global Gemini CLI user scope:
+   ```bash
+   gemini skills install ./pynst-generator --scope user
+   ```
+
+3. **Manual Copy:**
+   Copy the `pynst-generator/` directory to your local or global skills discovery folder:
+   - **User Scope:** `~/.gemini/skills/pynst-generator/`
+   - **Workspace Scope:** `.gemini/skills/pynst-generator/`
+
+*After linking or installing, run `/skills reload` in your active Gemini CLI interactive REPL session to load and activate the skill.*

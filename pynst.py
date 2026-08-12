@@ -2667,6 +2667,66 @@ def get_config():
 
     return blob_repos, blob_collect_dirs, copymode, matchmode
 
+def get_main_domain(hostname: str) -> str:
+    if not hostname:
+        return "unknown"
+    tlds = {'com', 'org', 'net', 'co', 'io', 'cc', 'info', 'uk', 'de', 'cn', 'fr', 'gov', 'edu', 'us', 'xyz', 'me', 'biz', 'ca', 'jp', 'au', 'ru', 'ch', 'nl', 'se', 'no', 'fi'}
+    subdomains = {'www', 'cdn', 'api', 'git', 'raw'}
+    
+    parts = hostname.split('.')
+    parts = [p for p in parts if p]
+    
+    import re
+    while parts:
+        p_lower = parts[0].lower()
+        if p_lower in subdomains or re.match(r'^server\d*$', p_lower):
+            parts.pop(0)
+        else:
+            break
+            
+    while parts:
+        p_lower = parts[-1].lower()
+        if p_lower in tlds:
+            parts.pop()
+        else:
+            break
+            
+    if parts:
+        return "_".join(parts)
+    return "unknown"
+
+def get_path_segments(url_path: str, fname: str) -> list:
+    parts = url_path.split('/')
+    import urllib.parse
+    parts = [urllib.parse.unquote(p) for p in parts]
+    parts = [p for p in parts if p]
+    if parts and parts[-1].lower() == fname.lower():
+        parts.pop()
+    return parts
+
+def filter_ignored_words(segments: list) -> list:
+    ignored = {'main', 'blob', 'master', 'raw', 'resolve', 'download', 'releases'}
+    return [s for s in segments if s.lower() not in ignored]
+
+def resolve_cache_dirs(url: str, fname: str):
+    import urllib.parse
+    parsed = urllib.parse.urlparse(url)
+    main_domain = get_main_domain(parsed.netloc)
+    
+    segments = get_path_segments(parsed.path, fname)
+    filtered = filter_ignored_words(segments)
+    
+    main_dir_parts = [main_domain] + filtered[:2]
+    main_dir_name = "_".join(main_dir_parts)
+    
+    remaining_segments = filtered[2:]
+    if remaining_segments:
+        base_subdir_name = "_".join(remaining_segments)
+    else:
+        base_subdir_name = "default"
+        
+    return main_dir_name, base_subdir_name
+
 def save_cached(identifier: str, blob_collect_dirs: list, required_size: int, target_path: str, download_func, link_func, cache_path_resolver):
     """
     Central function to handle caching with space checks.
@@ -2910,16 +2970,59 @@ def human_readable_size(num_bytes: int) -> str:
             return f"{num_bytes:.2f} {unit}" if unit != "bytes" else f"{num_bytes} {unit}"
         num_bytes /= 1024.0
 
-def find_file_in_repos(filename: str, expected_size: int, repos: list) -> str:
+def score_candidate_path(candidate_full_path: str, repo: str, main_dir_name: str, base_subdir_name: str) -> int:
+    try:
+        rel_path = os.path.relpath(candidate_full_path, repo).replace(os.sep, '/').lower()
+    except Exception:
+        rel_path = candidate_full_path.replace(os.sep, '/').lower()
+        
+    score = 0
+    main_dir_lower = main_dir_name.lower()
+    base_subdir_lower = base_subdir_name.lower()
+    
+    if main_dir_lower in rel_path:
+        score += 100
+        
+    import re
+    escaped_subdir = re.escape(base_subdir_lower)
+    pattern = rf"(^|/){escaped_subdir}(_\d+)?(/|$)"
+    if re.search(pattern, rel_path):
+        score += 50
+        
+    return score
+
+def find_file_in_repos(filename: str, expected_size: int, repos: list, matchmode: str = "filelistandsize", url: str = None) -> str:
+    actual_mode = matchmode
+    if expected_size == -1:
+        actual_mode = "filelist"
+        
+    candidates = []
     for repo in repos:
         if not os.path.isdir(repo):
             continue
         for root, dirs, files in os.walk(repo):
             if filename in files:
                 full_path = os.path.join(root, filename)
-                if expected_size == -1 or os.path.getsize(full_path) == expected_size:
-                    return full_path
-    return None
+                if actual_mode == "filelist":
+                    candidates.append((full_path, repo))
+                else:
+                    if os.path.getsize(full_path) == expected_size:
+                        candidates.append((full_path, repo))
+                        
+    if not candidates:
+        return None
+        
+    if actual_mode == "filelist" and url:
+        main_dir_name, base_subdir_name = resolve_cache_dirs(url, filename)
+        scored_candidates = []
+        for cand, repo in candidates:
+            score = score_candidate_path(cand, repo, main_dir_name, base_subdir_name)
+            scored_candidates.append((score, cand))
+            
+        scored_candidates.sort(key=lambda x: x[0], reverse=True)
+        return scored_candidates[0][1]
+        
+    return candidates[0][0]
 
 def download_file(url: str, filepath: str, show_progress: bool = False, use_cache: bool = False):
     """
@@ -2990,14 +3093,24 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
                 # Populate collect if needed
                 blob_repos, blob_collect_dirs, copymode, matchmode = get_config()
                 actual_size = os.path.getsize(filepath_decoded)
-                if blob_collect_dirs and find_file_in_repos(fname, actual_size, blob_collect_dirs):
+                if blob_collect_dirs and find_file_in_repos(fname, actual_size, blob_collect_dirs, matchmode, url):
                     log_subsubtask(f"File already exists in cache collectors. Skipping populate for {fname}.")
                 else:
                     for collect_dir in blob_collect_dirs:
-                        collect_path = os.path.join(collect_dir, fname)
+                        main_dir_name, base_subdir_name = resolve_cache_dirs(url, fname)
+                        subdir_name = base_subdir_name
+                        collect_path = os.path.join(collect_dir, main_dir_name, subdir_name, fname)
+                        suffix = 1
+                        while os.path.exists(collect_path):
+                            if os.path.getsize(collect_path) == actual_size:
+                                break
+                            suffix += 1
+                            subdir_name = f"{base_subdir_name}_{suffix}"
+                            collect_path = os.path.join(collect_dir, main_dir_name, subdir_name, fname)
+                        
                         if not os.path.exists(collect_path):
                             if get_free_space(collect_dir) > actual_size:
-                                os.makedirs(collect_dir, exist_ok=True)
+                                os.makedirs(os.path.dirname(collect_path), exist_ok=True)
                                 try:
                                     if copymode == "copy":
                                         shutil.copyfile(filepath_decoded, collect_path)
@@ -3041,7 +3154,7 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
             if is_feature_enabled:
                 # Check BLOBREPO_XX
                 if blob_repos:
-                    found_path = find_file_in_repos(fname, expected_size, blob_repos)
+                    found_path = find_file_in_repos(fname, expected_size, blob_repos, matchmode, url)
                     if found_path:
                         # Check target space even if linking
                         target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
@@ -3054,52 +3167,48 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
                         log_warning(f"File exists at {found_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
                 
                 # Check all BLOB_COLLECT_DIRs for existing file
-                for collect_dir in blob_collect_dirs:
-                    collect_path = os.path.join(collect_dir, fname)
+                if blob_collect_dirs:
+                    found_path = find_file_in_repos(fname, expected_size, blob_collect_dirs, matchmode, url)
+                    if found_path:
+                        # Check target space even if linking
+                        target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
+                        if expected_size > 0 and get_free_space(target_parent) < expected_size:
+                             abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
+
+                        log_subsubtask(f"Found file in cache collectors: {found_path}. Attempting to {'copy' if copymode == 'copy' else 'link'} to target location...")
+                        if copy_or_link_cached_file(found_path, filepath_decoded):
+                            return filepath_decoded
+                        log_warning(f"File exists at {found_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
                     
-                    # If file exists in target but not in this collect, link/copy to collect
-                    if not os.path.exists(collect_path) and os.path.exists(filepath_decoded):
-                        if expected_size == -1 or os.path.getsize(filepath_decoded) == expected_size:
-                            if get_free_space(collect_dir) > os.path.getsize(filepath_decoded):
-                                try:
-                                    os.makedirs(collect_dir, exist_ok=True)
-                                    if copymode == "copy":
+                    # If target file exists but not in cache collectors
+                    if os.path.exists(filepath_decoded) and (expected_size == -1 or os.path.getsize(filepath_decoded) == expected_size):
+                        for collect_dir in blob_collect_dirs:
+                            main_dir_name, base_subdir_name = resolve_cache_dirs(url, fname)
+                            subdir_name = base_subdir_name
+                            collect_path = os.path.join(collect_dir, main_dir_name, subdir_name, fname)
+                            suffix = 1
+                            while os.path.exists(collect_path):
+                                if os.path.getsize(collect_path) == os.path.getsize(filepath_decoded):
+                                    break
+                                suffix += 1
+                                subdir_name = f"{base_subdir_name}_{suffix}"
+                                collect_path = os.path.join(collect_dir, main_dir_name, subdir_name, fname)
+                            
+                            if not os.path.exists(collect_path):
+                                actual_size = os.path.getsize(filepath_decoded)
+                                if get_free_space(collect_dir) > actual_size:
+                                    os.makedirs(os.path.dirname(collect_path), exist_ok=True)
+                                    try:
+                                        if copymode == "copy":
+                                            shutil.copyfile(filepath_decoded, collect_path)
+                                            log_subsubtask(f"Cached filled: Copied existing file from {filepath_decoded} to {collect_path}")
+                                        else:
+                                            os.link(filepath_decoded, collect_path)
+                                            log_subsubtask(f"Cached filled: Linked existing file from {filepath_decoded} to {collect_path}")
+                                    except OSError:
                                         shutil.copyfile(filepath_decoded, collect_path)
                                         log_subsubtask(f"Cached filled: Copied existing file from {filepath_decoded} to {collect_path}")
-                                    else:
-                                        os.link(filepath_decoded, collect_path)
-                                        log_subsubtask(f"Cached filled: Linked existing file from {filepath_decoded} to {collect_path}")
-                                except OSError:
-                                    shutil.copyfile(filepath_decoded, collect_path)
-                                    log_subsubtask(f"Cached filled: Copied existing file from {filepath_decoded} to {collect_path}")
-                                return filepath_decoded
-                    
-                    if os.path.exists(collect_path):
-                        if expected_size == -1 or os.path.getsize(collect_path) == expected_size:
-                            # Check target space
-                            target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
-                            if expected_size > 0 and get_free_space(target_parent) < expected_size:
-                                 abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
-
-                            if copy_or_link_cached_file(collect_path, filepath_decoded):
-                                return filepath_decoded
-                            log_warning(f"File exists at {collect_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
-                        else:
-                            import hashlib
-                            url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
-                            sub_dir_name = f"{fname}_{url_hash}"
-                            sub_dir_path = os.path.join(collect_dir, sub_dir_name)
-                            potential_file = os.path.join(sub_dir_path, fname)
-                            
-                            if os.path.exists(potential_file) and (expected_size == -1 or os.path.getsize(potential_file) == expected_size):
-                                # Check target space
-                                target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
-                                if expected_size > 0 and get_free_space(target_parent) < expected_size:
-                                     abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
-
-                                if copy_or_link_cached_file(potential_file, filepath_decoded):
                                     return filepath_decoded
-                                log_warning(f"File exists at {potential_file} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
 
         def download_func(path):
             os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -3138,17 +3247,16 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
                 shutil.copyfile(cache_path, target_path)
 
         def cache_path_resolver(cdir):
-            cp = os.path.join(cdir, fname)
-            if os.path.exists(cp) and expected_size != -1 and os.path.getsize(cp) != expected_size:
-                import hashlib
-                url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
-                sub_dir_name = f"{fname}_{url_hash}"
-                sub_dir_path = os.path.join(cdir, sub_dir_name)
-                suffix = 0
-                while os.path.exists(sub_dir_path):
-                    suffix += 1
-                    sub_dir_path = os.path.join(cdir, f"{sub_dir_name}_{suffix}")
-                cp = os.path.join(sub_dir_path, fname)
+            main_dir_name, base_subdir_name = resolve_cache_dirs(url, fname)
+            subdir_name = base_subdir_name
+            cp = os.path.join(cdir, main_dir_name, subdir_name, fname)
+            suffix = 1
+            while os.path.exists(cp):
+                if expected_size == -1 or os.path.getsize(cp) == expected_size:
+                    break
+                suffix += 1
+                subdir_name = f"{base_subdir_name}_{suffix}"
+                cp = os.path.join(cdir, main_dir_name, subdir_name, fname)
             return cp
 
         if use_cache:

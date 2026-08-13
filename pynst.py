@@ -3006,8 +3006,14 @@ def find_file_in_repos(filename: str, expected_size: int, repos: list, matchmode
                 if actual_mode == "filelist":
                     candidates.append((full_path, repo))
                 else:
-                    if os.path.getsize(full_path) == expected_size:
+                    try:
+                        actual_size = os.path.getsize(full_path)
+                    except OSError:
+                        actual_size = -1
+                    if actual_size == expected_size:
                         candidates.append((full_path, repo))
+                    else:
+                        log_subsubtask(f"Found local file but size does not match: {full_path} (Local: {actual_size} bytes, Remote: {expected_size} bytes)")
                         
     if not candidates:
         return None

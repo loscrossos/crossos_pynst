@@ -375,5 +375,49 @@ class TestCacheMatcher(unittest.TestCase):
         )
         self.assertEqual(os.path.abspath(matched), os.path.abspath(target_path))
 
+    def test_found_file_in_cache_log_format(self):
+        """Verify the log message format when finding a file in cache."""
+        matching_dir = os.path.join(self.cache_repo, "huggingface_openbmb_VoxCPM2", "default")
+        os.makedirs(matching_dir, exist_ok=True)
+        cached_file = os.path.join(matching_dir, "tokenization_voxcpm2.py")
+        content = b"print('voxcpm2 tokenization')"
+        with open(cached_file, "wb") as f:
+            f.write(content)
+
+        target_file = os.path.join(self.test_dir, "target", "tokenization_voxcpm2.py")
+        url = "https://huggingface.co/openbmb/VoxCPM2/resolve/main/tokenization_voxcpm2.py"
+
+        logs = []
+        original_log = pynst.log_subsubtask
+        pynst.log_subsubtask = lambda msg: logs.append(msg)
+
+        try:
+            # Test find_file_in_repos with return_reason=True
+            found_path, reason = pynst.find_file_in_repos(
+                filename="tokenization_voxcpm2.py",
+                expected_size=len(content),
+                repos=[self.cache_repo],
+                url=url,
+                return_reason=True
+            )
+            self.assertEqual(os.path.abspath(found_path), os.path.abspath(cached_file))
+            self.assertEqual(reason, "account/repo match and size match")
+
+            # Mock get_config and download_file logic
+            action = "link"
+            cache_type = "cache repo"
+            reason_str = f" ({reason})" if reason else ""
+            formatted_msg = f"Found file in {cache_type}{reason_str}: {found_path}. Attempting to {action} to target."
+            pynst.log_subsubtask(formatted_msg)
+
+            self.assertIn(
+                f"Found file in cache repo (account/repo match and size match): {found_path}. Attempting to link to target.",
+                logs
+            )
+            # Ensure "Matched cached file" was NOT logged
+            self.assertFalse(any("Matched cached file" in l for l in logs))
+        finally:
+            pynst.log_subsubtask = original_log
+
 if __name__ == "__main__":
     unittest.main()

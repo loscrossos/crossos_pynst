@@ -3100,7 +3100,7 @@ def score_candidate_path(candidate_full_path: str, repo: str, main_dir_name: str
         
     return score
 
-def find_file_in_repos(filename: str, expected_size: int, repos: list, matchmode: str = "filelistandsize", url: str = None) -> str:
+def find_file_in_repos(filename: str, expected_size: int, repos: list, matchmode: str = "filelistandsize", url: str = None, return_reason: bool = False):
     """
     Search for a file across cache repositories / collectors with prioritized matching tiers:
     1. Account/Repo folder match + exact filesize (highest confidence)
@@ -3115,7 +3115,7 @@ def find_file_in_repos(filename: str, expected_size: int, repos: list, matchmode
     Files in conflicting account/repo folders are rejected.
     """
     if not filename or not repos:
-        return None
+        return (None, "") if return_reason else None
 
     filename_lower = filename.lower()
     domain, account, repo_name, subdirs, main_dir_name, base_subdir_name = extract_url_cache_identity(url, filename)
@@ -3148,8 +3148,9 @@ def find_file_in_repos(filename: str, expected_size: int, repos: list, matchmode
                     actual_size = os.path.getsize(resolved_cand)
                     size_known = (expected_size is not None and expected_size >= 0)
                     if not size_known or actual_size == expected_size:
-                        reason = "account/repo collector direct match and exact size match" if size_known else "account/repo collector direct match (size unknown)"
-                        log_subsubtask(f"Matched cached file ({reason}): {resolved_cand}")
+                        reason = "account/repo match and size match" if size_known else "account/repo match (size unknown)"
+                        if return_reason:
+                            return resolved_cand, reason
                         return resolved_cand
                     elif size_known and matchmode != "filelist":
                         log_subsubtask(f"Found local file in collector but size does not match: {resolved_cand} (Local: {actual_size} bytes, Remote: {expected_size} bytes)")
@@ -3287,51 +3288,51 @@ def find_file_in_repos(filename: str, expected_size: int, repos: list, matchmode
 
                 if size_matches and path_score >= 800:
                     tier = 1
-                    match_reason = "account/repo folder and exact size match"
+                    match_reason = "account/repo match and size match"
                 elif size_matches and is_same_repo_diff_author and subpath_matches:
                     tier = 2
-                    match_reason = "same repo and path from different author (mirror/fork) and exact size match"
+                    match_reason = "same repo and path from different author (mirror/fork) and size match"
                 elif size_matches and valid_path_for_generic:
                     tier = 3
-                    match_reason = "repo folder and exact size match"
+                    match_reason = "repo folder and size match"
                 elif size_matches and not is_generic and path_score >= 300:
                     tier = 3
-                    match_reason = "account folder and exact size match for unique file"
+                    match_reason = "account folder and size match for unique file"
                 elif size_unknown and path_score >= 800:
                     tier = 4
-                    match_reason = "account/repo folder match (webfile size unknown)"
+                    match_reason = "account/repo match (size unknown)"
                 elif size_unknown and is_same_repo_diff_author and subpath_matches:
                     tier = 5
-                    match_reason = "same repo and path from different author (mirror/fork, webfile size unknown)"
+                    match_reason = "same repo and path from different author (mirror/fork, size unknown)"
                 elif size_unknown and valid_path_for_generic:
                     tier = 6
-                    match_reason = "repo folder match (webfile size unknown)"
+                    match_reason = "repo folder match (size unknown)"
                 elif size_unknown and not is_generic and path_score >= 300:
                     tier = 6
-                    match_reason = "account folder match for unique file (webfile size unknown)"
+                    match_reason = "account folder match for unique file (size unknown)"
                 elif size_matches and path_score == 0:
                     if is_generic:
                         if account or repo_name:
                             log_subsubtask(f"Skipping generic filename match without account/path confirmation for '{filename}' at: {full_path}")
                             continue
                         tier = 7
-                        match_reason = "exact size match (flat URL, no account)"
+                        match_reason = "size match (flat URL, no account)"
                     else:
                         tier = 7
-                        match_reason = "exact size match for unique filename"
+                        match_reason = "size match for unique filename"
                 elif size_unknown and path_score == 0:
                     if is_generic:
                         log_subsubtask(f"Skipping pure filename match for unoriginal name '{filename}' at: {full_path} (webfile size unknown)")
                         continue
                     tier = 8
-                    match_reason = "fallback match by unique filename (webfile size unknown)"
+                    match_reason = "fallback match by unique filename (size unknown)"
                 elif matchmode == "filelist" and not size_matches:
                     if is_generic and not valid_path_for_generic:
                         log_subsubtask(f"Skipping generic filename in filelist mode without repo match for '{filename}' at: {full_path}")
                         continue
                     if path_score >= 800:
                         tier = 9
-                        match_reason = "account/repo folder match in filelist mode"
+                        match_reason = "account/repo match in filelist mode"
                     elif is_same_repo_diff_author and subpath_matches:
                         tier = 10
                         match_reason = "same repo and path from different author in filelist mode"
@@ -3349,13 +3350,14 @@ def find_file_in_repos(filename: str, expected_size: int, repos: list, matchmode
                 candidates.append((tier, path_score, mtime, full_path, repo, match_reason))
 
     if not candidates:
-        return None
+        return (None, "") if return_reason else None
 
     # Sort by tier (ascending: lower number is higher priority), path_score (descending), mtime (descending)
     candidates.sort(key=lambda x: (x[0], -x[1], -x[2]))
     best = candidates[0]
     tier, score, mtime, best_path, repo, reason = best
-    log_subsubtask(f"Matched cached file ({reason}): {best_path}")
+    if return_reason:
+        return best_path, reason
     return best_path
 
 def download_file(url: str, filepath: str, show_progress: bool = False, use_cache: bool = False):
@@ -3488,7 +3490,8 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
             if is_feature_enabled:
                 all_cache_dirs = blob_repos + blob_collect_dirs
                 if all_cache_dirs:
-                    found_path = find_file_in_repos(fname, expected_size, all_cache_dirs, matchmode, url)
+                    found_res = find_file_in_repos(fname, expected_size, all_cache_dirs, matchmode, url, return_reason=True)
+                    found_path, match_reason = found_res if isinstance(found_res, tuple) else (found_res, "")
                     if found_path:
                         # Check target space even if linking
                         target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
@@ -3504,7 +3507,9 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
                             except Exception:
                                 pass
                         cache_type = "cache repo" if is_in_repo else "cache collectors"
-                        log_subsubtask(f"Found file in {cache_type}: {found_path}. Attempting to {'copy' if copymode == 'copy' else 'link'} to target location...")
+                        action = "copy" if copymode == "copy" else "link"
+                        reason_str = f" ({match_reason})" if match_reason else ""
+                        log_subsubtask(f"Found file in {cache_type}{reason_str}: {found_path}. Attempting to {action} to target.")
                         if copy_or_link_cached_file(found_path, filepath_decoded):
                             return filepath_decoded
                         log_warning(f"File exists at {found_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
@@ -4132,7 +4137,6 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             if DRYRUN:
                 log_subsubtask(msg=f"[DRYRUN]: would download {url}")
             else:
-                log_subsubtask(msg=f"Downloading file to: {targetdir}")
                 #url = "https://huggingface.co/Phr00t/WAN2.2-14B-Rapid-AllInOne/resolve/main/wan2.2-i2v-rapid-aio-example.json"
                 #path = "d:/resources/"
                 download_only_if_not_existent(

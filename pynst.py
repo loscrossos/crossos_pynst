@@ -3470,16 +3470,16 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
                         os.remove(dst)
                     if copymode == "copy":
                         shutil.copyfile(src, dst)
-                        log_subsubtask(f"Copied cached file from {src} to {dst}")
+                        log_subsubtask(f"Cached file copying: done")
                         return True
                     try:
                         os.link(src, dst)
-                        log_subsubtask(f"Linked cached file from {src} to {dst}")
+                        log_subsubtask(f"Cached file linking: done")
                         return True
                     except OSError:
                         log_warning(f"Linking failed for {src} -> {dst}. Copying instead...")
                         shutil.copyfile(src, dst)
-                        log_subsubtask(f"Copied cached file from {src} to {dst}")
+                        log_subsubtask(f"Cached file copying: done")
                         return True
                 except OSError as e:
                     log_warning(f"Failed to use cached file from {src}: {e}")

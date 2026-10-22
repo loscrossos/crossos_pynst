@@ -170,6 +170,7 @@ gemini skills install ./pynst-generator --scope user
 | `REQSCAN <path>` | Recursively find and install `requirements.txt` in subdirectories. |
 | `GETFILE <url> <path>` | Download a file (smart check for existing files). |
 | `DESKICO <label> <cmd>` | Create a clickable desktop shortcut. |
+| `DOPYNST [options] <file/url> <dir>` | Execute another pynst installer script (local or remote URL). |
 | `RFILTER <pkgs>` | Filter out specific packages to avoid conflicts. |
 
 *(See the [Manual](doc/MANUAL.md) for the full list)*

@@ -211,6 +211,13 @@ Runs a raw `git` command in the specified directory (relative to TargetDir).
 XRUNCMD_GIT ComfyUI checkout dev_branch
 ```
 
+#### `DOPYNST [Options...] <InputFile_or_URL> <TargetDirectory>`
+Executes another `.pynst.txt` installation script (local file path or remote HTTP/HTTPS URL) with standard pynst arguments and flags.
+```bash
+DOPYNST installers/comfy_wflow_wan22aio.pynst.txt ./my_app
+DOPYNST --embedded --noblob https://example.com/sub_installer.pynst.txt ./sub_app
+```
+
 #### `XRUNCMD_PIP <Args...>`
 Runs a raw `pip` command.
 ```bash

@@ -1,0 +1,12 @@
+GETFILE https://raw.githubusercontent.com/Comfy-Org/workflow_templates/refs/heads/main/templates/video_minimax_h3_i2v.json              ComfyUI/user/default/workflows
+GETFILE https://raw.githubusercontent.com/Comfy-Org/workflow_templates/refs/heads/main/templates/video_minimax_h3_t2v.json		ComfyUI/user/default/workflows
+GETFILE https://raw.githubusercontent.com/Comfy-Org/workflow_templates/refs/heads/main/templates/video_minimax_h3_r2v.json		ComfyUI/user/default/workflows
+
+GETBLOB https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors      ComfyUI/models/diffusion_models/
+GETBLOB https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors		ComfyUI/models/text_encoders
+GETBLOB https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors 	                    	ComfyUI/models/vae
+GETBLOB https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors				ComfyUI/models/vae
+
+CLONEIT https://github.com/kosinkadink/ComfyUI-VideoHelperSuite                                                                         ComfyUI/custom_nodes
+
+REQSCAN                                                                                                                                 ComfyUI/custom_nodes

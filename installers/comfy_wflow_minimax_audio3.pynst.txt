@@ -1,0 +1,15 @@
+GETFILE https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_minimax_music_3.json						ComfyUI/user/default/workflows
+
+
+# Model Downloads
+# Using the fp16 diffusion model as referenced in the workflow defaults.
+
+PRINTIT "Downloading MiniMax Music 3 Diffusion Model (fp16)..."
+GETBLOB https://huggingface.co/Comfy-Org/MiniMax-Music-3/resolve/main/diffusion_models/minimax_music3_dit_fp16.safetensors 			ComfyUI/models/diffusion_models/
+
+PRINTIT "Downloading MiniMax Music 3 Text Encoder..."
+GETBLOB https://huggingface.co/Comfy-Org/MiniMax-Music-3/resolve/main/text_encoders/minimax_music3_text_encoder_pruned_int8_convrot.safetensors	ComfyUI/models/text_encoders/
+
+PRINTIT "Downloading MiniMax Music 3 VAE..."
+GETBLOB https://huggingface.co/Comfy-Org/MiniMax-Music-3/resolve/main/vae/minimax_music3_dav.safetensors 					ComfyUI/models/vae/
+

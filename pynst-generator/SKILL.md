@@ -5,25 +5,61 @@ description: Generates or updates crossos-pynst installer configuration files (.
 
 # Pynst Installer Script Generator
 
-This skill guides the creation of CrossOS-Pynst installer configuration files (`.pynst.txt`) based on raw source text containing download links or ComfyUI workflow JSON files.
+This skill guides the creation and maintenance of CrossOS-Pynst installer configuration files (`.pynst.txt`). Pynst recipes automate dependency installation, environment setup, model downloads, and launcher shortcut creation across Windows, Linux, and macOS.
 
-## Workflow Overview
+## Authoring Guidelines & Syntax Rules
 
-To write a `.pynst.txt` file:
-1. **Analyze the Source:** Determine if the input is a plain text list of links, a structured document, or a ComfyUI workflow JSON.
-2. **For ComfyUI Workflows:**
-   - **Do NOT install ComfyUI itself.** Assume a base installation of ComfyUI exists at the root.
-   - Parse node types (excluding built-in ComfyUI nodes) to identify required custom nodes.
-   - Map custom nodes to their Git repository URLs and add `CLONEIT <git_url> ComfyUI/custom_nodes` commands.
-   - Parse workflow model names (checkpoints, LoRAs, VAEs, ControlNets, upscalers, etc.).
-   - Find public URLs (e.g., Hugging Face, Civitai) for those models and add `GETBLOB <url> ComfyUI/models/<category>` commands.
-   - Run a `REQSCAN ComfyUI/custom_nodes` to automatically install custom node dependencies.
-3. **For General Applications:**
-   - Define Python version, venv location, git cloning, and download commands.
-   - Reference [references/pynst-commands.md](references/pynst-commands.md) for command syntax.
-   - Reference [references/comfyui-mapping.md](references/comfyui-mapping.md) for ComfyUI custom node and model folder mappings.
+- **Command Casing:** Command keywords must ALWAYS be UPPERCASE (e.g., `CLONEIT`, `SETVENV`, `DOPYNST`, `REQSCAN`).
+- **Path Semantics:** Target directory paths in commands are relative to the installation root directory (`in_basedir`), unless using `DOPYNST` which accepts CLI paths relative to the current working directory or web URLs.
+- **Quoting:** Always wrap parameters containing spaces in double quotes (e.g., `DESKICO "ComfyUI GPU" ComfyUI/main.py --gpu`).
+- **Comments & Blank Lines:** Lines starting with `#` are comments. Blank lines are ignored.
+
+---
+
+## Workflow Scenarios
+
+### 1. ComfyUI Workflow Recipes (Addons & Nodes)
+When generating a `.pynst.txt` recipe for a ComfyUI workflow:
+- **Do NOT re-install ComfyUI itself.** Assume ComfyUI and its base virtual environment exist at the root.
+- **Custom Nodes:**
+  - Parse non-standard node types from the workflow JSON.
+  - Map each node to its Git repository URL.
+  - Add `CLONEIT <git_url> ComfyUI/custom_nodes`.
+- **Dependencies:**
+  - Always add `REQSCAN ComfyUI/custom_nodes` to install requirements from all cloned custom nodes.
+- **Model Downloads:**
+  - Map model names to their proper destination under `ComfyUI/models/<category>` (e.g., `checkpoints`, `unet`, `loras`, `vae`, `clip`).
+  - Always use `GETBLOB <url> ComfyUI/models/<category>` for model weights so users can skip large downloads via `--noblob`.
+  - See [references/comfyui-mapping.md](references/comfyui-mapping.md) for standard folder mappings and node repositories.
+
+### 2. Standalone General Applications
+When creating a full installer for a Python tool or project:
+- **Python Version:** Declare `PYTHON <version>` (e.g., `PYTHON 3.10` or `PYTHON 3.13`).
+- **Clone Code:** Clone the main repository using `CLONEIT <url> .` (or specific subfolder).
+- **Environment:** Initialize the virtual environment using `SETVENV <dir>`. If a `requirements.txt` is in `<dir>`, it installs automatically.
+- **Hardware Accelerators / PyTorch:**
+  - If a specific PyTorch/CUDA build is required, install it first via `REQFILE <url_or_path>` or `PIPINST`.
+  - Use `RFILTER torch torchvision torchaudio` before `REQSCAN` or secondary `REQFILE` calls to prevent dependencies from overwriting the accelerated PyTorch wheel. Clear filters with `RFILTER` once done.
+- **Large Assets:** Use `GETBLOB <url> <path>` for weights/models and `GETFILE <url> <path>` for configs.
+- **Shortcuts & Launchers:**
+  - `DESKICO <label> <script> <args...>` for desktop application icon.
+  - `HOMEEXE <label> <script> <args...>` for local launch script in the install directory.
+
+### 3. Modular & Composed Applications (`DOPYNST`)
+When composing recipes or building on top of base installations:
+- Use `DOPYNST [options] <file_or_url> <target_dir>` to execute another `.pynst.txt` recipe.
+- Can invoke local recipe files (e.g., `DOPYNST installers/comfy_installer_rtx_full.pynst.txt .`) or remote URLs (e.g., `DOPYNST https://example.com/base.pynst.txt ./target`).
+- Supports standard Pynst CLI flags (e.g., `--embedded`, `--noblob`, `--revenv`).
+
+### 4. Advanced System Calls & Validation
+- **Integrity Validation:** Use `HASFILE <path>` to verify critical files exist before proceeding.
+- **Direct Python Invocation:** Use `XRUNPYTHONFILE <script> <args...>` to run one-off initialization scripts within the active venv.
+- **Direct Git Commands:** Use `XRUNCMD_GIT <relative_dir> <args...>` for checking out specific branches, tags, or running submodules.
+- **Direct Pip Commands:** Use `XRUNCMD_PIP <args...>` for raw pip flags (e.g. `--extra-index-url`, `freeze`).
+
+---
 
 ## Quick Reference Links
 
-- **Pynst Syntax & Commands:** See [references/pynst-commands.md](references/pynst-commands.md)
+- **Full Command & Flag Reference:** See [references/pynst-commands.md](references/pynst-commands.md)
 - **ComfyUI Mappings & Nodes:** See [references/comfyui-mapping.md](references/comfyui-mapping.md)

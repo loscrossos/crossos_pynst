@@ -1398,6 +1398,7 @@ CMD_SHORTCUT_DESK_ICON  =   "DESKICO" #|**Arguments:** a python file path (relat
 CMD_SHORTCUT_DESK_SCRIPT=   "DESKEXE" #|**Arguments:** a python file path (relative to target dir) wiht arguments.. <br> **Description**:  Creates a Desktop script with a command line  
 CMD_SHORTCUT_BASE_ICON  =   "HOMEICO" #|**Arguments:** a python file path (relative to target dir) wiht arguments.. <br> **Description**:  Creates a Installdir icon with a command line   
 CMD_SHORTCUT_BASE_SCRIPT=   "HOMEEXE" #|**Arguments:** a python file path (relative to target dir) wiht arguments.. <br> **Description**:  Creates a installdir script with a command line   
+CMD_DOPYNST=                "DOPYNST" #|**Arguments:** normal pynst arguments. <br> **Description**: installs a pynst  
 CMD_XRUNCOMMAND_GIT =       "XRUNCMD_GIT" #|**Arguments:** commands to pass directly to git. <br> **Description**: Runs a git command directly 
 CMD_XRUNCOMMAND_PIP =       "XRUNCMD_PIP" #|**Arguments:** commands to pass directly to pip. <br> **Description**:  Advanced: Raw command line passed to pip.       
 CMD_EXEC =                  "XRUNPYTHONFILE" #|**Arguments:** commands to pass directly to python. <br> **Description**:  Runs a python file (arguments and params allowed)   
@@ -1925,12 +1926,12 @@ def apply_rfilter_to_file(src_path: Path, filters: list[str]) -> Path:
             
     return tmp
 
-def download_to_temp(url: str) -> Path:
+def download_to_temp(url: str, force_download: bool = False) -> Path:
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".txt")
     os.close(tmp_fd)
     p = Path(tmp_path)
     log_subsubtask(f"Downloading to tempfile: {p}")
-    if DRYRUN:
+    if DRYRUN and not force_download:
         log_subsubtask("[DRYRUN] Skipping actual download.")
         # Create an empty file to keep flow consistent
         p.write_text("", encoding="utf-8")
@@ -1938,6 +1939,9 @@ def download_to_temp(url: str) -> Path:
     
     # Try to download with default SSL context first
     try:
+        opener = urllib.request.build_opener()
+        opener.addheaders = [('User-Agent', f'pynst/1.0 ({sys.platform})')]
+        urllib.request.install_opener(opener)
         urllib.request.urlretrieve(url, p)
     except (ssl.SSLError, urllib.error.URLError) as e:
         # Check if it's an SSL certificate error
@@ -1949,12 +1953,18 @@ def download_to_temp(url: str) -> Path:
         log_warning(f"SSL certificate verification failed. Retrying with unverified context...")
         ssl_context = ssl._create_unverified_context()
         opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
+        opener.addheaders = [('User-Agent', f'pynst/1.0 ({sys.platform})')]
         urllib.request.install_opener(opener)
         try:
             urllib.request.urlretrieve(url, p)
         finally:
             # Restore default opener
             urllib.request.install_opener(urllib.request.build_opener())
+    finally:
+        try:
+            urllib.request.install_opener(urllib.request.build_opener())
+        except Exception:
+            pass
     
     return p
 
@@ -2970,6 +2980,101 @@ def human_readable_size(num_bytes: int) -> str:
             return f"{num_bytes:.2f} {unit}" if unit != "bytes" else f"{num_bytes} {unit}"
         num_bytes /= 1024.0
 
+UNORIGINAL_FILENAMES = {
+    # Generic model / weight files
+    "model.safetensors",
+    "diffusion_pytorch_model.safetensors",
+    "pytorch_model.bin",
+    "pytorch_model.safetensors",
+    "diffusion_pytorch_model.bin",
+    "model.bin",
+    "model.pt",
+    "model.pth",
+    "model.ckpt",
+    "model.onnx",
+    "model.patch",
+    "weights.safetensors",
+    "weights.bin",
+    "weights.pt",
+    "weights.pth",
+    "weights.ckpt",
+    "adapter_model.safetensors",
+    "adapter_model.bin",
+    "consolidated.safetensors",
+    "consolidated.bin",
+    "consolidated.pth",
+    "text_model.safetensors",
+    "unet.safetensors",
+    "vae.safetensors",
+    # Common metadata / config files
+    "config.json",
+    "generation_config.json",
+    "tokenizer_config.json",
+    "tokenizer.json",
+    "tokenizer.model",
+    "special_tokens_map.json",
+    "vocab.json",
+    "vocab.txt",
+    "merges.txt",
+    "preprocessor_config.json",
+    "inference_config.json",
+    "model_index.json",
+    "configuration.json",
+    "chat_template.json",
+    "scheduler_config.json",
+    # Generic docs / repository files
+    "readme.md",
+    "readme.txt",
+    "license",
+    "license.txt",
+    "license.md",
+    "requirements.txt",
+    "setup.py",
+    "setup.cfg",
+    "pyproject.toml",
+    ".gitattributes",
+    ".gitignore",
+}
+
+UNORIGINAL_FILE_PATTERNS = [
+    re.compile(r"^(model|pytorch_model|diffusion_pytorch_model|weights|adapter_model|consolidated)(-\d+-of-\d+|\.\d+)?\.(safetensors|bin|pt|pth|ckpt|onnx|patch)$", re.IGNORECASE),
+    re.compile(r"^consolidated\.\d+\.pth$", re.IGNORECASE),
+    re.compile(r"^part[-_]?\d+\.(safetensors|bin)$", re.IGNORECASE),
+]
+
+def is_unoriginal_filename(fname: str) -> bool:
+    """Check if filename is a common unoriginal name that should not be matched purely by filename."""
+    if not fname:
+        return False
+    fname_lower = fname.lower()
+    if fname_lower in UNORIGINAL_FILENAMES:
+        return True
+    for pat in UNORIGINAL_FILE_PATTERNS:
+        if pat.match(fname_lower):
+            return True
+    return False
+
+def extract_url_cache_identity(url: str, fname: str = ""):
+    """
+    Extract domain, account, repo name, subdirectories and collector dir name from a URL.
+    Returns: (domain, account, repo_name, subdirs, main_dir_name, base_subdir_name)
+    """
+    if not url:
+        return "", "", "", [], "", ""
+    import urllib.parse
+    parsed = urllib.parse.urlparse(url)
+    domain = get_main_domain(parsed.netloc).lower()
+    
+    segments = get_path_segments(parsed.path, fname)
+    filtered = filter_ignored_words(segments)
+    
+    account = filtered[0].lower() if len(filtered) >= 1 else ""
+    repo_name = filtered[1].lower() if len(filtered) >= 2 else ""
+    subdirs = [s.lower() for s in filtered[2:]] if len(filtered) > 2 else []
+    
+    main_dir_name, base_subdir_name = resolve_cache_dirs(url, fname)
+    return domain, account, repo_name, subdirs, main_dir_name.lower(), base_subdir_name.lower()
+
 def score_candidate_path(candidate_full_path: str, repo: str, main_dir_name: str, base_subdir_name: str) -> int:
     try:
         rel_path = os.path.relpath(candidate_full_path, repo).replace(os.sep, '/').lower()
@@ -2977,58 +3082,281 @@ def score_candidate_path(candidate_full_path: str, repo: str, main_dir_name: str
         rel_path = candidate_full_path.replace(os.sep, '/').lower()
         
     score = 0
-    main_dir_lower = main_dir_name.lower()
-    base_subdir_lower = base_subdir_name.lower()
+    main_dir_lower = main_dir_name.lower() if main_dir_name else ""
+    base_subdir_lower = base_subdir_name.lower() if base_subdir_name else ""
     
-    if main_dir_lower in rel_path:
-        score += 100
-        
-    import re
-    escaped_subdir = re.escape(base_subdir_lower)
-    pattern = rf"(^|/){escaped_subdir}(_\d+)?(/|$)"
-    if re.search(pattern, rel_path):
-        score += 50
+    if main_dir_lower and main_dir_lower in rel_path:
+        score += 1000
+        if base_subdir_lower and base_subdir_lower != "default":
+            escaped_subdir = re.escape(base_subdir_lower)
+            if re.search(rf"(^|/){escaped_subdir}(_\d+)?(/|$)", rel_path):
+                score += 200
+        elif "default" in rel_path.split('/'):
+            score += 50
+    elif base_subdir_lower and base_subdir_lower != "default":
+        escaped_subdir = re.escape(base_subdir_lower)
+        if re.search(rf"(^|/){escaped_subdir}(_\d+)?(/|$)", rel_path):
+            score += 50
         
     return score
 
 def find_file_in_repos(filename: str, expected_size: int, repos: list, matchmode: str = "filelistandsize", url: str = None) -> str:
-    actual_mode = matchmode
-    if expected_size == -1:
-        actual_mode = "filelist"
-        
+    """
+    Search for a file across cache repositories / collectors with prioritized matching tiers:
+    1. Account/Repo folder match + exact filesize (highest confidence)
+    2. Repo folder match + exact filesize
+    3. Account/Repo folder match when remote webfile is unreachable/size unknown (expected_size == -1)
+    4. Repo folder match when remote webfile is unreachable/size unknown
+    5. Exact filesize match for unique filenames (or flat URLs with no account)
+    6. Fallback pure filename match for unique filenames ONLY when webfile is down (very last option)
+    
+    Common unoriginal filenames (e.g. model.safetensors, config.json) have pure filename matching
+    completely disabled to prevent incorrect model cross-matching.
+    Files in conflicting account/repo folders are rejected.
+    """
+    if not filename or not repos:
+        return None
+
+    filename_lower = filename.lower()
+    domain, account, repo_name, subdirs, main_dir_name, base_subdir_name = extract_url_cache_identity(url, filename)
+    is_generic = is_unoriginal_filename(filename)
+
+    # Phase 1: Fast direct lookup in collector directories (O(1) lookups)
+    for repo in repos:
+        if not os.path.isdir(repo):
+            continue
+        direct_candidates = []
+        if main_dir_name:
+            if base_subdir_name and base_subdir_name != "default":
+                direct_candidates.append(os.path.join(repo, main_dir_name, base_subdir_name, filename))
+                if subdirs:
+                    direct_candidates.append(os.path.join(repo, main_dir_name, *subdirs, filename))
+            else:
+                direct_candidates.append(os.path.join(repo, main_dir_name, "default", filename))
+                direct_candidates.append(os.path.join(repo, main_dir_name, filename))
+        if account and repo_name:
+            if subdirs:
+                direct_candidates.append(os.path.join(repo, account, repo_name, *subdirs, filename))
+            else:
+                direct_candidates.append(os.path.join(repo, account, repo_name, "default", filename))
+                direct_candidates.append(os.path.join(repo, account, repo_name, filename))
+
+        for cand_path in direct_candidates:
+            if os.path.isfile(cand_path):
+                try:
+                    resolved_cand = str(Path(cand_path).resolve())
+                    actual_size = os.path.getsize(resolved_cand)
+                    size_known = (expected_size is not None and expected_size >= 0)
+                    if not size_known or actual_size == expected_size:
+                        reason = "account/repo collector direct match and exact size match" if size_known else "account/repo collector direct match (size unknown)"
+                        log_subsubtask(f"Matched cached file ({reason}): {resolved_cand}")
+                        return resolved_cand
+                    elif size_known and matchmode != "filelist":
+                        log_subsubtask(f"Found local file in collector but size does not match: {resolved_cand} (Local: {actual_size} bytes, Remote: {expected_size} bytes)")
+                except OSError:
+                    pass
+
+    # Phase 2: Prioritized repository scan
     candidates = []
+
     for repo in repos:
         if not os.path.isdir(repo):
             continue
         for root, dirs, files in os.walk(repo):
-            if filename in files:
-                full_path = os.path.join(root, filename)
-                if actual_mode == "filelist":
-                    candidates.append((full_path, repo))
+            matching_files = [f for f in files if f.lower() == filename_lower]
+            for f in matching_files:
+                full_path = os.path.join(root, f)
+                try:
+                    actual_size = os.path.getsize(full_path)
+                    mtime = os.path.getmtime(full_path)
+                except OSError:
+                    continue
+
+                try:
+                    rel_path = os.path.relpath(full_path, repo).replace(os.sep, '/').lower()
+                except Exception:
+                    rel_path = full_path.replace(os.sep, '/').lower()
+                rel_dir = os.path.dirname(rel_path)
+                rel_parts = [p for p in rel_dir.split('/') if p]
+
+                # Conflict detection: check if candidate explicitly belongs to another domain collector/account
+                has_account_conflict = False
+                is_same_repo_diff_author = False
+
+                if domain and account:
+                    domain_prefix = f"{domain}_"
+                    for part in rel_parts:
+                        if part.startswith(domain_prefix):
+                            remainder = part[len(domain_prefix):]
+                            remainder_parts = remainder.split('_')
+                            cand_account = remainder_parts[0] if remainder_parts else ""
+                            cand_repo = "_".join(remainder_parts[1:]) if len(remainder_parts) > 1 else ""
+                            if cand_account and cand_account != account:
+                                if repo_name and (cand_repo == repo_name or repo_name in cand_repo or cand_repo in repo_name):
+                                    is_same_repo_diff_author = True
+                                else:
+                                    has_account_conflict = True
+                                    break
+                            elif len(remainder_parts) > 1 and repo_name:
+                                if cand_repo and cand_repo != repo_name and repo_name not in cand_repo and cand_repo not in repo_name:
+                                    has_account_conflict = True
+                                    break
+
+                # Also check generic folder layout: <other_author>/<repo>/...
+                if not has_account_conflict and not is_same_repo_diff_author and repo_name:
+                    if repo_name in rel_parts and account not in rel_parts:
+                        idx = rel_parts.index(repo_name)
+                        if idx > 0:
+                            is_same_repo_diff_author = True
+
+                if has_account_conflict:
+                    continue
+
+                # Check subpath match
+                inner_parts = []
+                if main_dir_name and main_dir_name in rel_parts:
+                    idx = rel_parts.index(main_dir_name)
+                    inner_parts = rel_parts[idx + 1:]
+                elif account and repo_name and repo_name in rel_parts:
+                    idx = rel_parts.index(repo_name)
+                    inner_parts = rel_parts[idx + 1:]
                 else:
-                    try:
-                        actual_size = os.path.getsize(full_path)
-                    except OSError:
-                        actual_size = -1
-                    if actual_size == expected_size:
-                        candidates.append((full_path, repo))
-                    else:
+                    inner_parts = rel_parts
+
+                subpath_matches = False
+                if base_subdir_name and base_subdir_name != "default":
+                    subpath_matches = bool(base_subdir_name in inner_parts or any(s in inner_parts for s in subdirs))
+                else:
+                    subpath_matches = bool(len(inner_parts) == 0 or inner_parts == ["default"])
+
+                # Path scoring
+                path_score = 0
+                match_collector = False
+                match_account_and_repo = False
+                match_repo = False
+                match_account = False
+
+                if main_dir_name:
+                    if main_dir_name in rel_parts or f"/{main_dir_name}/" in f"/{rel_dir}/" or rel_dir.startswith(main_dir_name):
+                        match_collector = True
+                        path_score = 1000
+                        if subpath_matches:
+                            path_score += 200
+
+                if not match_collector and account and repo_name:
+                    if account in rel_dir and repo_name in rel_dir:
+                        match_account_and_repo = True
+                        path_score = 800
+                        if subpath_matches:
+                            path_score += 150
+
+                if not match_collector and not match_account_and_repo and is_same_repo_diff_author:
+                    path_score = 700
+                    if subpath_matches:
+                        path_score += 150
+
+                if not match_collector and not match_account_and_repo and not is_same_repo_diff_author and repo_name and len(repo_name) >= 3:
+                    if repo_name in rel_dir:
+                        match_repo = True
+                        path_score = 500
+
+                if not match_collector and not match_account_and_repo and not is_same_repo_diff_author and not match_repo and account and len(account) >= 3:
+                    if account in rel_dir:
+                        match_account = True
+                        path_score = 300
+
+                # For generic unoriginal names, require both repo confirmation AND strict subpath match!
+                valid_path_for_generic = (path_score >= 500 and subpath_matches)
+
+                # Unoriginal names in unrelated folders or mismatched subpaths are disqualified completely
+                if is_generic and not valid_path_for_generic:
+                    continue
+
+                size_known = (expected_size is not None and expected_size >= 0)
+                size_matches = (size_known and actual_size == expected_size)
+                size_mismatch = (size_known and actual_size != expected_size)
+                size_unknown = not size_known
+
+                if size_mismatch and matchmode != "filelist":
+                    if valid_path_for_generic or (not is_generic and path_score >= 300):
                         log_subsubtask(f"Found local file but size does not match: {full_path} (Local: {actual_size} bytes, Remote: {expected_size} bytes)")
-                        
+                    continue
+
+                tier = None
+                match_reason = ""
+
+                if size_matches and path_score >= 800:
+                    tier = 1
+                    match_reason = "account/repo folder and exact size match"
+                elif size_matches and is_same_repo_diff_author and subpath_matches:
+                    tier = 2
+                    match_reason = "same repo and path from different author (mirror/fork) and exact size match"
+                elif size_matches and valid_path_for_generic:
+                    tier = 3
+                    match_reason = "repo folder and exact size match"
+                elif size_matches and not is_generic and path_score >= 300:
+                    tier = 3
+                    match_reason = "account folder and exact size match for unique file"
+                elif size_unknown and path_score >= 800:
+                    tier = 4
+                    match_reason = "account/repo folder match (webfile size unknown)"
+                elif size_unknown and is_same_repo_diff_author and subpath_matches:
+                    tier = 5
+                    match_reason = "same repo and path from different author (mirror/fork, webfile size unknown)"
+                elif size_unknown and valid_path_for_generic:
+                    tier = 6
+                    match_reason = "repo folder match (webfile size unknown)"
+                elif size_unknown and not is_generic and path_score >= 300:
+                    tier = 6
+                    match_reason = "account folder match for unique file (webfile size unknown)"
+                elif size_matches and path_score == 0:
+                    if is_generic:
+                        if account or repo_name:
+                            log_subsubtask(f"Skipping generic filename match without account/path confirmation for '{filename}' at: {full_path}")
+                            continue
+                        tier = 7
+                        match_reason = "exact size match (flat URL, no account)"
+                    else:
+                        tier = 7
+                        match_reason = "exact size match for unique filename"
+                elif size_unknown and path_score == 0:
+                    if is_generic:
+                        log_subsubtask(f"Skipping pure filename match for unoriginal name '{filename}' at: {full_path} (webfile size unknown)")
+                        continue
+                    tier = 8
+                    match_reason = "fallback match by unique filename (webfile size unknown)"
+                elif matchmode == "filelist" and not size_matches:
+                    if is_generic and not valid_path_for_generic:
+                        log_subsubtask(f"Skipping generic filename in filelist mode without repo match for '{filename}' at: {full_path}")
+                        continue
+                    if path_score >= 800:
+                        tier = 9
+                        match_reason = "account/repo folder match in filelist mode"
+                    elif is_same_repo_diff_author and subpath_matches:
+                        tier = 10
+                        match_reason = "same repo and path from different author in filelist mode"
+                    elif valid_path_for_generic or (not is_generic and path_score >= 300):
+                        tier = 11
+                        match_reason = "repo/account folder match in filelist mode"
+                    elif not is_generic:
+                        tier = 12
+                        match_reason = "fallback unique filename match in filelist mode"
+                    else:
+                        continue
+                else:
+                    continue
+
+                candidates.append((tier, path_score, mtime, full_path, repo, match_reason))
+
     if not candidates:
         return None
-        
-    if actual_mode == "filelist" and url:
-        main_dir_name, base_subdir_name = resolve_cache_dirs(url, filename)
-        scored_candidates = []
-        for cand, repo in candidates:
-            score = score_candidate_path(cand, repo, main_dir_name, base_subdir_name)
-            scored_candidates.append((score, cand))
-            
-        scored_candidates.sort(key=lambda x: x[0], reverse=True)
-        return scored_candidates[0][1]
-        
-    return candidates[0][0]
+
+    # Sort by tier (ascending: lower number is higher priority), path_score (descending), mtime (descending)
+    candidates.sort(key=lambda x: (x[0], -x[1], -x[2]))
+    best = candidates[0]
+    tier, score, mtime, best_path, repo, reason = best
+    log_subsubtask(f"Matched cached file ({reason}): {best_path}")
+    return best_path
 
 def download_file(url: str, filepath: str, show_progress: bool = False, use_cache: bool = False):
     """
@@ -3158,30 +3486,25 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
             is_feature_enabled = os.path.exists(ENV_FILE) and (blob_repos or blob_collect_dirs)
             
             if is_feature_enabled:
-                # Check BLOBREPO_XX
-                if blob_repos:
-                    found_path = find_file_in_repos(fname, expected_size, blob_repos, matchmode, url)
+                all_cache_dirs = blob_repos + blob_collect_dirs
+                if all_cache_dirs:
+                    found_path = find_file_in_repos(fname, expected_size, all_cache_dirs, matchmode, url)
                     if found_path:
                         # Check target space even if linking
                         target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
                         if expected_size > 0 and get_free_space(target_parent) < expected_size:
                              abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
 
-                        log_subsubtask(f"Found file in cache repo: {found_path}. Attempting to {'copy' if copymode == 'copy' else 'link'} to target location...")
-                        if copy_or_link_cached_file(found_path, filepath_decoded):
-                            return filepath_decoded
-                        log_warning(f"File exists at {found_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
-                
-                # Check all BLOB_COLLECT_DIRs for existing file
-                if blob_collect_dirs:
-                    found_path = find_file_in_repos(fname, expected_size, blob_collect_dirs, matchmode, url)
-                    if found_path:
-                        # Check target space even if linking
-                        target_parent = os.path.dirname(os.path.abspath(filepath_decoded))
-                        if expected_size > 0 and get_free_space(target_parent) < expected_size:
-                             abort(f"Not enough storage space on target filesystem for {url}. Required: {human_readable_size(expected_size)}, Available: {human_readable_size(get_free_space(target_parent))}")
-
-                        log_subsubtask(f"Found file in cache collectors: {found_path}. Attempting to {'copy' if copymode == 'copy' else 'link'} to target location...")
+                        is_in_repo = False
+                        for r in blob_repos:
+                            try:
+                                if os.path.commonpath([os.path.abspath(r), os.path.abspath(found_path)]) == os.path.abspath(r):
+                                    is_in_repo = True
+                                    break
+                            except Exception:
+                                pass
+                        cache_type = "cache repo" if is_in_repo else "cache collectors"
+                        log_subsubtask(f"Found file in {cache_type}: {found_path}. Attempting to {'copy' if copymode == 'copy' else 'link'} to target location...")
                         if copy_or_link_cached_file(found_path, filepath_decoded):
                             return filepath_decoded
                         log_warning(f"File exists at {found_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
@@ -3892,6 +4215,25 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             
             do_git_command(target=Path(git_command_absolute_cwd), params=git_command_params)
 
+        elif cmd == CMD_DOPYNST:
+            output_prefix=""
+            if GLOBAL_SETTING_SHOW_CMD_NR:
+                output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
+            if not params:
+                abort(f"{output_prefix}{cmd} requires arguments (e.g. [options] <inputfile_or_url> <targetdirectory>)")
+            
+            log_task(f"{output_prefix}{cmd}: executing pynst installer: {' '.join(params)}")
+            pynst_script = str(Path(__file__).resolve())
+            exec_command = [sys.executable, pynst_script] + list(params)
+            
+            if DRYRUN:
+                log_subsubtask(f"[DRYRUN] would execute: {' '.join(quote_arg(x) for x in exec_command)}")
+            else:
+                log_subsubtask(f"Running pynst installer: {' '.join(quote_arg(x) for x in exec_command)}")
+                result = subprocess.run(exec_command)
+                if result.returncode != 0:
+                    abort(f"{output_prefix}{cmd} failed with exit code {result.returncode}")
+
         else:
             abort(msg=f"Unknown command in inputfile: {cmd}")
 
@@ -3984,7 +4326,7 @@ def main():
 
 
     
-    parser.add_argument(STARTOPTION_INPUTFILE, nargs='?', help="Path to inputfile (will be coerced to UTF-8 if needed)")
+    parser.add_argument(STARTOPTION_INPUTFILE, nargs='?', help="Path or URL to inputfile (HTTP/HTTPS will be downloaded to temp file)")
     parser.add_argument(STARTOPTION_INPUTDIR, nargs='?', help="Base directory for install/repair")
 
     parser.add_argument(f"--{STARTOPTION_EMBEDDED}", action="store_true", help="Treat venv installation as portable with a 'python_embedded' folder (or name defined with custom venv option)")
@@ -4057,87 +4399,105 @@ def main():
     VERBOSE = getattr(args, STARTOPTION_VERBOSE)
     BACKUP = getattr(args, STARTOPTION_BACKUP)
 
-    inputfile_path = Path(getattr(args, STARTOPTION_INPUTFILE)).expanduser().resolve()
+    raw_inputfile = getattr(args, STARTOPTION_INPUTFILE)
     installdir = Path(getattr(args, STARTOPTION_INPUTDIR)).expanduser().resolve()
 
-    # Basic validations for compatibility
-    if not inputfile_path.is_file():
-        abort(f"PRE_CHECK: input file not found: {inputfile_path}")
-    if not installdir.parent.is_dir():
-        abort(f"PRE_CHECK: Input directory not found: {installdir.parent}")
-        
-    allowed_keys={
-        CMD_PYTHON,
-        CMD_SETVENV,
-        CMD_PIPREQFILE,
-        CMD_PIPREQFILE_FORCE,
-        CMD_PIPREQPACKAGE,
-        CMD_XRUNCOMMAND_PIP,
-        CMD_RFILTER,
-        CMD_GITCLONE,
-        CMD_BLOBCLONE,
-        CMD_REQSCAN,
-        CMD_GETFILE,
-        CMD_GETBLOB,
-        CMD_PRINT,
-        CMD_PAUSE,
-        CMD_SHORTCUT_DESK_ICON  ,
-        CMD_SHORTCUT_DESK_SCRIPT,
-        CMD_SHORTCUT_BASE_ICON  ,
-        CMD_SHORTCUT_BASE_SCRIPT,
-        CMD_COMMENTEDOUT_LINE,
-        CMD_CONFIRM_FILE_OR_ABORT,
-        CMD_EXEC,
-        CMD_XRUNCOMMAND_GIT
-        }
-    restricted_keys={CMD_PYTHON: 1, CMD_PAUSE: 10}
-    validate_file(inputfile_path,allowed_keywords=allowed_keys,limited_keywords=restricted_keys)
-    
-    
-    fileget_text=""
-    if getattr(args, STARTOPTION_NOBLOB):
-        fileget_text="(Large File Download disabled)"
-    log_app_section(f"=== STARTING CROSSOS {APP_NAME} {fileget_text} ===")
-    if not installdir.exists():
-        if DRYRUN:
-            log_subsubtask(f"[DRYRUN] Would create base directory: {installdir}")
+    temp_input_file = None
+    try:
+        if re.match(r"^https?://", raw_inputfile, re.I):
+            log_task(f"Downloading input file from URL: {raw_inputfile}")
+            try:
+                temp_input_file = download_to_temp(raw_inputfile, force_download=True)
+                inputfile_path = temp_input_file.resolve()
+            except Exception as e:
+                abort(f"PRE_CHECK: failed to download input file from '{raw_inputfile}': {e}")
         else:
-            log_subsubtask(f"Creating base directory: {installdir}")
-            installdir.mkdir(parents=True, exist_ok=True)
+            inputfile_path = Path(raw_inputfile).expanduser().resolve()
+            if not inputfile_path.is_file():
+                abort(f"PRE_CHECK: input file not found: {inputfile_path}")
+
+        if not installdir.parent.is_dir():
+            abort(f"PRE_CHECK: Input directory not found: {installdir.parent}")
+            
+        allowed_keys={
+            CMD_PYTHON,
+            CMD_SETVENV,
+            CMD_PIPREQFILE,
+            CMD_PIPREQFILE_FORCE,
+            CMD_PIPREQPACKAGE,
+            CMD_XRUNCOMMAND_PIP,
+            CMD_RFILTER,
+            CMD_GITCLONE,
+            CMD_BLOBCLONE,
+            CMD_REQSCAN,
+            CMD_GETFILE,
+            CMD_GETBLOB,
+            CMD_PRINT,
+            CMD_PAUSE,
+            CMD_SHORTCUT_DESK_ICON  ,
+            CMD_SHORTCUT_DESK_SCRIPT,
+            CMD_SHORTCUT_BASE_ICON  ,
+            CMD_SHORTCUT_BASE_SCRIPT,
+            CMD_COMMENTEDOUT_LINE,
+            CMD_CONFIRM_FILE_OR_ABORT,
+            CMD_EXEC,
+            CMD_XRUNCOMMAND_GIT,
+            CMD_DOPYNST
+            }
+        restricted_keys={CMD_PYTHON: 1, CMD_PAUSE: 10}
+        validate_file(inputfile_path,allowed_keywords=allowed_keys,limited_keywords=restricted_keys)
+        
+        
+        fileget_text=""
+        if getattr(args, STARTOPTION_NOBLOB):
+            fileget_text="(Large File Download disabled)"
+        log_app_section(f"=== STARTING CROSSOS {APP_NAME} {fileget_text} ===")
+        if not installdir.exists():
+            if DRYRUN:
+                log_subsubtask(f"[DRYRUN] Would create base directory: {installdir}")
+            else:
+                log_subsubtask(f"Creating base directory: {installdir}")
+                installdir.mkdir(parents=True, exist_ok=True)
 
 
 
 
-    # Parse instructions
-    commands = parse_inputfile(inputfile_path)
-    if not commands:
-        abort("No commands found in inputfile.")
+        # Parse instructions
+        commands = parse_inputfile(inputfile_path)
+        if not commands:
+            abort("No commands found in inputfile.")
 
-    # Confirm git availability early (install requires, repair may ignore clones but still good to check)
-    require_tool("git", "Install Git from https://git-scm.com/ and ensure it's on PATH.")
+        # Confirm git availability early (install requires, repair may ignore clones but still good to check)
+        require_tool("git", "Install Git from https://git-scm.com/ and ensure it's on PATH.")
 
-    operation_mode=STARTOPTION_MODE_INSTALL
+        operation_mode=STARTOPTION_MODE_INSTALL
 
-    if getattr(args, STARTOPTION_MODE_SENSOINSTALL):
-        operation_mode=STARTOPTION_MODE_SENSOINSTALL
-    elif getattr(args, STARTOPTION_MODE_REBUILD):
-        operation_mode=STARTOPTION_MODE_REBUILD
-    
-    
-    
-    process_input_script(
-        in_commands=commands, 
-        in_basedir= installdir, 
-        in_python_embedded_mode= getattr(args, STARTOPTION_EMBEDDED), 
-        in_custom_venv_name=getattr(args, STARTOPTION_VENVNAME), 
-        noblob_mode=getattr(args, STARTOPTION_NOBLOB), 
-        in_operation_mode=operation_mode, 
-        force_gitpull_mode=getattr(args, STARTOPTION_FORCEGITLATEST),
-        precheck_updatemode=getattr(args, STARTOPTION_SAFECHECK),
-        pip_force_reinstall=getattr(args, STARTOPTION_FORCEUPGRADE),
-        opt_update=getattr(args, STARTOPTION_FORCEUPDATE)
-        )
-    log_app_section(f"=== CrossOS {APP_NAME}: END ===")
+        if getattr(args, STARTOPTION_MODE_SENSOINSTALL):
+            operation_mode=STARTOPTION_MODE_SENSOINSTALL
+        elif getattr(args, STARTOPTION_MODE_REBUILD):
+            operation_mode=STARTOPTION_MODE_REBUILD
+        
+        
+        
+        process_input_script(
+            in_commands=commands, 
+            in_basedir= installdir, 
+            in_python_embedded_mode= getattr(args, STARTOPTION_EMBEDDED), 
+            in_custom_venv_name=getattr(args, STARTOPTION_VENVNAME), 
+            noblob_mode=getattr(args, STARTOPTION_NOBLOB), 
+            in_operation_mode=operation_mode, 
+            force_gitpull_mode=getattr(args, STARTOPTION_FORCEGITLATEST),
+            precheck_updatemode=getattr(args, STARTOPTION_SAFECHECK),
+            pip_force_reinstall=getattr(args, STARTOPTION_FORCEUPGRADE),
+            opt_update=getattr(args, STARTOPTION_FORCEUPDATE)
+            )
+        log_app_section(f"=== CrossOS {APP_NAME}: END ===")
+    finally:
+        if temp_input_file and temp_input_file.is_file():
+            try:
+                temp_input_file.unlink()
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     try:

@@ -1,0 +1,8 @@
+# Create the main ckpt directory and download the base HeartMuLaGen files into it
+CLONELF https://huggingface.co/HeartMuLa/HeartMuLaGen . ckpt
+
+# Download the 3B model into the HeartMuLa-oss-3B subfolder
+CLONELF https://huggingface.co/HeartMuLa/HeartMuLa-oss-3B-happy-new-year ckpt HeartMuLa-oss-3B
+
+# Download the Codec into the HeartCodec-oss subfolder
+CLONELF https://huggingface.co/HeartMuLa/HeartCodec-oss-20260123 ckpt HeartCodec-oss

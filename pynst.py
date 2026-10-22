@@ -3148,7 +3148,7 @@ def find_file_in_repos(filename: str, expected_size: int, repos: list, matchmode
                     actual_size = os.path.getsize(resolved_cand)
                     size_known = (expected_size is not None and expected_size >= 0)
                     if not size_known or actual_size == expected_size:
-                        reason = "account/repo match and size match" if size_known else "account/repo match (size unknown)"
+                        reason = "account/repo and size match" if size_known else "account/repo match (size unknown)"
                         if return_reason:
                             return resolved_cand, reason
                         return resolved_cand
@@ -3509,7 +3509,7 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
                         cache_type = "cache repo" if is_in_repo else "cache collectors"
                         action = "copy" if copymode == "copy" else "link"
                         reason_str = f" ({match_reason})" if match_reason else ""
-                        log_subsubtask(f"Found file in {cache_type}{reason_str}: {found_path}. Attempting to {action} to target.")
+                        log_subsubtask(f"Match in {cache_type}{reason_str}: {found_path}. Attempting to {action}.")
                         if copy_or_link_cached_file(found_path, filepath_decoded):
                             return filepath_decoded
                         log_warning(f"File exists at {found_path} but {'linking' if copymode != 'copy' else 'copying'} failed. Downloading anyway...")
@@ -3610,7 +3610,7 @@ def download_only_if_not_existent(url, directory_target_path, verbose=False, sho
     os.makedirs(directory_target_path, exist_ok=True)
     filename = os.path.basename(urllib.parse.urlparse(url).path)
     filepath = os.path.join(directory_target_path, filename)
-    log_subsubtask(f"Resolved download target file: {filepath}")
+    log_subsubtask(f"Target file: {filepath}")
     download_file(url, filepath, show_progress=show_progress, use_cache=use_cache)
 
 

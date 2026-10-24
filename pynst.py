@@ -3148,7 +3148,7 @@ def find_file_in_repos(filename: str, expected_size: int, repos: list, matchmode
                     actual_size = os.path.getsize(resolved_cand)
                     size_known = (expected_size is not None and expected_size >= 0)
                     if not size_known or actual_size == expected_size:
-                        reason = "account/repo and size match" if size_known else "account/repo match (size unknown)"
+                        reason = "account/repo match and size match" if size_known else "account/repo match (size unknown)"
                         if return_reason:
                             return resolved_cand, reason
                         return resolved_cand
@@ -4227,14 +4227,37 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
                 abort(f"{output_prefix}{cmd} requires arguments (e.g. [options] <inputfile_or_url> <targetdirectory>)")
             
             log_task(f"{output_prefix}{cmd}: executing pynst installer: {' '.join(params)}")
+
+            # Resolve relative target directory against in_basedir
+            resolved_params = list(params)
+            flags_with_val = {"--copymode", "--matchmode", "--venvname"}
+            positional_indices = []
+            skip_next = False
+            for idx, p in enumerate(resolved_params):
+                if skip_next:
+                    skip_next = False
+                    continue
+                if p in flags_with_val:
+                    skip_next = True
+                    continue
+                if not p.startswith("-"):
+                    positional_indices.append(idx)
+
+            if len(positional_indices) >= 2:
+                target_idx = positional_indices[-1]
+                target_val = resolved_params[target_idx]
+                resolved_params[target_idx] = str((in_basedir / target_val).resolve())
+            elif len(positional_indices) == 1:
+                resolved_params.append(str(in_basedir.resolve()))
+
             pynst_script = str(Path(__file__).resolve())
-            exec_command = [sys.executable, pynst_script] + list(params)
+            exec_command = [sys.executable, pynst_script] + resolved_params
             
             if DRYRUN:
                 log_subsubtask(f"[DRYRUN] would execute: {' '.join(quote_arg(x) for x in exec_command)}")
             else:
                 log_subsubtask(f"Running pynst installer: {' '.join(quote_arg(x) for x in exec_command)}")
-                result = subprocess.run(exec_command)
+                result = subprocess.run(exec_command, cwd=str(in_basedir))
                 if result.returncode != 0:
                     abort(f"{output_prefix}{cmd} failed with exit code {result.returncode}")
 

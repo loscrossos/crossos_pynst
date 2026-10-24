@@ -62,6 +62,21 @@ class TestPynstIt(unittest.TestCase):
         self.assertEqual(result.returncode, 0, f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
         self.assertIn("PYNSTIT", result.stdout)
 
+    def test_pynstit_resolves_relative_target_dir(self):
+        """Verify executing PYNSTIT with '.' resolves target to the parent's targetdirectory."""
+        sub_installer = os.path.join(self.test_dir, "sub.pynst.txt")
+        with open(sub_installer, "w", encoding="utf-8") as f:
+            f.write("PRINTIT Sub-installer running\n")
+
+        main_installer = os.path.join(self.test_dir, "main.pynst.txt")
+        with open(main_installer, "w", encoding="utf-8") as f:
+            f.write(f'PYNSTIT --dryrun "{sub_installer}" .\n')
+
+        cmd = [sys.executable, str(PROJECT_ROOT / "pynst.py"), "--dryrun", main_installer, self.target_dir]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
+        self.assertIn(str(Path(self.target_dir).resolve()), result.stdout)
+
     def test_pynstit_execution_live(self):
         """Verify executing PYNSTIT actually runs the sub-installer process."""
         sub_target = os.path.join(self.test_dir, "sub_target")

@@ -27,7 +27,7 @@ This document outlines the standard `.pynst.txt` command vocabulary, parameters,
 
 | Command | Arguments | Description | Example |
 | :--- | :--- | :--- | :--- |
-| `DOPYNST` | `[options] file_or_url target_dir` | Calls another `.pynst.txt` installer (local path or remote HTTP/HTTPS URL) with standard pynst arguments and executes it. | `DOPYNST other.pynst.txt target/` |
+| `PYNSTIT` | `[options] file_or_url target_dir` | Calls another `.pynst.txt` installer (local path or remote HTTP/HTTPS URL) with standard pynst arguments and executes it. | `PYNSTIT other.pynst.txt target/` |
 | `XRUNPYTHONFILE` | `script args...` | Executes a Python file immediately in the active venv. | `XRUNPYTHONFILE setup.py --init` |
 | `XRUNCMD_GIT` | `relative_cwd args...` | Executes a raw `git` command in the specified directory. | `XRUNCMD_GIT ComfyUI checkout dev` |
 | `XRUNCMD_PIP` | `args...` | Executes a raw `pip` command directly in the active venv. | `XRUNCMD_PIP freeze` |
@@ -61,7 +61,7 @@ This document outlines the standard `.pynst.txt` command vocabulary, parameters,
 
 ## Supported CLI Flags
 
-Pynst CLI flags can be passed on the command line or used inside `DOPYNST` calls:
+Pynst CLI flags can be passed on the command line or used inside `PYNSTIT` calls:
 
 | Flag | Description |
 | :--- | :--- |
@@ -93,11 +93,11 @@ GETFILE https://github.com/Hillobar/Rope/releases/download/Sapphire/det_10g.onnx
 DESKICO "Core Rope" core_rope/Rope.py
 ```
 
-### 2. Composed / Modular Application (Using DOPYNST)
+### 2. Composed / Modular Application (Using PYNSTIT)
 
 ```pynst
 # First run base ComfyUI installer
-DOPYNST installers/comfy_installer_rtx_full.pynst.txt .
+PYNSTIT installers/comfy_installer_rtx_full.pynst.txt .
 
 # Then install additional custom nodes & models
 CLONEIT https://github.com/city96/ComfyUI-GGUF ComfyUI/custom_nodes

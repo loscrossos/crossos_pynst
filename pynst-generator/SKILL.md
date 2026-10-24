@@ -9,8 +9,8 @@ This skill guides the creation and maintenance of CrossOS-Pynst installer config
 
 ## Authoring Guidelines & Syntax Rules
 
-- **Command Casing:** Command keywords must ALWAYS be UPPERCASE (e.g., `CLONEIT`, `SETVENV`, `DOPYNST`, `REQSCAN`).
-- **Path Semantics:** Target directory paths in commands are relative to the installation root directory (`in_basedir`), unless using `DOPYNST` which accepts CLI paths relative to the current working directory or web URLs.
+- **Command Casing:** Command keywords must ALWAYS be UPPERCASE (e.g., `CLONEIT`, `SETVENV`, `PYNSTIT`, `REQSCAN`).
+- **Path Semantics:** Target directory paths in commands are relative to the installation root directory (`in_basedir`), unless using `PYNSTIT` which accepts CLI paths relative to the current working directory or web URLs.
 - **Quoting:** Always wrap parameters containing spaces in double quotes (e.g., `DESKICO "ComfyUI GPU" ComfyUI/main.py --gpu`).
 - **Comments & Blank Lines:** Lines starting with `#` are comments. Blank lines are ignored.
 
@@ -45,10 +45,10 @@ When creating a full installer for a Python tool or project:
   - `DESKICO <label> <script> <args...>` for desktop application icon.
   - `HOMEEXE <label> <script> <args...>` for local launch script in the install directory.
 
-### 3. Modular & Composed Applications (`DOPYNST`)
+### 3. Modular & Composed Applications (`PYNSTIT`)
 When composing recipes or building on top of base installations:
-- Use `DOPYNST [options] <file_or_url> <target_dir>` to execute another `.pynst.txt` recipe.
-- Can invoke local recipe files (e.g., `DOPYNST installers/comfy_installer_rtx_full.pynst.txt .`) or remote URLs (e.g., `DOPYNST https://example.com/base.pynst.txt ./target`).
+- Use `PYNSTIT [options] <file_or_url> <target_dir>` to execute another `.pynst.txt` recipe.
+- Can invoke local recipe files (e.g., `PYNSTIT installers/comfy_installer_rtx_full.pynst.txt .`) or remote URLs (e.g., `PYNSTIT https://example.com/base.pynst.txt ./target`).
 - Supports standard Pynst CLI flags (e.g., `--embedded`, `--noblob`, `--revenv`).
 
 ### 4. Advanced System Calls & Validation

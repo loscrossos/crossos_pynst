@@ -1398,7 +1398,7 @@ CMD_SHORTCUT_DESK_ICON  =   "DESKICO" #|**Arguments:** a python file path (relat
 CMD_SHORTCUT_DESK_SCRIPT=   "DESKEXE" #|**Arguments:** a python file path (relative to target dir) wiht arguments.. <br> **Description**:  Creates a Desktop script with a command line  
 CMD_SHORTCUT_BASE_ICON  =   "HOMEICO" #|**Arguments:** a python file path (relative to target dir) wiht arguments.. <br> **Description**:  Creates a Installdir icon with a command line   
 CMD_SHORTCUT_BASE_SCRIPT=   "HOMEEXE" #|**Arguments:** a python file path (relative to target dir) wiht arguments.. <br> **Description**:  Creates a installdir script with a command line   
-CMD_DOPYNST=                "DOPYNST" #|**Arguments:** normal pynst arguments. <br> **Description**: installs a pynst  
+CMD_PYNSTIT=                "PYNSTIT" #|**Arguments:** normal pynst arguments. <br> **Description**: installs a pynst  
 CMD_XRUNCOMMAND_GIT =       "XRUNCMD_GIT" #|**Arguments:** commands to pass directly to git. <br> **Description**: Runs a git command directly 
 CMD_XRUNCOMMAND_PIP =       "XRUNCMD_PIP" #|**Arguments:** commands to pass directly to pip. <br> **Description**:  Advanced: Raw command line passed to pip.       
 CMD_EXEC =                  "XRUNPYTHONFILE" #|**Arguments:** commands to pass directly to python. <br> **Description**:  Runs a python file (arguments and params allowed)   
@@ -4219,7 +4219,7 @@ def process_input_script(in_commands: list[tuple[str, list[str]]],
             
             do_git_command(target=Path(git_command_absolute_cwd), params=git_command_params)
 
-        elif cmd == CMD_DOPYNST:
+        elif cmd == CMD_PYNSTIT:
             output_prefix=""
             if GLOBAL_SETTING_SHOW_CMD_NR:
                 output_prefix=f"{TOKEN_INPUTFILE_COMMAND_PREFIX}[{current_command_nr}/{total_commands}]:"
@@ -4446,7 +4446,7 @@ def main():
             CMD_CONFIRM_FILE_OR_ABORT,
             CMD_EXEC,
             CMD_XRUNCOMMAND_GIT,
-            CMD_DOPYNST
+            CMD_PYNSTIT
             }
         restricted_keys={CMD_PYTHON: 1, CMD_PAUSE: 10}
         validate_file(inputfile_path,allowed_keywords=allowed_keys,limited_keywords=restricted_keys)

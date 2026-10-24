@@ -14,7 +14,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 import pynst
 
-class TestDoPynst(unittest.TestCase):
+class TestPynstIt(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp(prefix="pynst_test_")
         self.target_dir = os.path.join(self.test_dir, "target")
@@ -23,47 +23,47 @@ class TestDoPynst(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
-    def test_dopynst_in_allowed_keys(self):
-        """Verify CMD_DOPYNST is defined and can pass validation."""
-        self.assertEqual(pynst.CMD_DOPYNST, "DOPYNST")
+    def test_pynstit_in_allowed_keys(self):
+        """Verify CMD_PYNSTIT is defined and can pass validation."""
+        self.assertEqual(pynst.CMD_PYNSTIT, "PYNSTIT")
         
         test_script = os.path.join(self.test_dir, "test.pynst.txt")
         with open(test_script, "w", encoding="utf-8") as f:
-            f.write("DOPYNST other.pynst.txt ./target\n")
+            f.write("PYNSTIT other.pynst.txt ./target\n")
             
-        allowed = {pynst.CMD_DOPYNST}
+        allowed = {pynst.CMD_PYNSTIT}
         # validate_file should not exit with error
         pynst.validate_file(test_script, allowed_keywords=allowed, limited_keywords={})
 
-    def test_parse_inputfile_with_dopynst(self):
-        """Verify parse_inputfile parses DOPYNST with options and quoted arguments."""
+    def test_parse_inputfile_with_pynstit(self):
+        """Verify parse_inputfile parses PYNSTIT with options and quoted arguments."""
         test_script = os.path.join(self.test_dir, "test.pynst.txt")
         with open(test_script, "w", encoding="utf-8") as f:
-            f.write('DOPYNST --embedded --noblob "path with spaces/installer.pynst.txt" "./target dir"\n')
+            f.write('PYNSTIT --embedded --noblob "path with spaces/installer.pynst.txt" "./target dir"\n')
             
         commands = pynst.parse_inputfile(Path(test_script))
         self.assertEqual(len(commands), 1)
         cmd, params = commands[0]
-        self.assertEqual(cmd, "DOPYNST")
+        self.assertEqual(cmd, "PYNSTIT")
         self.assertEqual(params, ["--embedded", "--noblob", "path with spaces/installer.pynst.txt", "./target dir"])
 
-    def test_dopynst_execution_dryrun(self):
-        """Verify executing DOPYNST in dryrun mode logs the command without failing."""
+    def test_pynstit_execution_dryrun(self):
+        """Verify executing PYNSTIT in dryrun mode logs the command without failing."""
         sub_installer = os.path.join(self.test_dir, "sub.pynst.txt")
         with open(sub_installer, "w", encoding="utf-8") as f:
             f.write("PRINTIT Sub-installer running\n")
 
         main_installer = os.path.join(self.test_dir, "main.pynst.txt")
         with open(main_installer, "w", encoding="utf-8") as f:
-            f.write(f"DOPYNST --dryrun \"{sub_installer}\" \"{self.target_dir}\"\n")
+            f.write(f"PYNSTIT --dryrun \"{sub_installer}\" \"{self.target_dir}\"\n")
 
         cmd = [sys.executable, str(PROJECT_ROOT / "pynst.py"), "--dryrun", main_installer, self.target_dir]
         result = subprocess.run(cmd, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
-        self.assertIn("DOPYNST", result.stdout)
+        self.assertIn("PYNSTIT", result.stdout)
 
-    def test_dopynst_execution_live(self):
-        """Verify executing DOPYNST actually runs the sub-installer process."""
+    def test_pynstit_execution_live(self):
+        """Verify executing PYNSTIT actually runs the sub-installer process."""
         sub_target = os.path.join(self.test_dir, "sub_target")
         os.makedirs(sub_target, exist_ok=True)
         
@@ -73,15 +73,15 @@ class TestDoPynst(unittest.TestCase):
 
         main_installer = os.path.join(self.test_dir, "main.pynst.txt")
         with open(main_installer, "w", encoding="utf-8") as f:
-            f.write(f"DOPYNST \"{sub_installer}\" \"{sub_target}\"\n")
+            f.write(f"PYNSTIT \"{sub_installer}\" \"{sub_target}\"\n")
 
         cmd = [sys.executable, str(PROJECT_ROOT / "pynst.py"), main_installer, self.target_dir]
         result = subprocess.run(cmd, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
         self.assertIn("Hello from sub installer!", result.stdout)
 
-    def test_dopynst_failure_propagates(self):
-        """Verify that a failure in the child installer causes the parent DOPYNST to abort."""
+    def test_pynstit_failure_propagates(self):
+        """Verify that a failure in the child installer causes the parent PYNSTIT to abort."""
         sub_target = os.path.join(self.test_dir, "sub_target")
         os.makedirs(sub_target, exist_ok=True)
 
@@ -92,7 +92,7 @@ class TestDoPynst(unittest.TestCase):
 
         main_installer = os.path.join(self.test_dir, "main.pynst.txt")
         with open(main_installer, "w", encoding="utf-8") as f:
-            f.write(f"DOPYNST \"{sub_installer}\" \"{sub_target}\"\n")
+            f.write(f"PYNSTIT \"{sub_installer}\" \"{sub_target}\"\n")
 
         cmd = [sys.executable, str(PROJECT_ROOT / "pynst.py"), main_installer, self.target_dir]
         result = subprocess.run(cmd, capture_output=True, text=True)
@@ -130,12 +130,12 @@ class TestDoPynst(unittest.TestCase):
             self.assertEqual(result.returncode, 0, f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
             self.assertIn("Remote script executed successfully!", result.stdout)
 
-            # 2. Test invocation via DOPYNST
-            dopynst_target = os.path.join(self.test_dir, "dopynst_target")
-            os.makedirs(dopynst_target, exist_ok=True)
+            # 2. Test invocation via PYNSTIT
+            pynstit_target = os.path.join(self.test_dir, "pynstit_target")
+            os.makedirs(pynstit_target, exist_ok=True)
             main_installer = os.path.join(self.test_dir, "main_url.pynst.txt")
             with open(main_installer, "w", encoding="utf-8") as f:
-                f.write(f"DOPYNST \"{url}\" \"{dopynst_target}\"\n")
+                f.write(f"PYNSTIT \"{url}\" \"{pynstit_target}\"\n")
 
             cmd = [sys.executable, str(PROJECT_ROOT / "pynst.py"), main_installer, self.target_dir]
             result = subprocess.run(cmd, capture_output=True, text=True)

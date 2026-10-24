@@ -1926,6 +1926,152 @@ def apply_rfilter_to_file(src_path: Path, filters: list[str]) -> Path:
             
     return tmp
 
+def parse_git_file_url(url: str):
+    """
+    Parse a git web URL (e.g. GitHub, GitLab, Bitbucket raw or blob link) into components.
+    Returns dict with keys 'host', 'owner', 'repo', 'ref', 'path' or None if not recognized.
+    """
+    try:
+        parsed = urllib.parse.urlparse(url)
+        host = parsed.netloc.lower()
+        path = parsed.path.lstrip('/')
+        parts = path.split('/')
+
+        # GitHub: github.com or raw.githubusercontent.com
+        if host in ('github.com', 'raw.githubusercontent.com'):
+            if len(parts) >= 3:
+                owner = parts[0]
+                repo = parts[1]
+                if repo.endswith('.git'):
+                    repo = repo[:-4]
+                remainder = parts[2:]
+                if host == 'github.com':
+                    if remainder and remainder[0] in ('raw', 'blob'):
+                        remainder = remainder[1:]
+                if remainder and remainder[0] == 'refs' and len(remainder) >= 3 and remainder[1] == 'heads':
+                    ref = remainder[2]
+                    file_path = '/'.join(remainder[3:])
+                elif remainder:
+                    ref = remainder[0]
+                    file_path = '/'.join(remainder[1:])
+                else:
+                    ref = 'main'
+                    file_path = ''
+                return {'host': 'github.com', 'owner': owner, 'repo': repo, 'ref': ref, 'path': file_path}
+
+        # GitLab: gitlab.com
+        elif 'gitlab' in host:
+            if '/-/' in path:
+                repo_part, remainder_part = path.split('/-/', 1)
+                repo_segments = repo_part.split('/')
+                remainder_segments = remainder_part.split('/')
+                if len(repo_segments) >= 2 and len(remainder_segments) >= 2:
+                    owner = '/'.join(repo_segments[:-1])
+                    repo = repo_segments[-1]
+                    if repo.endswith('.git'):
+                        repo = repo[:-4]
+                    if remainder_segments[0] in ('raw', 'blob'):
+                        remainder_segments = remainder_segments[1:]
+                    ref = remainder_segments[0]
+                    file_path = '/'.join(remainder_segments[1:])
+                    return {'host': host, 'owner': owner, 'repo': repo, 'ref': ref, 'path': file_path}
+
+        # Bitbucket: bitbucket.org
+        elif 'bitbucket.org' in host:
+            if len(parts) >= 4 and parts[2] in ('raw', 'src'):
+                owner = parts[0]
+                repo = parts[1]
+                if repo.endswith('.git'):
+                    repo = repo[:-4]
+                ref = parts[3]
+                file_path = '/'.join(parts[4:])
+                return {'host': host, 'owner': owner, 'repo': repo, 'ref': ref, 'path': file_path}
+    except Exception:
+        pass
+
+    return None
+
+def fetch_file_via_git_or_gh(url: str, dest_path) -> bool:
+    """
+    Fallback mechanism: when an HTTP download fails (e.g. 404/403 for private repos),
+    attempt download via authenticated GitHub CLI ('gh') or authenticated Git.
+    """
+    info = parse_git_file_url(url)
+    if not info:
+        return False
+
+    dest = Path(dest_path)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    owner, repo, ref, file_path, host = info['owner'], info['repo'], info['ref'], info['path'], info['host']
+
+    # Method 1: GitHub CLI (gh api) - fast and supports private repos with standard user auth
+    if host == 'github.com' and shutil.which('gh'):
+        try:
+            log_subsubtask(f"HTTP download failed. Attempting git fallback via GitHub CLI ('gh api') for private repo {owner}/{repo}...")
+            api_endpoint = f"repos/{owner}/{repo}/contents/{file_path}"
+            if ref:
+                api_endpoint += f"?ref={ref}"
+            cmd = ['gh', 'api', api_endpoint, '-H', 'Accept: application/vnd.github.raw']
+            res = subprocess.run(cmd, capture_output=True)
+            if res.returncode == 0 and res.stdout:
+                dest.write_bytes(res.stdout)
+                log_subsubtask(f"Successfully retrieved '{file_path}' from {owner}/{repo} via GitHub CLI.")
+                return True
+        except Exception as e:
+            log_subsubtask(f"gh api fallback attempt failed: {e}")
+
+    # Method 2: Git shallow clone & checkout (works with Git Credential Manager / SSH for GitHub, GitLab, etc.)
+    if shutil.which('git'):
+        try:
+            log_subsubtask(f"Attempting git fallback via authenticated git clone for {owner}/{repo}...")
+            git_repo_url = f"https://{host}/{owner}/{repo}.git"
+            with tempfile.TemporaryDirectory(prefix="pynst_git_dl_") as tmp_dir:
+                clone_cmd = ["git", "clone", "--depth", "1", "--no-checkout"]
+                if ref:
+                    clone_cmd.extend(["--branch", ref])
+                clone_cmd.extend([git_repo_url, tmp_dir])
+                res = subprocess.run(clone_cmd, capture_output=True, text=True)
+                if res.returncode == 0:
+                    checkout_cmd = ["git", "-C", tmp_dir, "checkout", ref or "HEAD", "--", file_path]
+                    res = subprocess.run(checkout_cmd, capture_output=True, text=True)
+                    if res.returncode == 0:
+                        if shutil.which("git-lfs"):
+                            try:
+                                subprocess.run(["git", "-C", tmp_dir, "lfs", "pull", "--include", file_path], capture_output=True)
+                            except Exception:
+                                pass
+                        extracted = Path(tmp_dir) / file_path
+                        if extracted.is_file():
+                            shutil.copyfile(str(extracted), str(dest))
+                            log_subsubtask(f"Successfully retrieved '{file_path}' from {owner}/{repo} via authenticated git.")
+                            return True
+        except Exception as e:
+            log_subsubtask(f"git clone fallback attempt failed: {e}")
+
+    return False
+
+def get_git_remote_file_size(url: str) -> int:
+    """
+    Fallback mechanism: when HTTP HEAD fails (e.g. 404 for private repos),
+    attempt to query file size via GitHub CLI ('gh').
+    """
+    info = parse_git_file_url(url)
+    if not info or info.get('host') != 'github.com':
+        return -1
+    if shutil.which('gh'):
+        try:
+            owner, repo, ref, path = info['owner'], info['repo'], info['ref'], info['path']
+            api_endpoint = f"repos/{owner}/{repo}/contents/{path}"
+            if ref:
+                api_endpoint += f"?ref={ref}"
+            cmd = ['gh', 'api', api_endpoint, '--jq', '.size']
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode == 0 and res.stdout.strip().isdigit():
+                return int(res.stdout.strip())
+        except Exception:
+            pass
+    return -1
+
 def download_to_temp(url: str, force_download: bool = False) -> Path:
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".txt")
     os.close(tmp_fd)
@@ -1946,7 +2092,8 @@ def download_to_temp(url: str, force_download: bool = False) -> Path:
     except (ssl.SSLError, urllib.error.URLError) as e:
         # Check if it's an SSL certificate error
         if isinstance(e, urllib.error.URLError) and not ('SSL' in str(e) or 'certificate' in str(e).lower()):
-            # Not an SSL error, re-raise
+            if fetch_file_via_git_or_gh(url, p):
+                return p
             raise
         
         # If SSL certificate verification fails, retry with unverified context
@@ -1957,9 +2104,17 @@ def download_to_temp(url: str, force_download: bool = False) -> Path:
         urllib.request.install_opener(opener)
         try:
             urllib.request.urlretrieve(url, p)
+        except Exception as retry_e:
+            if fetch_file_via_git_or_gh(url, p):
+                return p
+            raise retry_e
         finally:
             # Restore default opener
             urllib.request.install_opener(urllib.request.build_opener())
+    except Exception as e:
+        if fetch_file_via_git_or_gh(url, p):
+            return p
+        raise
     finally:
         try:
             urllib.request.install_opener(urllib.request.build_opener())
@@ -2950,11 +3105,17 @@ def get_remote_file_size(url: str, verbose=False) -> int:
                 length = response.getheader("Content-Length")
             urllib.request.install_opener(urllib.request.build_opener())
         if length is None:
+            git_size = get_git_remote_file_size(url)
+            if git_size >= 0:
+                return git_size
             if verbose:
                 log_subsubtask(f"file does not exist on server: {url}")
             return -1
         return int(length)
     except Exception as e:
+        git_size = get_git_remote_file_size(url)
+        if git_size >= 0:
+            return git_size
         if verbose:
             log_subsubtask(f"get_remote_file_size error: {e}")
         return -1
@@ -3551,6 +3712,8 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
                 return True
             except (ssl.SSLError, urllib.error.URLError) as e:
                 if isinstance(e, urllib.error.URLError) and not ('SSL' in str(e) or 'certificate' in str(e).lower()):
+                    if fetch_file_via_git_or_gh(url, path):
+                        return True
                     raise
                 log_warning(f"SSL certificate verification failed. Retrying with unverified context...")
                 ssl_context = ssl._create_unverified_context()
@@ -3559,9 +3722,15 @@ def download_file(url: str, filepath: str, show_progress: bool = False, use_cach
                 try:
                     urllib.request.urlretrieve(url, path, reporthook=progress)
                     return True
+                except Exception as retry_e:
+                    if fetch_file_via_git_or_gh(url, path):
+                        return True
+                    raise retry_e
                 finally:
                     urllib.request.install_opener(urllib.request.build_opener())
             except Exception as e:
+                if fetch_file_via_git_or_gh(url, path):
+                    return True
                 abort(f"download_file error: {e}")
                 return False
 
